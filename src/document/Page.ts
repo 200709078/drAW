@@ -1,12 +1,15 @@
 import { Stroke } from "./Stroke";
+import { DocumentImage } from "./DocumentImage";
 
 export class Page {
 
     private readonly strokes: Stroke[];
+    private readonly images: DocumentImage[];
 
     constructor() {
 
         this.strokes = [];
+        this.images = [];
 
     }
 
@@ -39,6 +42,33 @@ export class Page {
     public clearStrokes(): void {
 
         this.strokes.length = 0;
+        this.images.length = 0;
+
+    }
+
+    public setStrokes(strokes: readonly Stroke[]): void {
+
+        this.strokes.length = 0;
+        this.strokes.push(...strokes);
+
+    }
+
+    public addImage(image: DocumentImage): void {
+
+        this.images.push(image);
+
+    }
+
+    public setImages(images: readonly DocumentImage[]): void {
+
+        this.images.length = 0;
+        this.images.push(...images);
+
+    }
+
+    public getImages(): readonly DocumentImage[] {
+
+        return this.images;
 
     }
 

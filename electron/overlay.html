@@ -1,0 +1,21 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Ekran Alıntısı</title>
+    <style>
+        html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; }
+        #capture { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; }
+        #interaction { position: fixed; inset: 0; cursor: crosshair; }
+        #selection { position: fixed; border: 2px solid #60a5fa; box-sizing: border-box; box-shadow: 0 0 0 9999px rgb(15 23 42 / 58%); pointer-events: none; }
+        #hint { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); padding: 8px 12px; border-radius: 8px; background: rgb(15 23 42 / 82%); color: white; font: 14px system-ui, sans-serif; pointer-events: none; }
+    </style>
+</head>
+<body>
+    <img id="capture" alt="Ekran alıntısı için seçilecek görüntü">
+    <div id="interaction"></div>
+    <div id="selection" hidden></div>
+    <div id="hint">Alanı sürükleyerek seçin · ESC: İptal</div>
+</body>
+</html>

@@ -13,6 +13,9 @@ import { EraserTool } from "../tools/EraserTool";
 import { HighlighterTool } from "../tools/HighlighterTool";
 import { SelectionTool } from "../tools/SelectionTool";
 import { PartialEraserTool } from "../tools/PartialEraserTool";
+import { HistoryManager } from "./HistoryManager";
+import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
+import { getScreenCaptureGateway } from "../platform/ScreenCaptureGateway";
 
 export class ManagerContainer {
 
@@ -24,6 +27,8 @@ export class ManagerContainer {
     private readonly highlighterTool: HighlighterTool;
     private readonly selectionTool: SelectionTool;
     private readonly partialEraserTool: PartialEraserTool;
+    private readonly historyManager: HistoryManager;
+    private readonly screenCaptureTool: ScreenCaptureTool;
 
     private readonly drawingContext: DrawingContext;
 
@@ -43,6 +48,7 @@ export class ManagerContainer {
 
         // Document
         this.document = new Document();
+        this.historyManager = new HistoryManager(this.document);
 
         // Renderer
         this.documentRenderer = new DocumentRenderer(
@@ -67,27 +73,41 @@ export class ManagerContainer {
         this.penTool = new PenTool(
             this.drawingContext,
             this.document,
-            this.documentRenderer
+            this.documentRenderer,
+            this.historyManager
         );
         this.eraserTool = new EraserTool(
             this.drawingContext,
             this.document,
-            this.documentRenderer
+            this.documentRenderer,
+            this.historyManager
         );
         this.highlighterTool = new HighlighterTool(
             this.drawingContext,
             this.document,
-            this.documentRenderer
+            this.documentRenderer,
+            this.historyManager
         );
         this.selectionTool = new SelectionTool(
             this.drawingContext,
             this.document,
-            this.documentRenderer
+            this.documentRenderer,
+            this.historyManager
         );
         this.partialEraserTool = new PartialEraserTool(
             this.drawingContext,
             this.document,
-            this.documentRenderer
+            this.documentRenderer,
+            this.historyManager
+        );
+        this.screenCaptureTool = new ScreenCaptureTool(
+            this.drawingContext,
+            this.document,
+            this.documentRenderer,
+            this.historyManager,
+            getScreenCaptureGateway(),
+            this.toolManager,
+            this.penTool
         );
         this.toolManager.setTool(this.penTool);
 
@@ -156,6 +176,18 @@ export class ManagerContainer {
     public getPartialEraserTool(): PartialEraserTool {
 
         return this.partialEraserTool;
+
+    }
+
+    public getHistoryManager(): HistoryManager {
+
+        return this.historyManager;
+
+    }
+
+    public getScreenCaptureTool(): ScreenCaptureTool {
+
+        return this.screenCaptureTool;
 
     }
 

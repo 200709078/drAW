@@ -4,43 +4,50 @@ import { Stroke } from "../document/Stroke";
 import { DrawingContext } from "../models/DrawingContext";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { Tool } from "./Tool";
+import { HistoryManager } from "../core/HistoryManager";
+import { ERASER_CURSOR } from "./EraserTool";
 
 export class PartialEraserTool extends Tool {
 
-    private static readonly RADIUS = 12;
-
     private readonly document: Document;
     private readonly renderer: DocumentRenderer;
+    private readonly history: HistoryManager;
     private isErasing: boolean;
+    private radius: number;
 
     constructor(
         drawingContext: DrawingContext,
         document: Document,
-        renderer: DocumentRenderer
+        renderer: DocumentRenderer,
+        history: HistoryManager
     ) {
 
         super(drawingContext);
 
         this.document = document;
         this.renderer = renderer;
+        this.history = history;
         this.isErasing = false;
+        this.radius = 12;
 
     }
 
     public override activate(): void {
 
-        this.canvas.style.cursor = "cell";
+        this.canvas.style.cursor = ERASER_CURSOR;
 
     }
 
     public override deactivate(): void {
 
         this.isErasing = false;
+        this.history.commit();
 
     }
 
     public override onPointerDown(event: PointerEvent): void {
 
+        this.history.begin();
         this.isErasing = true;
         this.eraseAt(event.offsetX, event.offsetY);
 
@@ -58,12 +65,22 @@ export class PartialEraserTool extends Tool {
 
         this.eraseAt(event.offsetX, event.offsetY);
         this.isErasing = false;
+        this.history.commit();
 
     }
 
     public override cancel(): void {
 
         this.isErasing = false;
+        this.history.commit();
+
+    }
+
+    public setLineWidth(lineWidth: number): void {
+
+        if (Number.isFinite(lineWidth) && lineWidth > 0) {
+            this.radius = Math.max(4, lineWidth * 2);
+        }
 
     }
 
@@ -149,7 +166,7 @@ export class PartialEraserTool extends Tool {
     private isPointHit(stroke: Stroke, point: Point, x: number, y: number): boolean {
 
         return this.getDistance(point.getX(), point.getY(), x, y) <= (
-            PartialEraserTool.RADIUS + this.getLineWidth(stroke, point) / 2
+            this.radius + this.getLineWidth(stroke, point) / 2
         );
 
     }
@@ -175,7 +192,7 @@ export class PartialEraserTool extends Tool {
             this.getLineWidth(stroke, endPoint)
         ) / 2;
 
-        return distance <= PartialEraserTool.RADIUS + lineWidth / 2;
+        return distance <= this.radius + lineWidth / 2;
 
     }
 

@@ -4,43 +4,51 @@ import { Stroke } from "../document/Stroke";
 import { DrawingContext } from "../models/DrawingContext";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { Tool } from "./Tool";
+import { HistoryManager } from "../core/HistoryManager";
+
+export const ERASER_CURSOR = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%23fda4af' stroke='%239e2940' stroke-width='1.5' stroke-linejoin='round' d='m5 27 4-12L20 4l8 8-11 11z'/%3E%3Cpath fill='%23f8fafc' stroke='%2394a3b8' stroke-width='1.5' stroke-linejoin='round' d='m5 27 4-12 8 8z'/%3E%3Cpath fill='%23fecdd3' d='m20 4 8 8-2.5 2.5-8-8z'/%3E%3C/svg%3E\") 5 27, cell";
 
 export class EraserTool extends Tool {
 
-    private static readonly RADIUS = 12;
-
     private readonly document: Document;
     private readonly renderer: DocumentRenderer;
+    private readonly history: HistoryManager;
     private isErasing: boolean;
+    private radius: number;
 
     constructor(
         drawingContext: DrawingContext,
         document: Document,
-        renderer: DocumentRenderer
+        renderer: DocumentRenderer,
+        history: HistoryManager
     ) {
 
         super(drawingContext);
 
         this.document = document;
         this.renderer = renderer;
+        this.history = history;
         this.isErasing = false;
+        this.radius = 12;
 
     }
 
     public override activate(): void {
 
-        this.canvas.style.cursor = "cell";
+        this.canvas.style.cursor = ERASER_CURSOR;
 
     }
 
     public override deactivate(): void {
 
         this.isErasing = false;
+        this.history.commit();
 
     }
 
     public override onPointerDown(event: PointerEvent): void {
 
+        this.history.begin();
         this.isErasing = true;
         this.eraseAt(event.offsetX, event.offsetY);
 
@@ -58,12 +66,22 @@ export class EraserTool extends Tool {
 
         this.eraseAt(event.offsetX, event.offsetY);
         this.isErasing = false;
+        this.history.commit();
 
     }
 
     public override cancel(): void {
 
         this.isErasing = false;
+        this.history.commit();
+
+    }
+
+    public setLineWidth(lineWidth: number): void {
+
+        if (Number.isFinite(lineWidth) && lineWidth > 0) {
+            this.radius = Math.max(4, lineWidth * 2);
+        }
 
     }
 
@@ -96,7 +114,7 @@ export class EraserTool extends Tool {
 
         if (points.length === 1) {
             return this.getDistance(points[0].getX(), points[0].getY(), x, y) <= (
-                EraserTool.RADIUS + this.getLineWidth(stroke, points[0]) / 2
+                this.radius + this.getLineWidth(stroke, points[0]) / 2
             );
         }
 
@@ -116,7 +134,7 @@ export class EraserTool extends Tool {
                 this.getLineWidth(stroke, endPoint)
             ) / 2;
 
-            if (distance <= EraserTool.RADIUS + lineWidth / 2) {
+            if (distance <= this.radius + lineWidth / 2) {
                 return true;
             }
         }
