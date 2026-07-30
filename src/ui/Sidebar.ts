@@ -75,8 +75,8 @@ export class Sidebar {
             void eraserTool;
         });
         eraserButton.textContent = "S";
-        eraserButton.title = "Silgi: Stroke sil";
-        eraserButton.setAttribute("aria-label", "Silgi: Stroke sil");
+        eraserButton.title = "Silgi: Stroke Sil";
+        eraserButton.setAttribute("aria-label", "Silgi: Stroke Sil");
         const highlighterButton = this.createToolButton("Fosforlu kalem", "▰", false, () => {
             void highlighterTool;
         });
@@ -195,8 +195,8 @@ export class Sidebar {
             }
 
             eraserButton.textContent = "S";
-            eraserButton.title = "Silgi: Stroke sil";
-            eraserButton.setAttribute("aria-label", "Silgi: Stroke sil");
+            eraserButton.title = "Silgi: Stroke Sil";
+            eraserButton.setAttribute("aria-label", "Silgi: Stroke Sil");
             lastSelectedEraserTool = eraserTool;
             lastSelectedEraserButton = strokeEraserButton;
 
@@ -328,10 +328,10 @@ export class Sidebar {
             }
         });
 
-        const strokeEraserButton = this.createEraserOption("Stroke sil", "S", () => {
+        const strokeEraserButton = this.createEraserOption("Stroke Sil", "S", () => {
             selectEraser(eraserTool, strokeEraserButton);
         });
-        const partialEraserButton = this.createEraserOption("Normal silgi", "N", () => {
+        const partialEraserButton = this.createEraserOption("Normal Silgi", "N", () => {
             selectEraser(partialEraserTool, partialEraserButton);
         });
         lastSelectedEraserButton = strokeEraserButton;
