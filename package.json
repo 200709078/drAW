@@ -1,15 +1,42 @@
 {
   "name": "draw",
+  "productName": "drAW",
   "private": true,
-  "version": "0.0.0",
+  "version": "0.0.1",
   "type": "module",
+  "main": "electron/main.ts",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "electron": "electron electron/main.ts",
+    "dist": "npm run build && electron-builder"
   },
   "devDependencies": {
+    "basic-ftp": "^6.0.2",
+    "concurrently": "^10.0.4",
+    "dotenv": "^17.4.2",
+    "electron": "^43.2.0",
+    "electron-builder": "^26.15.3",
     "typescript": "~6.0.2",
     "vite": "^8.1.1"
+  },
+  "build": {
+    "appId": "com.madematik.draw",
+    "productName": "drAW",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "electron/**/*",
+      "package.json"
+    ],
+    "linux": {
+      "target": "AppImage"
+    },
+    "win": {
+      "target": "nsis"
+    }
   }
 }

@@ -16,7 +16,9 @@ export class Application {
             this.managers.getSelectionTool(),
             this.managers.getPartialEraserTool(),
             this.managers.getDocument(),
-            this.managers.getDocumentRenderer()
+            this.managers.getDocumentRenderer(),
+            this.managers.getHistoryManager(),
+            this.managers.getScreenCaptureTool()
         );
 
     }
