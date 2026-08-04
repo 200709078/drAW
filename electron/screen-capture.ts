@@ -200,7 +200,6 @@ export class ScreenCaptureService {
             alwaysOnTop: true,
             skipTaskbar: true,
             resizable: false,
-            movable: false,
             backgroundColor: "#000000",
             webPreferences: {
                 preload: path.join(process.cwd(), "electron", "overlay-preload.cjs"),

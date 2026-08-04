@@ -19,11 +19,94 @@
         #selection .handle--sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
         #selection .handle--w  { left: -6px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
         #hint { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); padding: 8px 12px; border-radius: 8px; background: rgb(15 23 42 / 82%); color: white; font: 14px system-ui, sans-serif; pointer-events: none; }
-        #controls { position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; padding: 10px; border-radius: 12px; background: rgb(15 23 42 / 85%); }
-        #controls button { padding: 10px 20px; border: 0; border-radius: 8px; font: 14px system-ui, sans-serif; cursor: pointer; color: white; background: rgb(51 65 85 / 90%); transition: background 0.15s ease; }
-        #controls button:hover { background: #60a5fa; color: #0f172a; }
-        #captureButton { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; border-radius: 50%; border: 0; background: #ffffff; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / 40%); }
-        #captureButton::after { content: ""; position: absolute; inset: 12px; border-radius: 50%; background: #1e293b; }
+        #toolbox {
+            position: fixed;
+            bottom: 48px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 10px;
+            min-width: 200px;
+            padding: 0 0 12px;
+            border-radius: 14px;
+            background: rgb(15 23 42 / 82%);
+            box-shadow: 0 8px 28px rgb(0 0 0 / 45%);
+            backdrop-filter: blur(10px);
+            color: white;
+            font: 14px system-ui, sans-serif;
+            z-index: 20;
+            overflow: hidden;
+        }
+        #toolbox .toolbox__titlebar {
+            width: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 8px 6px 8px 12px;
+            box-sizing: border-box;
+            background: rgb(255 255 255 / 8%);
+            cursor: move;
+            user-select: none;
+            touch-action: none;
+        }
+        #toolbox .toolbox__title {
+            font-size: 13px;
+            font-weight: 600;
+            letter-spacing: 0.3px;
+            user-select: none;
+            pointer-events: none;
+        }
+        #toolbox .toolbox__close {
+            width: 26px;
+            height: 26px;
+            border: 0;
+            border-radius: 6px;
+            background: transparent;
+            color: #cbd5e1;
+            font-size: 18px;
+            line-height: 1;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        #toolbox .toolbox__close:hover { background: rgb(239 68 68 / 85%); color: white; }
+        #toolbox .toolbox__row {
+            width: 100%;
+            display: flex;
+            gap: 8px;
+            padding: 0 10px;
+            box-sizing: border-box;
+        }
+        #toolbox .toolbox__row button {
+            flex: 1 1 0;
+            min-width: 0;
+            padding: 8px 0;
+            border: 0;
+            border-radius: 8px;
+            font: 14px system-ui, sans-serif;
+            cursor: pointer;
+            color: white;
+            background: rgb(51 65 85 / 90%);
+            transition: background 0.15s ease;
+        }
+        #toolbox .toolbox__row button:hover { background: #60a5fa; color: #0f172a; }
+        #toolbox .toolbox__row button.active { background: #60a5fa; color: #0f172a; }
+        #toolbox #captureButton {
+            width: 150px;
+            padding: 10px 0;
+            border: 0;
+            border-radius: 10px;
+            font: 600 15px system-ui, sans-serif;
+            cursor: pointer;
+            color: white;
+            background: linear-gradient(180deg, #3b82f6, #2563eb);
+            box-shadow: 0 4px 12px rgb(37 99 235 / 40%);
+            transition: filter 0.15s ease;
+        }
+        #toolbox #captureButton:hover { filter: brightness(1.1); }
     </style>
 </head>
 <body>
@@ -40,11 +123,16 @@
         <span class="handle handle--w" data-dir="w"></span>
     </div>
     <div id="hint">Alanı sürükleyerek seçin· ESC: İptal</div>
-    <div id="controls">
-        <button type="button" id="selectionButton" class="active" title="Seçim: Belirli bir alanı seç">Seçim</button>
-        <button type="button" id="screenButton" title="Ekran: Ekranın tamamını seç">Ekran</button>
-        <button type="button" id="cancelButton" title="İptal: Yakalamayı iptal et">İptal</button>
+    <div id="toolbox" class="toolbox">
+        <div class="toolbox__titlebar">
+            <span class="toolbox__title">Ekran Alıntısı</span>
+            <button type="button" id="cancelButton" class="toolbox__close" title="İptal: Yakalamayı iptal et" aria-label="İptal">×</button>
+        </div>
+        <div class="toolbox__row">
+            <button type="button" id="selectionButton" class="active" title="Seçim: Belirli bir alanı seç">Seçim</button>
+            <button type="button" id="screenButton" title="Ekran: Ekranın tamamını seç">Ekran</button>
+        </div>
+        <button type="button" id="captureButton" aria-label="Yakala">Yakala</button>
     </div>
-    <button type="button" id="captureButton" aria-label="Yakala"></button>
 </body>
 </html>
