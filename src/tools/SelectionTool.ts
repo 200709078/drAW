@@ -50,16 +50,31 @@ export class SelectionTool extends Tool {
 
     public override activate(): void {
 
-        this.canvas.style.cursor = "move";
+        this.canvas.style.cursor = "default";
+        this.canvas.addEventListener("mousemove", this.handleHover);
 
     }
 
     public override deactivate(): void {
 
+        this.canvas.removeEventListener("mousemove", this.handleHover);
+        this.canvas.style.cursor = "";
         this.history.commit();
         this.clearSelection();
 
     }
+
+    private readonly handleHover = (event: MouseEvent): void => {
+
+        if (this.isDragging || this.isSelecting) {
+            this.canvas.style.cursor = "move";
+
+            return;
+        }
+
+        this.canvas.style.cursor = this.findObjectAt(event.offsetX, event.offsetY) !== null ? "move" : "default";
+
+    };
 
     public override onPointerDown(event: PointerEvent): void {
 
