@@ -86,12 +86,9 @@ export class Sidebar {
         const screenCaptureButton = this.createToolButton("Ekran alıntısı", "▧", false, () => {
             toolManager.setTool(screenCaptureTool);
         });
-        const fullScreenButton = this.createToolButton("Tam ekran alıntısı", "Y", false, () => {
-            toolManager.setTool(screenCaptureTool);
-        });
 
         const selectTool = (selectedButton: HTMLButtonElement): void => {
-            for (const button of [penButton, eraserButton, selectionButton, screenCaptureButton, fullScreenButton]) {
+            for (const button of [penButton, eraserButton, selectionButton, screenCaptureButton]) {
                 const isSelected = button === selectedButton;
 
                 button.classList.toggle("sidebar__tool--selected", isSelected);
@@ -101,7 +98,6 @@ export class Sidebar {
 
         selectionButton.addEventListener("click", () => selectTool(selectionButton));
         screenCaptureButton.addEventListener("click", () => selectTool(screenCaptureButton));
-        fullScreenButton.addEventListener("click", () => selectTool(fullScreenButton));
 
         const penControl = document.createElement("div");
         penControl.className = "sidebar__control";
@@ -503,7 +499,6 @@ export class Sidebar {
             eraserControl,
             selectionButton,
             screenCaptureButton,
-            fullScreenButton,
             colorControl,
             widthControl
         );
