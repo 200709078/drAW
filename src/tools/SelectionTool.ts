@@ -74,13 +74,54 @@ export class SelectionTool extends Tool {
 
         this.canvas.style.cursor = "default";
         this.canvas.addEventListener("mousemove", this.handleHover);
+        window.addEventListener("keydown", this.handleKeyDown);
 
     }
 
     public override deactivate(): void {
 
         this.canvas.removeEventListener("mousemove", this.handleHover);
+        window.removeEventListener("keydown", this.handleKeyDown);
         this.canvas.style.cursor = "";
+        this.history.commit();
+        this.clearSelection();
+
+    }
+
+    private readonly handleKeyDown = (event: KeyboardEvent): void => {
+
+        if (event.key !== "Delete" && event.key !== "Backspace") {
+            return;
+        }
+
+        const target = event.target as HTMLElement | null;
+
+        if (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) {
+            return;
+        }
+
+        event.preventDefault();
+        this.deleteSelection();
+
+    };
+
+    public deleteSelection(): void {
+
+        if (this.selectedStrokes.size === 0 && this.selectedImages.size === 0) {
+            return;
+        }
+
+        const page = this.document.getCurrentPage();
+
+        this.history.begin();
+
+        for (const stroke of this.selectedStrokes) {
+            page.removeStroke(stroke);
+        }
+        for (const image of this.selectedImages) {
+            page.removeImage(image);
+        }
+
         this.history.commit();
         this.clearSelection();
 
