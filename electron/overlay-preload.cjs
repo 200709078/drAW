@@ -249,6 +249,17 @@ window.addEventListener("DOMContentLoaded", () => {
             interaction.releasePointerCapture(event.pointerId);
         }
 
+        if (mode === "draw" && (selWidth < 10 || selHeight < 10)) {
+            const bounds = getContentRect();
+
+            setSelection(
+                clamp(startX, 0, Math.max(0, bounds.width - 30)),
+                clamp(startY, 0, Math.max(0, bounds.height - 30)),
+                30,
+                30
+            );
+        }
+
         if (selWidth >= 2 && selHeight >= 2) {
             savedSelection = { x: selX, y: selY, width: selWidth, height: selHeight };
         }
@@ -260,6 +271,10 @@ window.addEventListener("DOMContentLoaded", () => {
         if (event.key === "Escape") {
             ipcRenderer.send("screen-capture:cancel");
         }
+    });
+
+    document.addEventListener("contextmenu", (event) => {
+        event.preventDefault();
     });
 
     cancelButton?.addEventListener("click", () => {
