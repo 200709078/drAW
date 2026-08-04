@@ -32,6 +32,13 @@ export class Stroke {
 
     }
 
+    public setPoints(points: readonly Point[]): void {
+
+        this.points.length = 0;
+        this.points.push(...points);
+
+    }
+
     public getColor(): string {
 
         return this.color;

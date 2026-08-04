@@ -6,8 +6,22 @@ import { DrawingContext } from "../models/DrawingContext";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { Tool } from "./Tool";
 import { HistoryManager } from "../core/HistoryManager";
+import {
+    ALL_RESIZE_HANDLES,
+    getResizeCursor,
+    getResizeHandlePosition,
+    type ResizeHandle,
+    type SelectionBounds
+} from "../renderers/ResizeHandle";
 
 type SelectableObject = Stroke | DocumentImage;
+type CornerHandle = "topLeft" | "topRight" | "bottomRight" | "bottomLeft";
+type EdgeHandle = "top" | "right" | "bottom" | "left";
+
+type ResizeOriginals = {
+    strokes: Point[][];
+    images: Array<{ x: number; y: number; width: number; height: number }>;
+};
 
 export class SelectionTool extends Tool {
 
@@ -19,6 +33,10 @@ export class SelectionTool extends Tool {
     private isDragging: boolean;
     private isSelecting: boolean;
     private isAdditiveSelection: boolean;
+    private isResizing: boolean;
+    private activeHandle: ResizeHandle | null;
+    private resizeBounds: SelectionBounds | null;
+    private resizeOriginals: ResizeOriginals | null;
     private startX: number;
     private startY: number;
     private lastX: number;
@@ -41,6 +59,10 @@ export class SelectionTool extends Tool {
         this.isDragging = false;
         this.isSelecting = false;
         this.isAdditiveSelection = false;
+        this.isResizing = false;
+        this.activeHandle = null;
+        this.resizeBounds = null;
+        this.resizeOriginals = null;
         this.startX = 0;
         this.startY = 0;
         this.lastX = 0;
@@ -66,8 +88,23 @@ export class SelectionTool extends Tool {
 
     private readonly handleHover = (event: MouseEvent): void => {
 
+        if (this.isResizing) {
+            this.canvas.style.cursor = this.activeHandle !== null ?
+                getResizeCursor(this.activeHandle) : "move";
+
+            return;
+        }
+
         if (this.isDragging || this.isSelecting) {
             this.canvas.style.cursor = "move";
+
+            return;
+        }
+
+        const handle = this.getHandleAt(event.offsetX, event.offsetY);
+
+        if (handle !== null) {
+            this.canvas.style.cursor = getResizeCursor(handle);
 
             return;
         }
@@ -79,13 +116,24 @@ export class SelectionTool extends Tool {
     public override onPointerDown(event: PointerEvent): void {
 
         this.history.begin();
-        const selectedObject = this.findObjectAt(event.offsetX, event.offsetY);
 
         this.startX = event.offsetX;
         this.startY = event.offsetY;
         this.lastX = event.offsetX;
         this.lastY = event.offsetY;
         this.isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
+
+        const handle = this.getHandleAt(this.startX, this.startY);
+
+        if (handle !== null && !this.isAdditiveSelection) {
+            this.startResize(handle);
+            this.renderer.render();
+
+            return;
+        }
+
+        const selectedObject = this.findObjectAt(event.offsetX, event.offsetY);
+
         this.isSelecting = selectedObject === null;
         this.isDragging = selectedObject !== null;
 
@@ -124,6 +172,12 @@ export class SelectionTool extends Tool {
             return;
         }
 
+        if (this.isResizing) {
+            this.applyResize(event.offsetX, event.offsetY);
+
+            return;
+        }
+
         if (!this.isDragging) {
             return;
         }
@@ -145,6 +199,16 @@ export class SelectionTool extends Tool {
 
     public override onPointerUp(event: PointerEvent): void {
 
+        if (this.isResizing) {
+            this.isResizing = false;
+            this.activeHandle = null;
+            this.resizeBounds = null;
+            this.resizeOriginals = null;
+            this.history.commit();
+
+            return;
+        }
+
         if (this.isSelecting) {
             this.selectObjectsInBounds(event.offsetX, event.offsetY);
             this.renderer.clearSelectionBounds();
@@ -164,6 +228,10 @@ export class SelectionTool extends Tool {
 
         this.isDragging = false;
         this.isSelecting = false;
+        this.isResizing = false;
+        this.activeHandle = null;
+        this.resizeBounds = null;
+        this.resizeOriginals = null;
         this.history.commit();
         this.clearSelection();
 
@@ -175,6 +243,232 @@ export class SelectionTool extends Tool {
         this.selectedImages.clear();
         this.renderer.clearSelection();
         this.renderer.render();
+
+    }
+
+    private getHandleAt(x: number, y: number): ResizeHandle | null {
+
+        const bounds = this.renderer.getSelectionBounds();
+
+        if (bounds === null) {
+            return null;
+        }
+
+        const hitRadius = 10;
+
+        for (const handle of ALL_RESIZE_HANDLES) {
+            const position = getResizeHandlePosition(handle, bounds);
+
+            if (Math.hypot(x - position.x, y - position.y) <= hitRadius) {
+                return handle;
+            }
+        }
+
+        return null;
+
+    }
+
+    private startResize(handle: ResizeHandle): void {
+
+        const bounds = this.renderer.getSelectionBounds();
+
+        if (bounds === null) {
+            return;
+        }
+
+        this.isResizing = true;
+        this.activeHandle = handle;
+        this.resizeBounds = bounds;
+        this.resizeOriginals = this.captureResizeOriginals();
+
+    }
+
+    private captureResizeOriginals(): ResizeOriginals {
+
+        return {
+            strokes: [...this.selectedStrokes].map((stroke) => {
+                return stroke.getPoints().map((point) => new Point(
+                    point.getX(),
+                    point.getY(),
+                    point.getPressure(),
+                    point.getTimestamp()
+                ));
+            }),
+            images: [...this.selectedImages].map((image) => ({
+                x: image.getX(),
+                y: image.getY(),
+                width: image.getWidth(),
+                height: image.getHeight()
+            }))
+        };
+
+    }
+
+    private applyResize(pointerX: number, pointerY: number): void {
+
+        if (this.activeHandle === null || this.resizeBounds === null || this.resizeOriginals === null) {
+            return;
+        }
+
+        const { scaleX, scaleY, offsetX, offsetY } = this.computeResizeTransform(
+            this.activeHandle,
+            this.resizeBounds,
+            pointerX,
+            pointerY
+        );
+
+        let strokeIndex = 0;
+
+        for (const stroke of this.selectedStrokes) {
+            const originalPoints = this.resizeOriginals.strokes[strokeIndex];
+
+            stroke.setPoints(originalPoints.map((point) => new Point(
+                point.getX() * scaleX + offsetX,
+                point.getY() * scaleY + offsetY,
+                point.getPressure(),
+                point.getTimestamp()
+            )));
+            strokeIndex++;
+        }
+
+        let imageIndex = 0;
+
+        for (const image of this.selectedImages) {
+            const original = this.resizeOriginals.images[imageIndex];
+
+            image.setGeometry(
+                original.x * scaleX + offsetX,
+                original.y * scaleY + offsetY,
+                original.width * scaleX,
+                original.height * scaleY
+            );
+            imageIndex++;
+        }
+
+        this.renderer.render();
+
+    }
+
+    private computeResizeTransform(
+        handle: ResizeHandle,
+        bounds: SelectionBounds,
+        pointerX: number,
+        pointerY: number
+    ): { scaleX: number; scaleY: number; offsetX: number; offsetY: number } {
+
+        if (handle === "topLeft" || handle === "topRight" ||
+            handle === "bottomRight" || handle === "bottomLeft") {
+            return this.computeCornerTransform(handle, bounds, pointerX, pointerY);
+        }
+
+        return this.computeEdgeTransform(handle, bounds, pointerX, pointerY);
+
+    }
+
+    private computeCornerTransform(
+        handle: CornerHandle,
+        bounds: SelectionBounds,
+        pointerX: number,
+        pointerY: number
+    ): { scaleX: number; scaleY: number; offsetX: number; offsetY: number } {
+
+        let anchorX: number;
+        let anchorY: number;
+        let handleX: number;
+        let handleY: number;
+
+        switch (handle) {
+            case "topLeft":
+                anchorX = bounds.maxX;
+                anchorY = bounds.maxY;
+                handleX = bounds.minX;
+                handleY = bounds.minY;
+                break;
+            case "topRight":
+                anchorX = bounds.minX;
+                anchorY = bounds.maxY;
+                handleX = bounds.maxX;
+                handleY = bounds.minY;
+                break;
+            case "bottomRight":
+                anchorX = bounds.minX;
+                anchorY = bounds.minY;
+                handleX = bounds.maxX;
+                handleY = bounds.maxY;
+                break;
+            case "bottomLeft":
+                anchorX = bounds.maxX;
+                anchorY = bounds.minY;
+                handleX = bounds.minX;
+                handleY = bounds.maxY;
+                break;
+        }
+
+        const scaleX = handleX === anchorX ? 1 : (pointerX - anchorX) / (handleX - anchorX);
+        const scaleY = handleY === anchorY ? 1 : (pointerY - anchorY) / (handleY - anchorY);
+        const rawScale = Math.abs(scaleX - 1) >= Math.abs(scaleY - 1) ? scaleX : scaleY;
+        const scale = Math.max(0.01, Math.min(rawScale, 100));
+
+        return {
+            scaleX: scale,
+            scaleY: scale,
+            offsetX: anchorX - anchorX * scale,
+            offsetY: anchorY - anchorY * scale
+        };
+
+    }
+
+    private computeEdgeTransform(
+        handle: EdgeHandle,
+        bounds: SelectionBounds,
+        pointerX: number,
+        pointerY: number
+    ): { scaleX: number; scaleY: number; offsetX: number; offsetY: number } {
+
+        const clampScale = (value: number): number => Math.max(0.01, Math.min(value, 100));
+
+        switch (handle) {
+            case "top": {
+                const scaleY = clampScale((pointerY - bounds.maxY) / (bounds.minY - bounds.maxY));
+
+                return {
+                    scaleX: 1,
+                    scaleY,
+                    offsetX: 0,
+                    offsetY: bounds.maxY - bounds.maxY * scaleY
+                };
+            }
+            case "bottom": {
+                const scaleY = clampScale((pointerY - bounds.minY) / (bounds.maxY - bounds.minY));
+
+                return {
+                    scaleX: 1,
+                    scaleY,
+                    offsetX: 0,
+                    offsetY: bounds.minY - bounds.minY * scaleY
+                };
+            }
+            case "left": {
+                const scaleX = clampScale((pointerX - bounds.maxX) / (bounds.minX - bounds.maxX));
+
+                return {
+                    scaleX,
+                    scaleY: 1,
+                    offsetX: bounds.maxX - bounds.maxX * scaleX,
+                    offsetY: 0
+                };
+            }
+            case "right": {
+                const scaleX = clampScale((pointerX - bounds.minX) / (bounds.maxX - bounds.minX));
+
+                return {
+                    scaleX,
+                    scaleY: 1,
+                    offsetX: bounds.minX - bounds.minX * scaleX,
+                    offsetY: 0
+                };
+            }
+        }
 
     }
 
