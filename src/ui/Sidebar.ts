@@ -86,9 +86,12 @@ export class Sidebar {
         const screenCaptureButton = this.createToolButton("Ekran alıntısı", "▧", false, () => {
             toolManager.setTool(screenCaptureTool);
         });
+        const fullScreenButton = this.createToolButton("Tam ekran alıntısı", "Y", false, () => {
+            toolManager.setTool(screenCaptureTool);
+        });
 
         const selectTool = (selectedButton: HTMLButtonElement): void => {
-            for (const button of [penButton, eraserButton, selectionButton, screenCaptureButton]) {
+            for (const button of [penButton, eraserButton, selectionButton, screenCaptureButton, fullScreenButton]) {
                 const isSelected = button === selectedButton;
 
                 button.classList.toggle("sidebar__tool--selected", isSelected);
@@ -98,6 +101,7 @@ export class Sidebar {
 
         selectionButton.addEventListener("click", () => selectTool(selectionButton));
         screenCaptureButton.addEventListener("click", () => selectTool(screenCaptureButton));
+        fullScreenButton.addEventListener("click", () => selectTool(fullScreenButton));
 
         const penControl = document.createElement("div");
         penControl.className = "sidebar__control";
@@ -297,6 +301,27 @@ export class Sidebar {
             penButton.setAttribute("aria-expanded", "false");
         };
 
+        const highlightPen = (
+            tool: PenTool | HighlighterTool,
+            selectedButton: HTMLButtonElement
+        ): void => {
+            void tool;
+            selectTool(penButton);
+            penButton.textContent = selectedButton.textContent;
+            penButton.title = `Kalem: ${selectedButton.title}`;
+            penButton.setAttribute("aria-label", `Kalem: ${selectedButton.title}`);
+
+            for (const button of penPalette.querySelectorAll("button")) {
+                const isSelected = button === selectedButton;
+
+                button.classList.toggle("sidebar__pen-option--selected", isSelected);
+                button.setAttribute("aria-pressed", String(isSelected));
+            }
+
+            penPalette.hidden = true;
+            penButton.setAttribute("aria-expanded", "false");
+        };
+
         const normalPenButton = this.createPenOption("Normal kalem", "P", () => {
             selectPen(penTool, normalPenButton);
         });
@@ -325,6 +350,16 @@ export class Sidebar {
 
             if (lastSelectedPenButton !== null) {
                 selectPen(lastSelectedPenTool, lastSelectedPenButton);
+            }
+        });
+
+        toolManager.addChangeListener(() => {
+            const activeTool = toolManager.getActiveTool();
+
+            if (activeTool === penTool) {
+                highlightPen(penTool, normalPenButton);
+            } else if (activeTool === highlighterTool) {
+                highlightPen(highlighterTool, highlighterButton);
             }
         });
 
@@ -468,6 +503,7 @@ export class Sidebar {
             eraserControl,
             selectionButton,
             screenCaptureButton,
+            fullScreenButton,
             colorControl,
             widthControl
         );

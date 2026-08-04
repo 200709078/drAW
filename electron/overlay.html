@@ -7,15 +7,44 @@
     <style>
         html, body { width: 100%; height: 100%; margin: 0; overflow: hidden; background: #000; }
         #capture { display: block; width: 100%; height: 100%; object-fit: contain; user-select: none; }
-        #interaction { position: fixed; inset: 0; cursor: crosshair; }
-        #selection { position: fixed; border: 2px solid #60a5fa; box-sizing: border-box; box-shadow: 0 0 0 9999px rgb(15 23 42 / 58%); pointer-events: none; }
+        #interaction { position: fixed; inset: 0; cursor: default; }
+        #selection { position: fixed; border: 3px solid #60a5fa; box-sizing: border-box; box-shadow: 0 0 0 9999px rgb(15 23 42 / 58%); background: rgb(96 165 250 / 12%); pointer-events: none; }
+        #selection .handle { position: absolute; width: 10px; height: 10px; background: #60a5fa; border: 1px solid #fff; border-radius: 2px; box-sizing: border-box; pointer-events: auto; z-index: 10; }
+        #selection .handle--nw { left: -6px; top: -6px; cursor: nwse-resize; }
+        #selection .handle--n  { left: 50%; top: -6px; transform: translateX(-50%); cursor: ns-resize; }
+        #selection .handle--ne { right: -6px; top: -6px; cursor: nesw-resize; }
+        #selection .handle--e  { right: -6px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
+        #selection .handle--se { right: -6px; bottom: -6px; cursor: nwse-resize; }
+        #selection .handle--s  { left: 50%; bottom: -6px; transform: translateX(-50%); cursor: ns-resize; }
+        #selection .handle--sw { left: -6px; bottom: -6px; cursor: nesw-resize; }
+        #selection .handle--w  { left: -6px; top: 50%; transform: translateY(-50%); cursor: ew-resize; }
         #hint { position: fixed; top: 16px; left: 50%; transform: translateX(-50%); padding: 8px 12px; border-radius: 8px; background: rgb(15 23 42 / 82%); color: white; font: 14px system-ui, sans-serif; pointer-events: none; }
+        #controls { position: fixed; bottom: 96px; left: 50%; transform: translateX(-50%); display: flex; gap: 12px; padding: 10px; border-radius: 12px; background: rgb(15 23 42 / 85%); }
+        #controls button { padding: 10px 20px; border: 0; border-radius: 8px; font: 14px system-ui, sans-serif; cursor: pointer; color: white; background: rgb(51 65 85 / 90%); transition: background 0.15s ease; }
+        #controls button:hover { background: #60a5fa; color: #0f172a; }
+        #captureButton { position: fixed; bottom: 28px; left: 50%; transform: translateX(-50%); width: 56px; height: 56px; border-radius: 50%; border: 0; background: #ffffff; cursor: pointer; box-shadow: 0 2px 8px rgb(0 0 0 / 40%); }
+        #captureButton::after { content: ""; position: absolute; inset: 12px; border-radius: 50%; background: #1e293b; }
     </style>
 </head>
 <body>
     <img id="capture" alt="Ekran alıntısı için seçilecek görüntü">
     <div id="interaction"></div>
-    <div id="selection" hidden></div>
+    <div id="selection" hidden>
+        <span class="handle handle--nw" data-dir="nw"></span>
+        <span class="handle handle--n" data-dir="n"></span>
+        <span class="handle handle--ne" data-dir="ne"></span>
+        <span class="handle handle--e" data-dir="e"></span>
+        <span class="handle handle--se" data-dir="se"></span>
+        <span class="handle handle--s" data-dir="s"></span>
+        <span class="handle handle--sw" data-dir="sw"></span>
+        <span class="handle handle--w" data-dir="w"></span>
+    </div>
     <div id="hint">Alanı sürükleyerek seçin · ESC: İptal</div>
+    <div id="controls">
+        <button type="button" id="selectionButton" class="active">Seçim</button>
+        <button type="button" id="screenButton">Ekran</button>
+        <button type="button" id="cancelButton">İptal</button>
+    </div>
+    <button type="button" id="captureButton" aria-label="Yakala"></button>
 </body>
 </html>
