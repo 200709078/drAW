@@ -3,9 +3,11 @@ import { Document } from "../document/Document";
 import { DocumentImage } from "../document/DocumentImage";
 import { DrawingContext } from "../models/DrawingContext";
 import type { ScreenCaptureGateway } from "../platform/ScreenCaptureGateway";
+import type { ScreenCaptureResult } from "../types/electron-api";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { ToolManager } from "../core/ToolManager";
 import { PenTool } from "./PenTool";
+import { SelectionTool } from "./SelectionTool";
 import { Tool } from "./Tool";
 
 export class ScreenCaptureTool extends Tool {
@@ -16,6 +18,7 @@ export class ScreenCaptureTool extends Tool {
     private readonly gateway: ScreenCaptureGateway | null;
     private readonly toolManager: ToolManager;
     private readonly penTool: PenTool;
+    private readonly selectionTool: SelectionTool;
     private isCapturing: boolean;
 
     constructor(
@@ -25,7 +28,8 @@ export class ScreenCaptureTool extends Tool {
         history: HistoryManager,
         gateway: ScreenCaptureGateway | null,
         toolManager: ToolManager,
-        penTool: PenTool
+        penTool: PenTool,
+        selectionTool: SelectionTool
     ) {
 
         super(drawingContext);
@@ -35,6 +39,7 @@ export class ScreenCaptureTool extends Tool {
         this.gateway = gateway;
         this.toolManager = toolManager;
         this.penTool = penTool;
+        this.selectionTool = selectionTool;
         this.isCapturing = false;
 
     }
@@ -80,17 +85,20 @@ export class ScreenCaptureTool extends Tool {
 
     private async capture(): Promise<void> {
 
-        try {
-            const result = await this.gateway?.requestScreenCapture();
+        let result: ScreenCaptureResult | null = null;
 
-            if (result !== undefined && result !== null) {
+        try {
+            const captured = await this.gateway?.requestScreenCapture();
+
+            if (captured !== undefined && captured !== null) {
+                result = captured;
                 this.addImage(result.dataUrl, result.width, result.height);
             }
         } finally {
             this.isCapturing = false;
 
             if (this.toolManager.getActiveTool() === this) {
-                this.toolManager.setTool(this.penTool);
+                this.toolManager.setTool(result !== null ? this.selectionTool : this.penTool);
             }
         }
 

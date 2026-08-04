@@ -107,7 +107,8 @@ export class ManagerContainer {
             this.historyManager,
             getScreenCaptureGateway(),
             this.toolManager,
-            this.penTool
+            this.penTool,
+            this.selectionTool
         );
         this.toolManager.setTool(this.penTool);
 
