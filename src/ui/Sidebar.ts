@@ -356,6 +356,8 @@ export class Sidebar {
                 highlightPen(penTool, normalPenButton);
             } else if (activeTool === highlighterTool) {
                 highlightPen(highlighterTool, highlighterButton);
+            } else if (activeTool === selectionTool) {
+                selectTool(selectionButton);
             }
         });
 
