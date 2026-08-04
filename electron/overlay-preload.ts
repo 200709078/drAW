@@ -311,6 +311,61 @@ window.addEventListener("DOMContentLoaded", () => {
         });
     });
 
+    const toolbox = document.querySelector<HTMLDivElement>("#toolbox");
+    const toolboxTitlebar = toolbox?.querySelector<HTMLDivElement>(".toolbox__titlebar") ?? null;
+
+    if (toolbox !== null && toolboxTitlebar !== null) {
+        let toolboxDragging = false;
+        let toolboxOffsetX = 0;
+        let toolboxOffsetY = 0;
+
+        toolboxTitlebar.addEventListener("pointerdown", (event) => {
+            if (event.button !== 0) {
+                return;
+            }
+            if (event.target instanceof HTMLElement && event.target.closest(".toolbox__close") !== null) {
+                return;
+            }
+            toolboxDragging = true;
+            toolboxOffsetX = event.clientX - toolbox.getBoundingClientRect().left;
+            toolboxOffsetY = event.clientY - toolbox.getBoundingClientRect().top;
+            toolboxTitlebar.setPointerCapture(event.pointerId);
+        });
+
+        toolboxTitlebar.addEventListener("pointermove", (event) => {
+            if (!toolboxDragging) {
+                return;
+            }
+            const left = clamp(
+                event.clientX - toolboxOffsetX,
+                0,
+                Math.max(0, window.innerWidth - toolbox.offsetWidth)
+            );
+            const top = clamp(
+                event.clientY - toolboxOffsetY,
+                0,
+                Math.max(0, window.innerHeight - toolbox.offsetHeight)
+            );
+            toolbox.style.left = `${left}px`;
+            toolbox.style.top = `${top}px`;
+            toolbox.style.bottom = "auto";
+            toolbox.style.transform = "none";
+        });
+
+        const endToolboxDrag = (event: PointerEvent) => {
+            if (!toolboxDragging) {
+                return;
+            }
+            toolboxDragging = false;
+            if (toolboxTitlebar.hasPointerCapture(event.pointerId)) {
+                toolboxTitlebar.releasePointerCapture(event.pointerId);
+            }
+        };
+
+        toolboxTitlebar.addEventListener("pointerup", endToolboxDrag);
+        toolboxTitlebar.addEventListener("pointercancel", endToolboxDrag);
+    }
+
     selectionButton?.addEventListener("click", () => {
         if (savedSelection !== null) {
             setSelection(savedSelection.x, savedSelection.y, savedSelection.width, savedSelection.height);
