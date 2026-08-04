@@ -61,7 +61,7 @@ window.addEventListener("DOMContentLoaded", () => {
         selection.style.top = `${bounds.top + selY}px`;
         selection.style.width = `${selWidth}px`;
         selection.style.height = `${selHeight}px`;
-        selection.hidden = selWidth < 2 || selHeight < 2;
+        selection.hidden = false;
     };
 
     const setSelection = (x, y, width, height) => {
