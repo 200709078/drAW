@@ -7,7 +7,7 @@ import { promisify } from "node:util";
 import type { BrowserWindow as ElectronBrowserWindow, Display, NativeImage, WebContents } from "electron";
 
 const electron = createRequire(import.meta.url)("electron") as typeof import("electron");
-const { BrowserWindow, nativeImage, screen } = electron;
+const { BrowserWindow, desktopCapturer, nativeImage, screen } = electron;
 const executeFile = promisify(execFile);
 
 type SelectionPayload = {
@@ -100,6 +100,48 @@ export class ScreenCaptureService {
 
     private async captureLinuxScreen(): Promise<NativeImage> {
 
+        if (process.env.WAYLAND_DISPLAY === undefined) {
+            const image = await this.captureWithDesktopCapturer();
+
+            if (image !== null) {
+                return image;
+            }
+        }
+
+        return await this.captureWithGnomeScreenshot();
+
+    }
+
+    private async captureWithDesktopCapturer(): Promise<NativeImage | null> {
+
+        try {
+            const primary = screen.getPrimaryDisplay();
+            const sources = await desktopCapturer.getSources({
+                types: ["screen"],
+                thumbnailSize: {
+                    width: primary.size.width,
+                    height: primary.size.height
+                }
+            });
+
+            const source = sources.find((candidate) => candidate.display_id === String(primary.id)) ?? sources[0];
+            const thumbnail = source?.thumbnail;
+
+            if (thumbnail === undefined || thumbnail.isEmpty()) {
+                return null;
+            }
+
+            return thumbnail;
+        } catch {
+            return null;
+        }
+
+    }
+
+    private async captureWithGnomeScreenshot(): Promise<NativeImage> {
+
+        const restoreEventSounds = await this.muteEventSounds();
+
         const captureDirectory = await mkdtemp(path.join(tmpdir(), "draw-screen-"));
         const capturePath = path.join(captureDirectory, "capture.png");
 
@@ -108,8 +150,36 @@ export class ScreenCaptureService {
 
             return nativeImage.createFromBuffer(await readFile(capturePath));
         } finally {
+            await restoreEventSounds();
             await rm(captureDirectory, { recursive: true, force: true });
         }
+
+    }
+
+    private async muteEventSounds(): Promise<() => Promise<void>> {
+
+        try {
+            const { stdout } = await executeFile(
+                "gsettings",
+                ["get", "org.gnome.desktop.sound", "event-sounds"]
+            );
+
+            if (stdout.trim() === "true") {
+                await executeFile("gsettings", ["set", "org.gnome.desktop.sound", "event-sounds", "false"]);
+
+                return async () => {
+                    try {
+                        await executeFile("gsettings", ["set", "org.gnome.desktop.sound", "event-sounds", "true"]);
+                    } catch {
+                        // ignore
+                    }
+                };
+            }
+        } catch {
+            // gsettings is unavailable; capture without muting
+        }
+
+        return async () => undefined;
 
     }
 
