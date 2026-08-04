@@ -7,6 +7,7 @@ window.addEventListener("DOMContentLoaded", () => {
     const selectionButton = document.querySelector("#selectionButton");
     const screenButton = document.querySelector("#screenButton");
     const cancelButton = document.querySelector("#cancelButton");
+    const captureButton = document.querySelector("#captureButton");
 
     if (image === null || interaction === null || selection === null) {
         return;
@@ -23,8 +24,25 @@ window.addEventListener("DOMContentLoaded", () => {
         return Math.max(min, Math.min(max, value));
     };
 
-    const getPoint = (event) => {
+    const getContentRect = () => {
         const bounds = image.getBoundingClientRect();
+        const scale = Math.min(
+            bounds.width / image.naturalWidth,
+            bounds.height / image.naturalHeight
+        );
+        const width = image.naturalWidth * scale;
+        const height = image.naturalHeight * scale;
+
+        return {
+            left: bounds.left + (bounds.width - width) / 2,
+            top: bounds.top + (bounds.height - height) / 2,
+            width,
+            height
+        };
+    };
+
+    const getPoint = (event) => {
+        const bounds = getContentRect();
 
         return {
             x: clamp(event.clientX - bounds.left, 0, bounds.width),
@@ -37,7 +55,7 @@ window.addEventListener("DOMContentLoaded", () => {
     };
 
     const renderSelection = () => {
-        const bounds = image.getBoundingClientRect();
+        const bounds = getContentRect();
 
         selection.style.left = `${bounds.left + selX}px`;
         selection.style.top = `${bounds.top + selY}px`;
@@ -69,7 +87,7 @@ window.addEventListener("DOMContentLoaded", () => {
     };
 
     const selectScreen = () => {
-        const bounds = image.getBoundingClientRect();
+        const bounds = getContentRect();
 
         setSelection(
             (bounds.width - 600) / 2,
@@ -81,7 +99,7 @@ window.addEventListener("DOMContentLoaded", () => {
     };
 
     const resetInitialSelection = () => {
-        const bounds = image.getBoundingClientRect();
+        const bounds = getContentRect();
 
         setSelection(
             (bounds.width - 200) / 2,
@@ -168,7 +186,7 @@ window.addEventListener("DOMContentLoaded", () => {
             const dx = point.x - startX;
             const dy = point.y - startY;
             const dir = resizeDir;
-            const bounds = image.getBoundingClientRect();
+            const bounds = getContentRect();
             const minSize = 2;
             let left = originX;
             let top = originY;
@@ -202,7 +220,7 @@ window.addEventListener("DOMContentLoaded", () => {
 
             setSelection(left, top, right - left, bottom - top);
         } else if (mode === "move") {
-            const bounds = image.getBoundingClientRect();
+            const bounds = getContentRect();
 
             setSelection(
                 clamp(originX + point.x - startX, 0, bounds.width - selWidth),
@@ -246,6 +264,23 @@ window.addEventListener("DOMContentLoaded", () => {
 
     cancelButton?.addEventListener("click", () => {
         ipcRenderer.send("screen-capture:cancel");
+    });
+
+    captureButton?.addEventListener("click", () => {
+        if (selWidth < 2 || selHeight < 2) {
+            return;
+        }
+
+        const bounds = getContentRect();
+
+        ipcRenderer.send("screen-capture:complete", {
+            x: selX,
+            y: selY,
+            width: selWidth,
+            height: selHeight,
+            renderedWidth: bounds.width,
+            renderedHeight: bounds.height
+        });
     });
 
     selectionButton?.addEventListener("click", () => {

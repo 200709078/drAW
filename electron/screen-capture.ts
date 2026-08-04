@@ -119,8 +119,8 @@ export class ScreenCaptureService {
             const sources = await desktopCapturer.getSources({
                 types: ["screen"],
                 thumbnailSize: {
-                    width: primary.size.width,
-                    height: primary.size.height
+                    width: Math.round(primary.size.width * primary.scaleFactor),
+                    height: Math.round(primary.size.height * primary.scaleFactor)
                 }
             });
 
@@ -210,6 +210,7 @@ export class ScreenCaptureService {
         });
 
         await overlay.loadFile(path.join(process.cwd(), "electron", "overlay.html"));
+        overlay.webContents.setZoomFactor(1);
         overlay.show();
         overlay.focus();
 
