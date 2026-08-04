@@ -59,6 +59,16 @@ export class Page {
 
     }
 
+    public removeImage(image: DocumentImage): void {
+
+        const index = this.images.indexOf(image);
+
+        if (index !== -1) {
+            this.images.splice(index, 1);
+        }
+
+    }
+
     public setImages(images: readonly DocumentImage[]): void {
 
         this.images.length = 0;

@@ -3,6 +3,7 @@ import { Stroke } from "../document/Stroke";
 import { DocumentImage } from "../document/DocumentImage";
 import { DrawingContext } from "../models/DrawingContext";
 import { StrokeRenderer } from "./StrokeRenderer";
+import { ALL_RESIZE_HANDLES, getResizeHandlePosition, type SelectionBounds } from "./ResizeHandle";
 
 export class DocumentRenderer {
 
@@ -61,6 +62,7 @@ export class DocumentRenderer {
         }
 
         this.renderSelectionBounds();
+        this.renderResizeHandles();
 
     }
 
@@ -104,6 +106,82 @@ export class DocumentRenderer {
     public clearSelectionBounds(): void {
 
         this.selectionBounds = null;
+
+    }
+
+    public getSelectionBounds(): SelectionBounds | null {
+
+        let minX = Infinity;
+        let minY = Infinity;
+        let maxX = -Infinity;
+        let maxY = -Infinity;
+
+        for (const stroke of this.selectedStrokes) {
+            for (const point of stroke.getPoints()) {
+                minX = Math.min(minX, point.getX());
+                minY = Math.min(minY, point.getY());
+                maxX = Math.max(maxX, point.getX());
+                maxY = Math.max(maxY, point.getY());
+            }
+        }
+
+        for (const image of this.selectedImages) {
+            minX = Math.min(minX, image.getX());
+            minY = Math.min(minY, image.getY());
+            maxX = Math.max(maxX, image.getX() + image.getWidth());
+            maxY = Math.max(maxY, image.getY() + image.getHeight());
+        }
+
+        if (minX === Infinity) {
+            return null;
+        }
+
+        return { minX, minY, maxX, maxY };
+
+    }
+
+    private renderResizeHandles(): void {
+
+        const bounds = this.getSelectionBounds();
+
+        if (bounds === null) {
+            return;
+        }
+
+        const context = this.drawingContext.getContext();
+        const handleSize = 6;
+
+        context.save();
+        context.strokeStyle = "#2563eb";
+        context.lineWidth = 1.5;
+        context.setLineDash([]);
+        context.strokeRect(
+            bounds.minX,
+            bounds.minY,
+            bounds.maxX - bounds.minX,
+            bounds.maxY - bounds.minY
+        );
+
+        context.fillStyle = "#ffffff";
+
+        for (const handle of ALL_RESIZE_HANDLES) {
+            const position = getResizeHandlePosition(handle, bounds);
+
+            context.fillRect(
+                position.x - handleSize,
+                position.y - handleSize,
+                handleSize * 2,
+                handleSize * 2
+            );
+            context.strokeRect(
+                position.x - handleSize,
+                position.y - handleSize,
+                handleSize * 2,
+                handleSize * 2
+            );
+        }
+
+        context.restore();
 
     }
 

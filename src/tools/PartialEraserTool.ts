@@ -100,6 +100,13 @@ export class PartialEraserTool extends Tool {
             hasChanged = true;
         }
 
+        for (const image of [...page.getImages()]) {
+            if (image.hitTest(x, y, this.radius)) {
+                page.removeImage(image);
+                hasChanged = true;
+            }
+        }
+
         if (hasChanged) {
             this.renderer.render();
         }

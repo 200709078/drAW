@@ -88,19 +88,25 @@ export class EraserTool extends Tool {
     private eraseAt(x: number, y: number): void {
 
         const page = this.document.getCurrentPage();
-        const strokesToRemove = page.getStrokes().filter((stroke) => {
+        let hasChanged = false;
+
+        for (const stroke of page.getStrokes().filter((stroke) => {
             return this.isStrokeHit(stroke, x, y);
-        });
-
-        if (strokesToRemove.length === 0) {
-            return;
-        }
-
-        for (const stroke of strokesToRemove) {
+        })) {
             page.removeStroke(stroke);
+            hasChanged = true;
         }
 
-        this.renderer.render();
+        for (const image of [...page.getImages()]) {
+            if (image.hitTest(x, y, this.radius)) {
+                page.removeImage(image);
+                hasChanged = true;
+            }
+        }
+
+        if (hasChanged) {
+            this.renderer.render();
+        }
 
     }
 
