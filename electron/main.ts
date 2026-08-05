@@ -13,6 +13,7 @@ function createWindow(): void {
         minWidth: 800,
         minHeight: 600,
         autoHideMenuBar: false,
+        icon: path.join(process.cwd(), "electron", "assets", "icons", "draw.png"),
         webPreferences: {
             preload: path.join(process.cwd(), "electron", "preload.cjs"),
             contextIsolation: true,
