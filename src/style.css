@@ -55,8 +55,7 @@ canvas {
 .sidebar__tool img,
 .sidebar__history img,
 .sidebar__pen-option img,
-.sidebar__eraser-option img,
-.sidebar__clear img {
+.sidebar__eraser-option img {
     width: 24px;
     height: 24px;
     display: block;
@@ -280,20 +279,4 @@ canvas {
 
 .sidebar__eraser-palette {
     margin-top: 0;
-}
-
-.sidebar__clear {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-
-    width: 48px;
-    height: 48px;
-    padding: 0;
-
-    border: 1px solid #d1d5db;
-    border-radius: 8px;
-
-    background: #fff1f2;
-    cursor: pointer;
 }
