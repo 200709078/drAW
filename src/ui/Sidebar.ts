@@ -17,6 +17,7 @@ import captureIcon from "../assets/icons/capture.svg";
 import undoIcon from "../assets/icons/undo.svg";
 import redoIcon from "../assets/icons/redo.svg";
 import newDrawIcon from "../assets/icons/newdraw.svg";
+import { confirmDialog } from "./ConfirmDialog";
 
 export class Sidebar {
 
@@ -191,8 +192,15 @@ export class Sidebar {
         newDrawButton.appendChild(newDrawImg);
         newDrawButton.title = "Yeni çizim";
         newDrawButton.setAttribute("aria-label", "Yeni çizim");
-        newDrawButton.addEventListener("click", () => {
-            if (!window.confirm("Yeni bir çizime geçilsin mi?")) {
+        newDrawButton.addEventListener("click", async () => {
+            const confirmed = await confirmDialog({
+                title: "Yeni çizim",
+                message: "Yeni bir çizime geçilsin mi? Mevcut çizimler silinecek.",
+                confirmLabel: "Evet, başla",
+                cancelLabel: "İptal"
+            });
+
+            if (!confirmed) {
                 return;
             }
 

@@ -90,17 +90,17 @@ canvas {
 }
 
 .sidebar__handle {
-    width: 40px;
-    height: 26px;
+    width: 48px;
+    height: 48px;
     padding: 0;
     border: 0;
-    border-radius: 6px;
+    border-radius: 8px;
     background: white;
     color: #111827;
     cursor: default;
-    font-size: 11px;
+    font-size: 18px;
     font-weight: 700;
-    letter-spacing: 0.04em;
+    letter-spacing: 0.01em;
     touch-action: none;
     user-select: none;
 }
@@ -279,4 +279,122 @@ canvas {
 
 .sidebar__eraser-palette {
     margin-top: 0;
+}
+
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    z-index: 50;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgb(15 23 42 / 45%);
+    backdrop-filter: blur(4px);
+    animation: modal-backdrop-in 0.15s ease-out;
+}
+
+.modal {
+    width: 360px;
+    max-width: calc(100vw - 32px);
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    box-shadow: 0 8px 32px rgb(15 23 42 / 30%), 0 2px 8px rgb(15 23 42 / 15%);
+    font-family: system-ui, sans-serif;
+    overflow: hidden;
+    animation: modal-in 0.18s ease-out;
+}
+
+.modal__titlebar {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 0 0 0 16px;
+    background: #f3f4f6;
+    border-bottom: 1px solid #e5e7eb;
+}
+
+.modal__title {
+    margin: 0;
+    font-size: 13px;
+    font-weight: 600;
+    color: #111827;
+}
+
+.modal__close {
+    width: 42px;
+    height: 36px;
+    border: 0;
+    background: transparent;
+    color: #4b5563;
+    font-size: 18px;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.modal__close:hover {
+    background: #e11d48;
+    color: white;
+}
+
+.modal__body {
+    padding: 20px 24px 0;
+}
+
+.modal__message {
+    margin: 0 0 20px;
+    font-size: 14px;
+    line-height: 1.5;
+    color: #374151;
+}
+
+.modal__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 8px;
+    padding: 16px 24px;
+    background: #f9fafb;
+    border-top: 1px solid #e5e7eb;
+}
+
+.modal__button {
+    min-width: 84px;
+    height: 34px;
+    padding: 0 16px;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: white;
+    color: #374151;
+    font: 500 13px system-ui, sans-serif;
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.modal__button:hover {
+    background: #f3f4f6;
+}
+
+.modal__button:focus-visible {
+    outline: 2px solid #2563eb;
+    outline-offset: 2px;
+}
+
+.modal__button--confirm {
+    border-color: transparent;
+    background: #2563eb;
+    color: white;
+}
+
+.modal__button--confirm:hover {
+    background: #1d4ed8;
+}
+
+@keyframes modal-backdrop-in {
+    from { opacity: 0; }
+    to { opacity: 1; }
+}
+
+@keyframes modal-in {
+    from { opacity: 0; transform: scale(0.96) translateY(4px); }
+    to { opacity: 1; transform: scale(1) translateY(0); }
 }
