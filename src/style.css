@@ -38,8 +38,11 @@ canvas {
 }
 
 .sidebar__tool {
-    width: 40px;
-    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -49,9 +52,25 @@ canvas {
     font-size: 22px;
 }
 
+.sidebar__tool img,
+.sidebar__history img,
+.sidebar__pen-option img,
+.sidebar__eraser-option img,
+.sidebar__clear img {
+    width: 24px;
+    height: 24px;
+    display: block;
+    margin: auto;
+    pointer-events: none;
+    user-select: none;
+}
+
 .sidebar__history {
-    width: 40px;
-    height: 40px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 48px;
+    height: 48px;
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -92,19 +111,6 @@ canvas {
     color: #1d4ed8;
 }
 
-.sidebar__clear {
-    width: 40px;
-    height: 40px;
-    margin-top: 4px;
-    padding: 0;
-    border: 1px solid #fecaca;
-    border-radius: 8px;
-    background: #fff1f2;
-    color: #dc2626;
-    cursor: pointer;
-    font-size: 24px;
-}
-
 .sidebar__control {
     position: relative;
 }
@@ -112,17 +118,41 @@ canvas {
 .sidebar__color-trigger,
 .sidebar__width-trigger {
     display: grid;
-    width: 40px;
-    height: 40px;
+    width: 48px;
+    height: 48px;
     place-items: center;
     padding: 0;
     border: 2px solid white;
-    border-radius: 8px;
     box-shadow: 0 0 0 1px #d1d5db;
     cursor: pointer;
 }
 
+.sidebar__color-trigger {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 48px;
+    height: 48px;
+    padding: 0;
+
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    cursor: pointer;
+}
+
+.sidebar__color-preview {
+    width: 28px;
+    height: 28px;
+    border-radius: 50%;
+    border: 1px solid rgb(0 0 0 / 12%);
+    background: #111827;
+    pointer-events: none;
+}
+
 .sidebar__width-trigger {
+    border-radius: 8px;
     background: white;
 }
 
@@ -218,9 +248,15 @@ canvas {
 
 .sidebar__eraser-option,
 .sidebar__pen-option {
-    width: 36px;
-    height: 36px;
+    width: 48px;
+    height: 48px;
     padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+
     border: 1px solid #d1d5db;
     border-radius: 8px;
     background: white;
@@ -237,6 +273,22 @@ canvas {
     color: #1d4ed8;
 }
 
-.sidebar__eraser-palette .sidebar__clear {
+.sidebar__eraser-palette {
     margin-top: 0;
+}
+
+.sidebar__clear {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+    width: 48px;
+    height: 48px;
+    padding: 0;
+
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+
+    background: #fff1f2;
+    cursor: pointer;
 }

@@ -8,6 +8,15 @@ import { PenTool } from "../tools/PenTool";
 import { PartialEraserTool } from "../tools/PartialEraserTool";
 import { HistoryManager } from "../core/HistoryManager";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
+import pencilIcon from "../assets/icons/pencil.svg";
+import highlighterIcon from "../assets/icons/highlighter.svg";
+import eraserNormalIcon from "../assets/icons/eraser_normal.svg";
+import eraserStrokeIcon from "../assets/icons/eraser_stroke.svg";
+import selectMoveIcon from "../assets/icons/select_move.svg";
+import captureIcon from "../assets/icons/capture.svg";
+import undoIcon from "../assets/icons/undo.svg";
+import redoIcon from "../assets/icons/redo.svg";
+import newDrawIcon from "../assets/icons/newdraw.svg";
 
 export class Sidebar {
 
@@ -44,8 +53,21 @@ export class Sidebar {
 
         toolbar.appendChild(handle);
 
-        const undoButton = this.createHistoryButton("Geri al", "↶");
-        const redoButton = this.createHistoryButton("Yinele", "↷");
+
+        const undoButton = this.createHistoryButton(
+            "Geri al",
+            undoIcon,
+            true
+        );
+
+        const redoButton = this.createHistoryButton(
+            "Yinele",
+            redoIcon,
+            true
+        );
+
+
+
 
         const refreshHistoryButtons = (): void => {
             undoButton.disabled = !historyManager.canUndo();
@@ -68,24 +90,22 @@ export class Sidebar {
         historyManager.addChangeListener(refreshHistoryButtons);
         refreshHistoryButtons();
 
-        const penButton = this.createToolButton("Kalem", "✎", true, () => {
+        const penButton = this.createToolButton("Kalem", pencilIcon, true, () => {
             void penTool;
-        });
-        const eraserButton = this.createToolButton("Silgi", "⌫", false, () => {
+        }, true);
+        const eraserButton = this.createToolButton("Silgi", eraserNormalIcon, false, () => {
             void eraserTool;
-        });
-        eraserButton.textContent = "S";
-        eraserButton.title = "Silgi: Stroke Sil";
-        eraserButton.setAttribute("aria-label", "Silgi: Stroke Sil");
-        const highlighterButton = this.createToolButton("Fosforlu kalem", "▰", false, () => {
+        }, true);
+
+        const highlighterButton = this.createToolButton("Fosforlu kalem", highlighterIcon, false, () => {
             void highlighterTool;
-        });
-        const selectionButton = this.createToolButton("Çoklu seç ve taşı", "▣", false, () => {
+        }, true);
+        const selectionButton = this.createToolButton("Çoklu seç ve taşı", selectMoveIcon, false, () => {
             toolManager.setTool(selectionTool);
-        });
-        const screenCaptureButton = this.createToolButton("Ekran alıntısı", "▧", false, () => {
+        }, true);
+        const screenCaptureButton = this.createToolButton("Ekran alıntısı", captureIcon, false, () => {
             toolManager.setTool(screenCaptureTool);
-        });
+        }, true);
 
         const selectTool = (selectedButton: HTMLButtonElement): void => {
             for (const button of [penButton, eraserButton, selectionButton, screenCaptureButton]) {
@@ -127,7 +147,15 @@ export class Sidebar {
         const colorButton = document.createElement("button");
         colorButton.type = "button";
         colorButton.className = "sidebar__color-trigger";
-        colorButton.style.backgroundColor = "#111827";
+
+
+        const colorPreview = document.createElement("span");
+        colorPreview.className = "sidebar__color-preview";
+        colorPreview.style.backgroundColor = "#111827";
+
+        colorButton.appendChild(colorPreview);
+
+
         colorButton.setAttribute("aria-label", "Renk: Siyah");
         colorButton.setAttribute("aria-expanded", "false");
 
@@ -156,7 +184,11 @@ export class Sidebar {
         const clearButton = document.createElement("button");
         clearButton.type = "button";
         clearButton.className = "sidebar__clear";
-        clearButton.textContent = "×";
+        const clearIcon = document.createElement("img");
+        clearIcon.src = newDrawIcon;
+        clearIcon.alt = "";
+        clearIcon.draggable = false;
+        clearButton.appendChild(clearIcon);
         clearButton.title = "Tümünü temizle";
         clearButton.setAttribute("aria-label", "Tümünü temizle");
         clearButton.addEventListener("click", () => {
@@ -194,9 +226,20 @@ export class Sidebar {
                 button.setAttribute("aria-pressed", String(isSelected));
             }
 
-            eraserButton.textContent = "S";
+
+
+            eraserButton.replaceChildren();
+
+            const img = document.createElement("img");
+            img.src = eraserStrokeIcon;
+            img.alt = "";
+            img.draggable = false;
+
+            eraserButton.appendChild(img);
+
             eraserButton.title = "Silgi: Stroke Sil";
             eraserButton.setAttribute("aria-label", "Silgi: Stroke Sil");
+
             lastSelectedEraserTool = eraserTool;
             lastSelectedEraserButton = strokeEraserButton;
 
@@ -255,7 +298,24 @@ export class Sidebar {
             lastSelectedEraserTool = tool;
             lastSelectedEraserButton = selectedButton;
             selectTool(eraserButton);
-            eraserButton.textContent = selectedButton.textContent;
+
+
+            eraserButton.replaceChildren();
+
+            const icon = selectedButton.querySelector("img");
+
+            if (icon) {
+                const img = document.createElement("img");
+                img.src = (icon as HTMLImageElement).src;
+                img.alt = "";
+                img.draggable = false;
+
+                eraserButton.appendChild(img);
+            } else {
+                eraserButton.textContent = selectedButton.textContent ?? "";
+            }
+
+
             eraserButton.title = `Silgi: ${selectedButton.title}`;
             eraserButton.setAttribute("aria-label", `Silgi: ${selectedButton.title}`);
 
@@ -282,7 +342,25 @@ export class Sidebar {
             lastSelectedPenTool = tool;
             lastSelectedPenButton = selectedButton;
             selectTool(penButton);
-            penButton.textContent = selectedButton.textContent;
+
+
+
+            penButton.replaceChildren();
+
+            const icon = selectedButton.querySelector("img");
+
+            if (icon) {
+                const img = document.createElement("img");
+                img.src = (icon as HTMLImageElement).src;
+                img.alt = "";
+                img.draggable = false;
+
+                penButton.appendChild(img);
+            } else {
+                penButton.textContent = selectedButton.textContent ?? "";
+            }
+
+
             penButton.title = `Kalem: ${selectedButton.title}`;
             penButton.setAttribute("aria-label", `Kalem: ${selectedButton.title}`);
 
@@ -303,7 +381,24 @@ export class Sidebar {
         ): void => {
             void tool;
             selectTool(penButton);
-            penButton.textContent = selectedButton.textContent;
+
+
+            penButton.replaceChildren();
+
+            const icon = selectedButton.querySelector("img");
+
+            if (icon) {
+                const img = document.createElement("img");
+                img.src = (icon as HTMLImageElement).src;
+                img.alt = "";
+                img.draggable = false;
+                penButton.appendChild(img);
+            } else {
+                penButton.textContent = selectedButton.textContent ?? "";
+            }
+
+
+
             penButton.title = `Kalem: ${selectedButton.title}`;
             penButton.setAttribute("aria-label", `Kalem: ${selectedButton.title}`);
 
@@ -318,11 +413,10 @@ export class Sidebar {
             penButton.setAttribute("aria-expanded", "false");
         };
 
-        const normalPenButton = this.createPenOption("Normal kalem", "P", () => {
+        const normalPenButton = this.createPenOption("Normal kalem", pencilIcon, () => {
             selectPen(penTool, normalPenButton);
-        });
+        }, true);
         highlighterButton.className = "sidebar__pen-option";
-        highlighterButton.textContent = "F";
         highlighterButton.title = "Fosforlu kalem";
         highlighterButton.setAttribute("aria-label", "Fosforlu kalem");
         highlighterButton.addEventListener("click", () => {
@@ -331,7 +425,21 @@ export class Sidebar {
         normalPenButton.classList.add("sidebar__pen-option--selected");
         normalPenButton.setAttribute("aria-pressed", "true");
         lastSelectedPenButton = normalPenButton;
-        penButton.textContent = normalPenButton.textContent;
+
+
+        penButton.replaceChildren();
+
+        const initialImg = normalPenButton.querySelector("img");
+
+        if (initialImg) {
+            const img = document.createElement("img");
+            img.src = (initialImg as HTMLImageElement).src;
+            img.alt = "";
+            img.draggable = false;
+            penButton.appendChild(img);
+        }
+
+
         penButton.title = `Kalem: ${normalPenButton.title}`;
         penButton.setAttribute("aria-label", `Kalem: ${normalPenButton.title}`);
         penPalette.append(normalPenButton, highlighterButton);
@@ -361,12 +469,12 @@ export class Sidebar {
             }
         });
 
-        const strokeEraserButton = this.createEraserOption("Stroke Sil", "S", () => {
+        const strokeEraserButton = this.createEraserOption("Stroke Sil", eraserStrokeIcon, () => {
             selectEraser(eraserTool, strokeEraserButton);
-        });
-        const partialEraserButton = this.createEraserOption("Normal Silgi", "N", () => {
+        }, true);
+        const partialEraserButton = this.createEraserOption("Normal Silgi", eraserNormalIcon, () => {
             selectEraser(partialEraserTool, partialEraserButton);
-        });
+        }, true);
         lastSelectedEraserButton = strokeEraserButton;
         eraserPalette.append(strokeEraserButton, partialEraserButton, clearButton);
 
@@ -440,7 +548,7 @@ export class Sidebar {
             paletteButton.addEventListener("click", () => {
                 penTool.setColor(color.value);
                 highlighterTool.setColor(color.value);
-                colorButton.style.backgroundColor = color.value;
+                colorPreview.style.backgroundColor = color.value;
                 colorButton.setAttribute("aria-label", `Renk: ${color.name}`);
 
                 for (const button of colorPalette.querySelectorAll("button")) {
@@ -509,17 +617,32 @@ export class Sidebar {
 
     }
 
+
+
+
+
+
     private createToolButton(
         label: string,
         icon: string,
         isSelected: boolean,
-        onSelect: () => void
+        onSelect: () => void,
+        isSvg = false
     ): HTMLButtonElement {
-
         const button = document.createElement("button");
         button.type = "button";
         button.className = "sidebar__tool";
-        button.textContent = icon;
+
+        if (isSvg) {
+            const img = document.createElement("img");
+            img.src = icon;
+            img.alt = "";
+            img.draggable = false;
+            button.appendChild(img);
+        } else {
+            button.textContent = icon;
+        }
+
         button.title = label;
         button.setAttribute("aria-label", label);
         button.setAttribute("aria-pressed", String(isSelected));
@@ -530,29 +653,59 @@ export class Sidebar {
 
     }
 
-    private createHistoryButton(label: string, icon: string): HTMLButtonElement {
+
+
+    private createHistoryButton(
+        label: string,
+        icon: string,
+        isSvg = false
+    ): HTMLButtonElement {
 
         const button = document.createElement("button");
         button.type = "button";
         button.className = "sidebar__history";
-        button.textContent = icon;
+
+        if (isSvg) {
+            const img = document.createElement("img");
+            img.src = icon;
+            img.alt = "";
+            img.draggable = false;
+            button.appendChild(img);
+        } else {
+            button.textContent = icon;
+        }
+
         button.title = label;
         button.setAttribute("aria-label", label);
 
         return button;
-
     }
+
+
 
     private createEraserOption(
         label: string,
         icon: string,
-        onSelect: () => void
+        onSelect: () => void,
+        isSvg = false
     ): HTMLButtonElement {
 
         const button = document.createElement("button");
         button.type = "button";
         button.className = "sidebar__eraser-option";
-        button.textContent = icon;
+
+
+        if (isSvg) {
+            const img = document.createElement("img");
+            img.src = icon;
+            img.alt = "";
+            img.draggable = false;
+            button.appendChild(img);
+        } else {
+            button.textContent = icon;
+        }
+
+
         button.title = label;
         button.setAttribute("aria-label", label);
         button.setAttribute("aria-pressed", "false");
@@ -565,13 +718,29 @@ export class Sidebar {
     private createPenOption(
         label: string,
         icon: string,
-        onSelect: () => void
+        onSelect: () => void,
+        isSvg = false
     ): HTMLButtonElement {
 
         const button = document.createElement("button");
         button.type = "button";
         button.className = "sidebar__pen-option";
-        button.textContent = icon;
+
+
+
+        if (isSvg) {
+            const img = document.createElement("img");
+            img.src = icon;
+            img.alt = "";
+            img.draggable = false;
+            button.appendChild(img);
+        } else {
+            button.textContent = icon;
+        }
+
+
+
+
         button.title = label;
         button.setAttribute("aria-label", label);
         button.setAttribute("aria-pressed", "false");
