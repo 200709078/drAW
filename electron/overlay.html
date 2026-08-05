@@ -12,7 +12,7 @@
             height: 100%;
             margin: 0;
             overflow: hidden;
-            background: red;
+            background: #000;
 
             display: flex;
             justify-content: center;
@@ -195,7 +195,8 @@
             box-sizing: border-box;
         }
 
-        #toolbox .toolbox__row button {
+        #toolbox .toolbox__row .toolbox__radio {
+            position: relative;
             flex: 1 1 0;
             min-width: 0;
             height: 44px;
@@ -212,9 +213,18 @@
             color: white;
             background: rgb(51 65 85 / 90%);
             transition: background .15s ease;
+            user-select: none;
         }
 
-        #toolbox .toolbox__row button img {
+        #toolbox .toolbox__row .toolbox__radio input[type="radio"] {
+            position: absolute;
+            inset: 0;
+            margin: 0;
+            opacity: 0;
+            cursor: pointer;
+        }
+
+        #toolbox .toolbox__row .toolbox__radio img {
             width: 24px;
             height: 24px;
             display: block;
@@ -222,14 +232,19 @@
             user-select: none;
         }
 
-        #toolbox .toolbox__row button:hover {
+        #toolbox .toolbox__row .toolbox__radio:hover {
             background: #60a5fa;
             color: #0f172a;
         }
 
-        #toolbox .toolbox__row button.active {
-            background: #60a5fa;
-            color: #0f172a;
+        #toolbox .toolbox__row .toolbox__radio:has(input:checked) {
+            background: #60a5fa !important;
+            color: #0f172a !important;
+        }
+
+        #toolbox .toolbox__row .toolbox__radio:has(input:focus-visible) {
+            outline: 2px solid #93c5fd;
+            outline-offset: 2px;
         }
 
         #toolbox #captureButton {
@@ -279,15 +294,15 @@
             <button type="button" id="cancelButton" class="toolbox__close" title="İptal: Yakalamayı iptal et"
                 aria-label="İptal">×</button>
         </div>
-        <div class="toolbox__row">
-            <button type="button" id="selectionButton" class="active" title="Seçim: Belirli bir alanı seç"
-                aria-label="Seçim: Belirli bir alanı seç">
+        <div class="toolbox__row" role="radiogroup" aria-label="Yakalama Modu">
+            <label class="toolbox__radio" title="Seçim: Belirli bir alanı seç">
+                <input type="radio" name="captureMode" id="selectionButton" value="selection" checked>
                 <img src="./assets/icons/area_select.svg" alt="" draggable="false">
-            </button>
-            <button type="button" id="screenButton" title="Ekran: Ekranın tamamını seç"
-                aria-label="Ekran: Ekranın tamamını seç">
+            </label>
+            <label class="toolbox__radio" title="Ekran: Ekranın tamamını seç">
+                <input type="radio" name="captureMode" id="screenButton" value="screen">
                 <img src="./assets/icons/fullscreen.svg" alt="" draggable="false">
-            </button>
+            </label>
         </div>
 
 
