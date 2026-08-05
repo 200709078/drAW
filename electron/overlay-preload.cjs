@@ -88,15 +88,18 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const selectScreen = () => {
         const bounds = getContentRect();
+        const margin = 1;
 
         setSelection(
-            (bounds.width - 600) / 2,
-            (bounds.height - 600) / 2,
-            600,
-            600
+            margin,
+            margin,
+            bounds.width - margin * 2,
+            bounds.height - margin * 2
         );
+
         setLocked(true);
     };
+
 
     const resetInitialSelection = () => {
         const bounds = getContentRect();
