@@ -85,6 +85,11 @@ canvas {
     cursor: not-allowed;
 }
 
+.sidebar__history:disabled img {
+    opacity: 0.4;
+    filter: grayscale(1);
+}
+
 .sidebar__handle {
     width: 40px;
     height: 26px;
