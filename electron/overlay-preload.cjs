@@ -72,12 +72,6 @@ window.addEventListener("DOMContentLoaded", () => {
         renderSelection();
     };
 
-    const setActiveButton = (button) => {
-        for (const candidate of [selectionButton, screenButton]) {
-            candidate?.classList.toggle("active", candidate === button);
-        }
-    };
-
     const setLocked = (isLocked) => {
         locked = isLocked;
 
@@ -111,7 +105,6 @@ window.addEventListener("DOMContentLoaded", () => {
             200
         );
         setLocked(false);
-        setActiveButton(selectionButton);
     };
 
     let mode = "move";
@@ -356,20 +349,23 @@ window.addEventListener("DOMContentLoaded", () => {
         toolboxTitlebar.addEventListener("pointercancel", endToolboxDrag);
     }
 
-    selectionButton?.addEventListener("click", () => {
+    const applyModeChange = () => {
+        if (screenButton?.checked === true) {
+            selectScreen();
+
+            return;
+        }
+
         if (savedSelection !== null) {
             setSelection(savedSelection.x, savedSelection.y, savedSelection.width, savedSelection.height);
             setLocked(false);
-            setActiveButton(selectionButton);
         } else {
             resetInitialSelection();
         }
-    });
+    };
 
-    screenButton?.addEventListener("click", () => {
-        setActiveButton(screenButton);
-        selectScreen();
-    });
+    selectionButton?.addEventListener("change", applyModeChange);
+    screenButton?.addEventListener("change", applyModeChange);
 
     ipcRenderer.on("screen-capture:source", (_event, source) => {
         image.src = source.dataUrl;

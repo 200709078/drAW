@@ -17,8 +17,8 @@ window.addEventListener("DOMContentLoaded", () => {
     const image = document.querySelector<HTMLImageElement>("#capture");
     const interaction = document.querySelector<HTMLDivElement>("#interaction");
     const selection = document.querySelector<HTMLDivElement>("#selection");
-    const selectionButton = document.querySelector<HTMLButtonElement>("#selectionButton");
-    const screenButton = document.querySelector<HTMLButtonElement>("#screenButton");
+    const selectionButton = document.querySelector<HTMLInputElement>("#selectionButton");
+    const screenButton = document.querySelector<HTMLInputElement>("#screenButton");
     const cancelButton = document.querySelector<HTMLButtonElement>("#cancelButton");
     const captureButton = document.querySelector<HTMLButtonElement>("#captureButton");
 
@@ -95,7 +95,6 @@ window.addEventListener("DOMContentLoaded", () => {
             200
         );
         setLocked(false);
-        setActiveButton(selectionButton);
     };
 
     let mode: "move" | "draw" | "resize" = "move";
@@ -134,12 +133,6 @@ window.addEventListener("DOMContentLoaded", () => {
             600
         );
         setLocked(true);
-    };
-
-    const setActiveButton = (button: HTMLButtonElement | null): void => {
-        for (const candidate of [selectionButton, screenButton]) {
-            candidate?.classList.toggle("active", candidate === button);
-        }
     };
 
     handles.forEach((handle) => {
@@ -366,20 +359,23 @@ window.addEventListener("DOMContentLoaded", () => {
         toolboxTitlebar.addEventListener("pointercancel", endToolboxDrag);
     }
 
-    selectionButton?.addEventListener("click", () => {
+    const applyModeChange = (): void => {
+        if (screenButton?.checked === true) {
+            selectScreen();
+
+            return;
+        }
+
         if (savedSelection !== null) {
             setSelection(savedSelection.x, savedSelection.y, savedSelection.width, savedSelection.height);
             setLocked(false);
-            setActiveButton(selectionButton);
         } else {
             resetInitialSelection();
         }
-    });
+    };
 
-    screenButton?.addEventListener("click", () => {
-        setActiveButton(screenButton);
-        selectScreen();
-    });
+    selectionButton?.addEventListener("change", applyModeChange);
+    screenButton?.addEventListener("change", applyModeChange);
 
     ipcRenderer.on("screen-capture:source", (_event, source: SourcePayload) => {
         image.src = source.dataUrl;

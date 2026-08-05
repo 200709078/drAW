@@ -3,7 +3,7 @@ import { createRequire } from "node:module";
 import { ScreenCaptureService } from "./screen-capture.ts";
 
 const electron = createRequire(import.meta.url)("electron") as typeof import("electron");
-const { app, BrowserWindow, ipcMain, Menu } = electron;
+const { app, BrowserWindow, ipcMain } = electron;
 const screenCaptureService = new ScreenCaptureService();
 
 function createWindow(): void {
@@ -12,7 +12,7 @@ function createWindow(): void {
         height: 800,
         minWidth: 800,
         minHeight: 600,
-        autoHideMenuBar: true,
+        autoHideMenuBar: false,
         webPreferences: {
             preload: path.join(process.cwd(), "electron", "preload.cjs"),
             contextIsolation: true,
@@ -30,7 +30,6 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-    Menu.setApplicationMenu(null);
     ipcMain.handle("screen-capture:start", (event) => {
         return screenCaptureService.start(event.sender);
     });
