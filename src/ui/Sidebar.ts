@@ -181,18 +181,18 @@ export class Sidebar {
         widthPalette.setAttribute("role", "group");
         widthPalette.setAttribute("aria-label", "Kalem kalınlığı");
 
-        const clearButton = document.createElement("button");
-        clearButton.type = "button";
-        clearButton.className = "sidebar__clear";
-        const clearIcon = document.createElement("img");
-        clearIcon.src = newDrawIcon;
-        clearIcon.alt = "";
-        clearIcon.draggable = false;
-        clearButton.appendChild(clearIcon);
-        clearButton.title = "Tümünü temizle";
-        clearButton.setAttribute("aria-label", "Tümünü temizle");
-        clearButton.addEventListener("click", () => {
-            if (!window.confirm("Tüm çizimler silinsin mi?")) {
+        const newDrawButton = document.createElement("button");
+        newDrawButton.type = "button";
+        newDrawButton.className = "sidebar__history";
+        const newDrawImg = document.createElement("img");
+        newDrawImg.src = newDrawIcon;
+        newDrawImg.alt = "";
+        newDrawImg.draggable = false;
+        newDrawButton.appendChild(newDrawImg);
+        newDrawButton.title = "Yeni çizim";
+        newDrawButton.setAttribute("aria-label", "Yeni çizim");
+        newDrawButton.addEventListener("click", () => {
+            if (!window.confirm("Yeni bir çizime geçilsin mi?")) {
                 return;
             }
 
@@ -207,7 +207,7 @@ export class Sidebar {
             highlighterTool.setLineWidth(6);
             eraserTool.setLineWidth(6);
             partialEraserTool.setLineWidth(6);
-            colorButton.style.backgroundColor = "#111827";
+            colorPreview.style.backgroundColor = "#111827";
             colorButton.setAttribute("aria-label", "Renk: Siyah");
             widthButton.style.setProperty("--line-width", "6px");
             widthButton.setAttribute("aria-label", "KalÄ±nlÄ±k: 6 piksel");
@@ -476,7 +476,7 @@ export class Sidebar {
             selectEraser(partialEraserTool, partialEraserButton);
         }, true);
         lastSelectedEraserButton = strokeEraserButton;
-        eraserPalette.append(strokeEraserButton, partialEraserButton, clearButton);
+        eraserPalette.append(strokeEraserButton, partialEraserButton);
 
         eraserButton.addEventListener("click", () => {
             const activeTool = toolManager.getActiveTool();
@@ -604,6 +604,7 @@ export class Sidebar {
         widthControl.append(widthButton, widthPalette);
         toolbar.append(
             undoButton,
+            newDrawButton,
             redoButton,
             penControl,
             eraserControl,
