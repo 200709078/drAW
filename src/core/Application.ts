@@ -20,7 +20,8 @@ export class Application {
             this.managers.getHistoryManager(),
             this.managers.getScreenCaptureTool(),
             this.managers.getTextTool(),
-            this.managers.getShapesTool()
+            this.managers.getShapesTool(),
+            this.managers.getDesktopAvailable()
         );
 
     }
