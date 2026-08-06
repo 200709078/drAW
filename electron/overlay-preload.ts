@@ -4,15 +4,6 @@ type SourcePayload = {
     dataUrl: string;
 };
 
-type SelectionPayload = {
-    x: number;
-    y: number;
-    width: number;
-    height: number;
-    renderedWidth: number;
-    renderedHeight: number;
-};
-
 window.addEventListener("DOMContentLoaded", () => {
     const image = document.querySelector<HTMLImageElement>("#capture");
     const interaction = document.querySelector<HTMLDivElement>("#interaction");
