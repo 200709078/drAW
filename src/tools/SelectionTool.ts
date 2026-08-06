@@ -885,6 +885,15 @@ export class SelectionTool extends Tool {
 
     }
 
+    public selectStroke(stroke: Stroke): void {
+
+        this.clearSelectedObjects();
+        this.addObject(stroke);
+        this.updateRendererSelection();
+        this.renderer.render();
+
+    }
+
     private editText(textObject: TextObject): void {
 
         this.renderer.setSelectedTexts([]);

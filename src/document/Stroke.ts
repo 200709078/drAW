@@ -6,17 +6,20 @@ export class Stroke {
     private readonly color: string;
     private readonly lineWidth: number;
     private readonly opacity: number;
+    private readonly shape: boolean;
 
     constructor(
         color: string = "#111827",
         lineWidth: number = 6,
-        opacity: number = 1
+        opacity: number = 1,
+        shape: boolean = false
     ) {
 
         this.points = [];
         this.color = color;
         this.lineWidth = lineWidth;
         this.opacity = opacity;
+        this.shape = shape;
 
     }
 
@@ -54,6 +57,12 @@ export class Stroke {
     public getOpacity(): number {
 
         return this.opacity;
+
+    }
+
+    public isShape(): boolean {
+
+        return this.shape;
 
     }
 

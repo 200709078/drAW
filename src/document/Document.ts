@@ -66,7 +66,12 @@ export class Document {
 
     private cloneStroke(stroke: Stroke): Stroke {
 
-        const copy = new Stroke(stroke.getColor(), stroke.getLineWidth(), stroke.getOpacity());
+        const copy = new Stroke(
+            stroke.getColor(),
+            stroke.getLineWidth(),
+            stroke.getOpacity(),
+            stroke.isShape()
+        );
 
         for (const point of stroke.getPoints()) {
             copy.addPoint(new Point(
@@ -120,12 +125,13 @@ export class Document {
             })),
             ...snapshot.strokes.map((stroke) => ({
                 type: "stroke",
-            color: stroke.getColor(),
-            lineWidth: stroke.getLineWidth(),
-            opacity: stroke.getOpacity(),
-            points: stroke.getPoints().map((point) => [
-                point.getX(), point.getY(), point.getPressure(), point.getTimestamp()
-            ])
+                color: stroke.getColor(),
+                lineWidth: stroke.getLineWidth(),
+                opacity: stroke.getOpacity(),
+                shape: stroke.isShape(),
+                points: stroke.getPoints().map((point) => [
+                    point.getX(), point.getY(), point.getPressure(), point.getTimestamp()
+                ])
             })),
             ...snapshot.texts.map((text) => ({
                 type: "text",

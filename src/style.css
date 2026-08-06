@@ -95,7 +95,8 @@ canvas {
 .sidebar__tool img,
 .sidebar__history img,
 .sidebar__pen-option img,
-.sidebar__eraser-option img {
+.sidebar__eraser-option img,
+.sidebar__shape-option img {
     width: 24px;
     height: 24px;
     display: block;
@@ -229,6 +230,7 @@ canvas {
 
 .sidebar__pen-palette,
 .sidebar__eraser-palette,
+.sidebar__shapes-palette,
 .sidebar__color-palette,
 .sidebar__width-palette {
     position: fixed;
@@ -251,7 +253,8 @@ canvas {
 .sidebar__tool:focus-visible,
 .sidebar__history:focus-visible,
 .sidebar__width:focus-visible,
-.sidebar__eraser-option:focus-visible {
+.sidebar__eraser-option:focus-visible,
+.sidebar__shape-option:focus-visible {
     border-color: #111827;
     outline: 2px solid white;
     outline-offset: -4px;
@@ -291,7 +294,8 @@ canvas {
 }
 
 .sidebar__eraser-option,
-.sidebar__pen-option {
+.sidebar__pen-option,
+.sidebar__shape-option {
     width: 48px;
     height: 48px;
     padding: 0;
@@ -311,7 +315,8 @@ canvas {
 }
 
 .sidebar__eraser-option--selected,
-.sidebar__pen-option--selected {
+.sidebar__pen-option--selected,
+.sidebar__shape-option--selected {
     border-color: #2563eb;
     background: #eff6ff;
     color: #1d4ed8;
