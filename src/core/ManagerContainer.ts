@@ -17,7 +17,7 @@ import { TextTool } from "../tools/TextTool";
 import { ShapesTool } from "../tools/ShapesTool";
 import { HistoryManager } from "./HistoryManager";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
-import { getScreenCaptureGateway } from "../platform/ScreenCaptureGateway";
+import { getScreenCaptureGateway, isDesktopAvailable } from "../platform/ScreenCaptureGateway";
 
 export class ManagerContainer {
 
@@ -33,6 +33,7 @@ export class ManagerContainer {
     private readonly shapesTool: ShapesTool;
     private readonly historyManager: HistoryManager;
     private readonly screenCaptureTool: ScreenCaptureTool;
+    private readonly desktopAvailable: boolean;
 
     private readonly drawingContext: DrawingContext;
 
@@ -123,6 +124,7 @@ export class ManagerContainer {
             this.penTool,
             this.selectionTool
         );
+        this.desktopAvailable = isDesktopAvailable();
         this.shapesTool = new ShapesTool(
             this.drawingContext,
             this.document,
@@ -223,6 +225,12 @@ export class ManagerContainer {
     public getScreenCaptureTool(): ScreenCaptureTool {
 
         return this.screenCaptureTool;
+
+    }
+
+    public getDesktopAvailable(): boolean {
+
+        return this.desktopAvailable;
 
     }
 

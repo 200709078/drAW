@@ -12,3 +12,9 @@ export function getScreenCaptureGateway(): ScreenCaptureGateway | null {
     return window.drAWDesktop ?? null;
 
 }
+
+export function isDesktopAvailable(): boolean {
+
+    return getScreenCaptureGateway() !== null;
+
+}
