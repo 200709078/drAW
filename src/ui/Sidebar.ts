@@ -299,6 +299,7 @@ export class Sidebar {
 
 
 
+            selectShape(shapeOptions[0].type, shapeButtons[0]);
             selectEraser(eraserTool, strokeEraserButton);
             selectPen(penTool, normalPenButton);
         });
@@ -519,17 +520,22 @@ export class Sidebar {
         });
 
         const shapeOptions: Array<{ type: ShapeType; label: string; icon: string }> = [
+            { type: "line", label: "Çizgi", icon: lineIcon },
             { type: "rectangle", label: "Dikdörtgen", icon: rectangleIcon },
             { type: "ellipse", label: "Elips", icon: circleIcon },
-            { type: "triangle", label: "Üçgen", icon: triangleIcon },
-            { type: "line", label: "Çizgi", icon: lineIcon }
+            { type: "triangle", label: "Üçgen", icon: triangleIcon }
         ];
+
+        let lastSelectedShapeType: ShapeType = "line";
+        let lastSelectedShapeButton: HTMLButtonElement | null = null;
 
         const selectShape = (
             type: ShapeType,
             selectedButton: HTMLButtonElement
         ): void => {
             closeFlyouts();
+            lastSelectedShapeType = type;
+            lastSelectedShapeButton = selectedButton;
             toolManager.setTool(shapesTool);
             shapesTool.setShapeType(type);
             selectTool(shapesButton);
@@ -554,7 +560,7 @@ export class Sidebar {
         for (const option of shapeOptions) {
             const shapeButton = this.createIconButton(option.label, option.icon, {
                 className: "sidebar__shape-option",
-                isSelected: option.type === "rectangle",
+                isSelected: option.type === "line",
                 selectedClass: "sidebar__shape-option--selected",
                 onSelect: () => {
                     selectShape(option.type, shapeButton);
@@ -565,12 +571,22 @@ export class Sidebar {
             shapesPalette.appendChild(shapeButton);
         }
 
+        lastSelectedShapeButton = shapeButtons[0];
         this.copyButtonIcon(shapesButton, shapeButtons[0]);
         shapesButton.title = `Şekil: ${shapeButtons[0].title}`;
         shapesButton.setAttribute("aria-label", `Şekil: ${shapeButtons[0].title}`);
 
         shapesButton.addEventListener("click", () => {
-            toggleFlyout(shapesButton, shapesPalette);
+            const activeTool = toolManager.getActiveTool();
+
+            if (activeTool === shapesTool) {
+                toggleFlyout(shapesButton, shapesPalette);
+                return;
+            }
+
+            if (lastSelectedShapeButton !== null) {
+                selectShape(lastSelectedShapeType, lastSelectedShapeButton);
+            }
         });
 
         document.addEventListener("pointerdown", (event) => {
