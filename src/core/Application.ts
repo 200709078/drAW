@@ -19,7 +19,8 @@ export class Application {
             this.managers.getDocumentRenderer(),
             this.managers.getHistoryManager(),
             this.managers.getScreenCaptureTool(),
-            this.managers.getTextTool()
+            this.managers.getTextTool(),
+            this.managers.getShapesTool()
         );
 
     }

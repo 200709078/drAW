@@ -32,6 +32,13 @@ export class StrokeRenderer {
         context.strokeStyle = stroke.getColor();
         context.globalAlpha = stroke.getOpacity();
 
+        if (stroke.isShape()) {
+            this.renderShapeStroke(context, stroke);
+            context.restore();
+
+            return;
+        }
+
         if (stroke.getOpacity() < 1) {
             this.renderTransparentStroke(context, stroke);
             context.restore();
@@ -83,6 +90,27 @@ export class StrokeRenderer {
 
         this.drawLine(context, stroke, startPoint, points[points.length - 1]);
         context.restore();
+
+    }
+
+    private renderShapeStroke(
+        context: CanvasRenderingContext2D,
+        stroke: Stroke
+    ): void {
+
+        const points = stroke.getPoints();
+
+        context.lineWidth = stroke.getLineWidth();
+        context.beginPath();
+        context.moveTo(points[0].getX(), points[0].getY());
+
+        for (let index = 1; index < points.length; index++) {
+            const point = points[index];
+
+            context.lineTo(point.getX(), point.getY());
+        }
+
+        context.stroke();
 
     }
 

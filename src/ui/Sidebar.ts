@@ -9,6 +9,8 @@ import { PartialEraserTool } from "../tools/PartialEraserTool";
 import { HistoryManager } from "../core/HistoryManager";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { TextTool } from "../tools/TextTool";
+import { ShapesTool } from "../tools/ShapesTool";
+import type { ShapeType } from "../shapes/ShapeFactory";
 import pencilIcon from "../assets/icons/pencil.svg";
 import highlighterIcon from "../assets/icons/highlighter.svg";
 import eraserNormalIcon from "../assets/icons/eraser_normal.svg";
@@ -16,6 +18,10 @@ import eraserStrokeIcon from "../assets/icons/eraser_stroke.svg";
 import selectMoveIcon from "../assets/icons/select_move.svg";
 import captureIcon from "../assets/icons/capture.svg";
 import textIcon from "../assets/icons/text.svg";
+import rectangleIcon from "../assets/icons/rectangle.svg";
+import circleIcon from "../assets/icons/circle.svg";
+import triangleIcon from "../assets/icons/triangle.svg";
+import lineIcon from "../assets/icons/line.svg";
 import undoIcon from "../assets/icons/undo.svg";
 import redoIcon from "../assets/icons/redo.svg";
 import newDrawIcon from "../assets/icons/newdraw.svg";
@@ -34,7 +40,8 @@ export class Sidebar {
         documentRenderer: DocumentRenderer,
         historyManager: HistoryManager,
         screenCaptureTool: ScreenCaptureTool,
-        textTool: TextTool
+        textTool: TextTool,
+        shapesTool: ShapesTool
     ) {
 
         const sidebar = document.createElement("aside");
@@ -101,6 +108,12 @@ export class Sidebar {
             selectedClass: "sidebar__tool--selected"
         });
 
+        const shapesButton = this.createIconButton("Şekil", rectangleIcon, {
+            className: "sidebar__tool",
+            isSelected: false,
+            selectedClass: "sidebar__tool--selected"
+        });
+
         const highlighterButton = this.createIconButton("Fosforlu kalem", highlighterIcon, {
             className: "sidebar__pen-option",
             isSelected: false,
@@ -134,7 +147,7 @@ export class Sidebar {
         });
 
         const selectTool = (selectedButton: HTMLButtonElement): void => {
-            for (const button of [penButton, eraserButton, selectionButton, screenCaptureButton, textButton]) {
+            for (const button of [penButton, eraserButton, shapesButton, selectionButton, screenCaptureButton, textButton]) {
                 const isSelected = button === selectedButton;
 
                 button.classList.toggle("sidebar__tool--selected", isSelected);
@@ -167,6 +180,17 @@ export class Sidebar {
         eraserPalette.setAttribute("aria-label", "Silgi türü");
         eraserButton.setAttribute("aria-expanded", "false");
         eraserControl.append(eraserButton, eraserPalette);
+
+        const shapesControl = document.createElement("div");
+        shapesControl.className = "sidebar__control";
+
+        const shapesPalette = document.createElement("div");
+        shapesPalette.className = "sidebar__flyout sidebar__shapes-palette";
+        shapesPalette.hidden = true;
+        shapesPalette.setAttribute("role", "group");
+        shapesPalette.setAttribute("aria-label", "Şekil türü");
+        shapesButton.setAttribute("aria-expanded", "false");
+        shapesControl.append(shapesButton, shapesPalette);
 
         const colorControl = document.createElement("div");
         colorControl.className = "sidebar__control";
@@ -262,6 +286,7 @@ export class Sidebar {
         const flyouts = [
             { button: penButton, panel: penPalette },
             { button: eraserButton, panel: eraserPalette },
+            { button: shapesButton, panel: shapesPalette },
             { button: colorButton, panel: colorPalette },
             { button: widthButton, panel: widthPalette }
         ];
@@ -438,6 +463,8 @@ export class Sidebar {
                 selectTool(selectionButton);
             } else if (activeTool === textTool) {
                 selectTool(textButton);
+            } else if (activeTool === shapesTool) {
+                selectTool(shapesButton);
             }
         });
 
@@ -469,6 +496,61 @@ export class Sidebar {
             if (lastSelectedEraserButton !== null) {
                 selectEraser(lastSelectedEraserTool, lastSelectedEraserButton);
             }
+        });
+
+        const shapeOptions: Array<{ type: ShapeType; label: string; icon: string }> = [
+            { type: "rectangle", label: "Dikdörtgen", icon: rectangleIcon },
+            { type: "ellipse", label: "Elips", icon: circleIcon },
+            { type: "triangle", label: "Üçgen", icon: triangleIcon },
+            { type: "line", label: "Çizgi", icon: lineIcon }
+        ];
+
+        const selectShape = (
+            type: ShapeType,
+            selectedButton: HTMLButtonElement
+        ): void => {
+            closeFlyouts();
+            toolManager.setTool(shapesTool);
+            shapesTool.setShapeType(type);
+            selectTool(shapesButton);
+            this.copyButtonIcon(shapesButton, selectedButton);
+
+            shapesButton.title = `Şekil: ${selectedButton.title}`;
+            shapesButton.setAttribute("aria-label", `Şekil: ${selectedButton.title}`);
+
+            for (const button of shapesPalette.querySelectorAll("button")) {
+                const isSelected = button === selectedButton;
+
+                button.classList.toggle("sidebar__shape-option--selected", isSelected);
+                button.setAttribute("aria-pressed", String(isSelected));
+            }
+
+            shapesPalette.hidden = true;
+            shapesButton.setAttribute("aria-expanded", "false");
+        };
+
+        const shapeButtons: HTMLButtonElement[] = [];
+
+        for (const option of shapeOptions) {
+            const shapeButton = this.createIconButton(option.label, option.icon, {
+                className: "sidebar__shape-option",
+                isSelected: option.type === "rectangle",
+                selectedClass: "sidebar__shape-option--selected",
+                onSelect: () => {
+                    selectShape(option.type, shapeButton);
+                }
+            });
+
+            shapeButtons.push(shapeButton);
+            shapesPalette.appendChild(shapeButton);
+        }
+
+        this.copyButtonIcon(shapesButton, shapeButtons[0]);
+        shapesButton.title = `Şekil: ${shapeButtons[0].title}`;
+        shapesButton.setAttribute("aria-label", `Şekil: ${shapeButtons[0].title}`);
+
+        shapesButton.addEventListener("click", () => {
+            toggleFlyout(shapesButton, shapesPalette);
         });
 
         document.addEventListener("pointerdown", (event) => {
@@ -588,6 +670,7 @@ export class Sidebar {
             redoButton,
             penControl,
             eraserControl,
+            shapesControl,
             selectionButton,
             screenCaptureButton,
             textButton,
@@ -603,6 +686,28 @@ export class Sidebar {
 
 
 
+
+    private copyButtonIcon(
+        target: HTMLButtonElement,
+        source: HTMLButtonElement
+    ): void {
+
+        target.replaceChildren();
+
+        const icon = source.querySelector("img");
+
+        if (icon) {
+            const img = document.createElement("img");
+            img.src = (icon as HTMLImageElement).src;
+            img.alt = "";
+            img.draggable = false;
+
+            target.appendChild(img);
+        } else {
+            target.textContent = source.textContent ?? "";
+        }
+
+    }
 
     private createIconButton(
         label: string,

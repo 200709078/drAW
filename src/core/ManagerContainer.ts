@@ -14,6 +14,7 @@ import { HighlighterTool } from "../tools/HighlighterTool";
 import { SelectionTool } from "../tools/SelectionTool";
 import { PartialEraserTool } from "../tools/PartialEraserTool";
 import { TextTool } from "../tools/TextTool";
+import { ShapesTool } from "../tools/ShapesTool";
 import { HistoryManager } from "./HistoryManager";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { getScreenCaptureGateway } from "../platform/ScreenCaptureGateway";
@@ -29,6 +30,7 @@ export class ManagerContainer {
     private readonly selectionTool: SelectionTool;
     private readonly partialEraserTool: PartialEraserTool;
     private readonly textTool: TextTool;
+    private readonly shapesTool: ShapesTool;
     private readonly historyManager: HistoryManager;
     private readonly screenCaptureTool: ScreenCaptureTool;
 
@@ -121,6 +123,15 @@ export class ManagerContainer {
             this.penTool,
             this.selectionTool
         );
+        this.shapesTool = new ShapesTool(
+            this.drawingContext,
+            this.document,
+            this.documentRenderer,
+            this.historyManager,
+            this.toolManager,
+            this.penTool,
+            this.selectionTool
+        );
         this.toolManager.setTool(this.penTool);
 
     }
@@ -194,6 +205,12 @@ export class ManagerContainer {
     public getTextTool(): TextTool {
 
         return this.textTool;
+
+    }
+
+    public getShapesTool(): ShapesTool {
+
+        return this.shapesTool;
 
     }
 
