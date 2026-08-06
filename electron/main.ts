@@ -1,4 +1,5 @@
 import path from "node:path";
+import { existsSync } from "node:fs";
 import { createRequire } from "node:module";
 import { ScreenCaptureService } from "./screen-capture.ts";
 
@@ -7,13 +8,17 @@ const { app, BrowserWindow, ipcMain } = electron;
 const screenCaptureService = new ScreenCaptureService();
 
 function createWindow(): void {
+
+    const iconPath = path.join(process.cwd(), "electron/assets/app-icons/draw.png");
+    
     const window = new BrowserWindow({
         width: 1280,
         height: 800,
+        title: "drAW",
         minWidth: 800,
         minHeight: 600,
         autoHideMenuBar: false,
-        icon: path.join(process.cwd(), "electron", "assets", "icons", "draw.png"),
+        icon: iconPath,
         webPreferences: {
             preload: path.join(process.cwd(), "electron", "preload.cjs"),
             contextIsolation: true,
