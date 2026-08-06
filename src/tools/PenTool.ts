@@ -136,11 +136,23 @@ export class PenTool extends Tool {
 
     }
 
+    public getColor(): string {
+
+        return this.color;
+
+    }
+
     public setLineWidth(lineWidth: number): void {
 
         if (Number.isFinite(lineWidth) && lineWidth > 0) {
             this.lineWidth = lineWidth;
         }
+
+    }
+
+    public getLineWidth(): number {
+
+        return this.lineWidth;
 
     }
 

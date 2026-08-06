@@ -13,6 +13,7 @@ import { EraserTool } from "../tools/EraserTool";
 import { HighlighterTool } from "../tools/HighlighterTool";
 import { SelectionTool } from "../tools/SelectionTool";
 import { PartialEraserTool } from "../tools/PartialEraserTool";
+import { TextTool } from "../tools/TextTool";
 import { HistoryManager } from "./HistoryManager";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { getScreenCaptureGateway } from "../platform/ScreenCaptureGateway";
@@ -27,6 +28,7 @@ export class ManagerContainer {
     private readonly highlighterTool: HighlighterTool;
     private readonly selectionTool: SelectionTool;
     private readonly partialEraserTool: PartialEraserTool;
+    private readonly textTool: TextTool;
     private readonly historyManager: HistoryManager;
     private readonly screenCaptureTool: ScreenCaptureTool;
 
@@ -99,6 +101,15 @@ export class ManagerContainer {
             this.document,
             this.documentRenderer,
             this.historyManager
+        );
+        this.textTool = new TextTool(
+            this.drawingContext,
+            this.document,
+            this.documentRenderer,
+            this.historyManager,
+            this.toolManager,
+            this.penTool,
+            this.selectionTool
         );
         this.screenCaptureTool = new ScreenCaptureTool(
             this.drawingContext,
@@ -177,6 +188,12 @@ export class ManagerContainer {
     public getPartialEraserTool(): PartialEraserTool {
 
         return this.partialEraserTool;
+
+    }
+
+    public getTextTool(): TextTool {
+
+        return this.textTool;
 
     }
 

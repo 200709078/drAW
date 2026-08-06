@@ -104,6 +104,14 @@ export class EraserTool extends Tool {
             }
         }
 
+        for (const text of [...page.getTexts()]) {
+            if (text.hitTest(x, y, this.renderer.getTextBounds(text), this.radius)) {
+                page.removeText(text);
+                this.renderer.removeSelectedText(text);
+                hasChanged = true;
+            }
+        }
+
         if (hasChanged) {
             this.renderer.render();
         }

@@ -1,15 +1,18 @@
 import { Stroke } from "./Stroke";
 import { DocumentImage } from "./DocumentImage";
+import { TextObject } from "./TextObject";
 
 export class Page {
 
     private readonly strokes: Stroke[];
     private readonly images: DocumentImage[];
+    private readonly texts: TextObject[];
 
     constructor() {
 
         this.strokes = [];
         this.images = [];
+        this.texts = [];
 
     }
 
@@ -43,6 +46,7 @@ export class Page {
 
         this.strokes.length = 0;
         this.images.length = 0;
+        this.texts.length = 0;
 
     }
 
@@ -73,6 +77,35 @@ export class Page {
 
         this.images.length = 0;
         this.images.push(...images);
+
+    }
+
+    public addText(text: TextObject): void {
+
+        this.texts.push(text);
+
+    }
+
+    public removeText(text: TextObject): void {
+
+        const index = this.texts.indexOf(text);
+
+        if (index !== -1) {
+            this.texts.splice(index, 1);
+        }
+
+    }
+
+    public setTexts(texts: readonly TextObject[]): void {
+
+        this.texts.length = 0;
+        this.texts.push(...texts);
+
+    }
+
+    public getTexts(): readonly TextObject[] {
+
+        return this.texts;
 
     }
 

@@ -2,10 +2,12 @@ import { Page } from "./Page";
 import { Point } from "./Point";
 import { Stroke } from "./Stroke";
 import { DocumentImage } from "./DocumentImage";
+import { TextObject } from "./TextObject";
 
 export type DocumentSnapshot = {
     strokes: readonly Stroke[];
     images: readonly DocumentImage[];
+    texts: readonly TextObject[];
 };
 
 export class Document {
@@ -40,7 +42,8 @@ export class Document {
 
         return {
             strokes: page.getStrokes().map((stroke) => this.cloneStroke(stroke)),
-            images: page.getImages().map((image) => this.cloneImage(image))
+            images: page.getImages().map((image) => this.cloneImage(image)),
+            texts: page.getTexts().map((text) => this.cloneText(text))
         };
 
     }
@@ -51,6 +54,7 @@ export class Document {
 
         page.setStrokes(snapshot.strokes.map((stroke) => this.cloneStroke(stroke)));
         page.setImages(snapshot.images.map((image) => this.cloneImage(image)));
+        page.setTexts(snapshot.texts.map((text) => this.cloneText(text)));
 
     }
 
@@ -89,6 +93,20 @@ export class Document {
 
     }
 
+    private cloneText(text: TextObject): TextObject {
+
+        return new TextObject(
+            text.getText(),
+            text.getX(),
+            text.getY(),
+            text.getColor(),
+            text.getFontSize(),
+            text.getScale(),
+            text.getRotation()
+        );
+
+    }
+
     private serialize(snapshot: DocumentSnapshot): unknown[] {
 
         return [
@@ -108,6 +126,16 @@ export class Document {
             points: stroke.getPoints().map((point) => [
                 point.getX(), point.getY(), point.getPressure(), point.getTimestamp()
             ])
+            })),
+            ...snapshot.texts.map((text) => ({
+                type: "text",
+                text: text.getText(),
+                x: text.getX(),
+                y: text.getY(),
+                color: text.getColor(),
+                fontSize: text.getFontSize(),
+                scale: text.getScale(),
+                rotation: text.getRotation()
             }))
         ];
 

@@ -2,10 +2,12 @@ import { Document } from "../document/Document";
 import { Point } from "../document/Point";
 import { Stroke } from "../document/Stroke";
 import { DocumentImage } from "../document/DocumentImage";
+import { TextObject } from "../document/TextObject";
 import { DrawingContext } from "../models/DrawingContext";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { Tool } from "./Tool";
 import { HistoryManager } from "../core/HistoryManager";
+import { openTextEditor, closeTextEditor } from "../ui/TextEditor";
 import {
     ALL_RESIZE_HANDLES,
     getResizeCursor,
@@ -14,14 +16,17 @@ import {
     type SelectionBounds
 } from "../renderers/ResizeHandle";
 
-type SelectableObject = Stroke | DocumentImage;
-type CornerHandle = "topLeft" | "topRight" | "bottomRight" | "bottomLeft";
+type SelectableObject = Stroke | DocumentImage | TextObject;
+type CornerHandle = "topLeft" | "bottomRight" | "bottomLeft";
 type EdgeHandle = "top" | "right" | "bottom" | "left";
 
 type ResizeOriginals = {
     strokes: Point[][];
     images: Array<{ x: number; y: number; width: number; height: number }>;
+    texts: Array<{ x: number; y: number; scale: number }>;
 };
+
+const BORDER_GRAB_TOLERANCE = 8;
 
 export class SelectionTool extends Tool {
 
@@ -30,6 +35,7 @@ export class SelectionTool extends Tool {
     private readonly history: HistoryManager;
     private readonly selectedStrokes: Set<Stroke>;
     private readonly selectedImages: Set<DocumentImage>;
+    private readonly selectedTexts: Set<TextObject>;
     private isDragging: boolean;
     private isSelecting: boolean;
     private isAdditiveSelection: boolean;
@@ -41,6 +47,9 @@ export class SelectionTool extends Tool {
     private startY: number;
     private lastX: number;
     private lastY: number;
+    private deleteButton: HTMLButtonElement | null;
+    private lastTextClick: TextObject | null;
+    private lastTextClickTime: number;
 
     constructor(
         drawingContext: DrawingContext,
@@ -56,6 +65,7 @@ export class SelectionTool extends Tool {
         this.history = history;
         this.selectedStrokes = new Set();
         this.selectedImages = new Set();
+        this.selectedTexts = new Set();
         this.isDragging = false;
         this.isSelecting = false;
         this.isAdditiveSelection = false;
@@ -67,6 +77,9 @@ export class SelectionTool extends Tool {
         this.startY = 0;
         this.lastX = 0;
         this.lastY = 0;
+        this.deleteButton = null;
+        this.lastTextClick = null;
+        this.lastTextClickTime = 0;
 
     }
 
@@ -83,8 +96,10 @@ export class SelectionTool extends Tool {
         this.canvas.removeEventListener("mousemove", this.handleHover);
         window.removeEventListener("keydown", this.handleKeyDown);
         this.canvas.style.cursor = "";
+        closeTextEditor();
         this.history.commit();
         this.clearSelection();
+        this.removeDeleteButton();
 
     }
 
@@ -107,7 +122,9 @@ export class SelectionTool extends Tool {
 
     public deleteSelection(): void {
 
-        if (this.selectedStrokes.size === 0 && this.selectedImages.size === 0) {
+        if (this.selectedStrokes.size === 0 &&
+            this.selectedImages.size === 0 &&
+            this.selectedTexts.size === 0) {
             return;
         }
 
@@ -120,6 +137,10 @@ export class SelectionTool extends Tool {
         }
         for (const image of this.selectedImages) {
             page.removeImage(image);
+        }
+        for (const text of this.selectedTexts) {
+            page.removeText(text);
+            text.setSelected(false);
         }
 
         this.history.commit();
@@ -150,7 +171,11 @@ export class SelectionTool extends Tool {
             return;
         }
 
-        this.canvas.style.cursor = this.findObjectAt(event.offsetX, event.offsetY) !== null ? "move" : "default";
+        this.canvas.style.cursor = this.isPointOnSelectionBorder(
+            event.offsetX,
+            event.offsetY,
+            BORDER_GRAB_TOLERANCE
+        ) ? "move" : "default";
 
     };
 
@@ -164,19 +189,40 @@ export class SelectionTool extends Tool {
         this.lastY = event.offsetY;
         this.isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
 
+        const selectedObject = this.findObjectAt(event.offsetX, event.offsetY);
+
+        if (this.isDoubleClickOnText(selectedObject)) {
+            this.clearSelectedObjects();
+            this.addObject(selectedObject);
+            this.updateRendererSelection();
+            this.renderer.render();
+            this.editText(selectedObject);
+
+            return;
+        }
+
         const handle = this.getHandleAt(this.startX, this.startY);
 
         if (handle !== null && !this.isAdditiveSelection) {
             this.startResize(handle);
             this.renderer.render();
+            this.updateDeleteButton();
 
             return;
         }
 
-        const selectedObject = this.findObjectAt(event.offsetX, event.offsetY);
+        if (this.isPointOnSelectionBorder(this.startX, this.startY, BORDER_GRAB_TOLERANCE) &&
+            !this.isAdditiveSelection) {
+            this.isDragging = true;
+            this.isSelecting = false;
+            this.updateRendererSelection();
+            this.renderer.render();
+
+            return;
+        }
 
         this.isSelecting = selectedObject === null;
-        this.isDragging = selectedObject !== null;
+        this.isDragging = false;
 
         if (selectedObject !== null) {
             if (this.isAdditiveSelection) {
@@ -232,9 +278,13 @@ export class SelectionTool extends Tool {
         for (const image of this.selectedImages) {
             image.translate(deltaX, deltaY);
         }
+        for (const text of this.selectedTexts) {
+            text.translate(deltaX, deltaY);
+        }
         this.lastX = event.offsetX;
         this.lastY = event.offsetY;
         this.renderer.render();
+        this.updateDeleteButton();
 
     }
 
@@ -273,6 +323,7 @@ export class SelectionTool extends Tool {
         this.activeHandle = null;
         this.resizeBounds = null;
         this.resizeOriginals = null;
+        closeTextEditor();
         this.history.commit();
         this.clearSelection();
 
@@ -282,8 +333,13 @@ export class SelectionTool extends Tool {
 
         this.selectedStrokes.clear();
         this.selectedImages.clear();
+        for (const text of this.selectedTexts) {
+            text.setSelected(false);
+        }
+        this.selectedTexts.clear();
         this.renderer.clearSelection();
         this.renderer.render();
+        this.updateDeleteButton();
 
     }
 
@@ -306,6 +362,31 @@ export class SelectionTool extends Tool {
         }
 
         return null;
+
+    }
+
+    private isPointOnSelectionBorder(
+        x: number,
+        y: number,
+        tolerance: number
+    ): boolean {
+
+        const bounds = this.renderer.getSelectionBounds();
+
+        if (bounds === null) {
+            return false;
+        }
+
+        const nearLeft = Math.abs(x - bounds.minX) <= tolerance;
+        const nearRight = Math.abs(x - bounds.maxX) <= tolerance;
+        const nearTop = Math.abs(y - bounds.minY) <= tolerance;
+        const nearBottom = Math.abs(y - bounds.maxY) <= tolerance;
+
+        const withinHorizontalSpan = x >= bounds.minX - tolerance && x <= bounds.maxX + tolerance;
+        const withinVerticalSpan = y >= bounds.minY - tolerance && y <= bounds.maxY + tolerance;
+
+        return (nearLeft || nearRight) && withinVerticalSpan ||
+            (nearTop || nearBottom) && withinHorizontalSpan;
 
     }
 
@@ -340,6 +421,11 @@ export class SelectionTool extends Tool {
                 y: image.getY(),
                 width: image.getWidth(),
                 height: image.getHeight()
+            })),
+            texts: [...this.selectedTexts].map((text) => ({
+                x: text.getX(),
+                y: text.getY(),
+                scale: text.getScale()
             }))
         };
 
@@ -386,7 +472,76 @@ export class SelectionTool extends Tool {
             imageIndex++;
         }
 
+        let textIndex = 0;
+
+        for (const text of this.selectedTexts) {
+            const original = this.resizeOriginals.texts[textIndex];
+            const anchor = this.getTextResizeAnchor(this.activeHandle, this.resizeBounds);
+            const scale = this.computeTextResizeScale(
+                this.activeHandle,
+                this.resizeBounds,
+                pointerX,
+                pointerY
+            );
+
+            text.setPosition(
+                anchor.x + (original.x - anchor.x) * scale,
+                anchor.y + (original.y - anchor.y) * scale
+            );
+            text.setScale(original.scale * scale);
+            textIndex++;
+        }
+
         this.renderer.render();
+        this.updateDeleteButton();
+
+    }
+
+    private computeTextResizeScale(
+        handle: ResizeHandle,
+        bounds: SelectionBounds,
+        pointerX: number,
+        pointerY: number
+    ): number {
+
+        const anchor = this.getTextResizeAnchor(handle, bounds);
+        const handlePosition = getResizeHandlePosition(handle, bounds);
+        const movesX = Math.abs(handlePosition.x - bounds.minX) < 0.001 ||
+            Math.abs(handlePosition.x - bounds.maxX) < 0.001;
+        const movesY = Math.abs(handlePosition.y - bounds.minY) < 0.001 ||
+            Math.abs(handlePosition.y - bounds.maxY) < 0.001;
+
+        const scaleX = movesX ? (pointerX - anchor.x) / (handlePosition.x - anchor.x) : 1;
+        const scaleY = movesY ? (pointerY - anchor.y) / (handlePosition.y - anchor.y) : 1;
+        const rawScale = movesX && movesY
+            ? (Math.abs(scaleX - 1) >= Math.abs(scaleY - 1) ? scaleX : scaleY)
+            : (movesX ? scaleX : scaleY);
+
+        return Math.max(0.01, Math.min(rawScale, 100));
+
+    }
+
+    private getTextResizeAnchor(
+        handle: ResizeHandle,
+        bounds: SelectionBounds
+    ): { x: number; y: number } {
+
+        switch (handle) {
+            case "topLeft":
+                return { x: bounds.maxX, y: bounds.maxY };
+            case "top":
+                return { x: bounds.minX, y: bounds.maxY };
+            case "right":
+                return { x: bounds.minX, y: bounds.minY };
+            case "bottomRight":
+                return { x: bounds.minX, y: bounds.minY };
+            case "bottom":
+                return { x: bounds.minX, y: bounds.minY };
+            case "bottomLeft":
+                return { x: bounds.maxX, y: bounds.minY };
+            case "left":
+                return { x: bounds.maxX, y: bounds.minY };
+        }
 
     }
 
@@ -397,7 +552,7 @@ export class SelectionTool extends Tool {
         pointerY: number
     ): { scaleX: number; scaleY: number; offsetX: number; offsetY: number } {
 
-        if (handle === "topLeft" || handle === "topRight" ||
+        if (handle === "topLeft" ||
             handle === "bottomRight" || handle === "bottomLeft") {
             return this.computeCornerTransform(handle, bounds, pointerX, pointerY);
         }
@@ -423,12 +578,6 @@ export class SelectionTool extends Tool {
                 anchorX = bounds.maxX;
                 anchorY = bounds.maxY;
                 handleX = bounds.minX;
-                handleY = bounds.minY;
-                break;
-            case "topRight":
-                anchorX = bounds.minX;
-                anchorY = bounds.maxY;
-                handleX = bounds.maxX;
                 handleY = bounds.minY;
                 break;
             case "bottomRight":
@@ -535,6 +684,16 @@ export class SelectionTool extends Tool {
             }
         }
 
+        const texts = this.document.getCurrentPage().getTexts();
+
+        for (let index = texts.length - 1; index >= 0; index--) {
+            const text = texts[index];
+
+            if (this.isTextHit(text, x, y)) {
+                return text;
+            }
+        }
+
         return null;
 
     }
@@ -559,6 +718,13 @@ export class SelectionTool extends Tool {
         for (const image of this.document.getCurrentPage().getImages()) {
             if (this.isImageInBounds(image, minX, minY, maxX, maxY)) {
                 this.selectedImages.add(image);
+            }
+        }
+
+        for (const text of this.document.getCurrentPage().getTexts()) {
+            if (this.isTextInBounds(text, minX, minY, maxX, maxY)) {
+                this.selectedTexts.add(text);
+                text.setSelected(true);
             }
         }
 
@@ -608,6 +774,21 @@ export class SelectionTool extends Tool {
 
     }
 
+    private isTextInBounds(
+        text: TextObject,
+        minX: number,
+        minY: number,
+        maxX: number,
+        maxY: number
+    ): boolean {
+
+        const bounds = this.renderer.getTextBounds(text);
+
+        return bounds.maxX >= minX && bounds.minX <= maxX &&
+            bounds.maxY >= minY && bounds.minY <= maxY;
+
+    }
+
     private isImageHit(image: DocumentImage, x: number, y: number): boolean {
 
         return x >= image.getX() && x <= image.getX() + image.getWidth() &&
@@ -615,10 +796,23 @@ export class SelectionTool extends Tool {
 
     }
 
+    private isTextHit(text: TextObject, x: number, y: number): boolean {
+
+        return text.hitTest(x, y, this.renderer.getTextBounds(text));
+
+    }
+
     private isObjectSelected(selectedObject: SelectableObject): boolean {
 
-        return selectedObject instanceof Stroke ?
-            this.selectedStrokes.has(selectedObject) : this.selectedImages.has(selectedObject);
+        if (selectedObject instanceof Stroke) {
+            return this.selectedStrokes.has(selectedObject);
+        }
+
+        if (selectedObject instanceof DocumentImage) {
+            return this.selectedImages.has(selectedObject);
+        }
+
+        return this.selectedTexts.has(selectedObject);
 
     }
 
@@ -626,8 +820,11 @@ export class SelectionTool extends Tool {
 
         if (selectedObject instanceof Stroke) {
             this.selectedStrokes.add(selectedObject);
-        } else {
+        } else if (selectedObject instanceof DocumentImage) {
             this.selectedImages.add(selectedObject);
+        } else {
+            this.selectedTexts.add(selectedObject);
+            selectedObject.setSelected(true);
         }
 
     }
@@ -636,8 +833,11 @@ export class SelectionTool extends Tool {
 
         if (selectedObject instanceof Stroke) {
             this.selectedStrokes.delete(selectedObject);
-        } else {
+        } else if (selectedObject instanceof DocumentImage) {
             this.selectedImages.delete(selectedObject);
+        } else {
+            this.selectedTexts.delete(selectedObject);
+            selectedObject.setSelected(false);
         }
 
     }
@@ -646,6 +846,10 @@ export class SelectionTool extends Tool {
 
         this.selectedStrokes.clear();
         this.selectedImages.clear();
+        for (const text of this.selectedTexts) {
+            text.setSelected(false);
+        }
+        this.selectedTexts.clear();
 
     }
 
@@ -653,6 +857,98 @@ export class SelectionTool extends Tool {
 
         this.renderer.setSelectedStrokes([...this.selectedStrokes]);
         this.renderer.setSelectedImages([...this.selectedImages]);
+        this.renderer.setSelectedTexts([...this.selectedTexts]);
+        this.updateDeleteButton();
+
+    }
+
+    private isDoubleClickOnText(selectedObject: SelectableObject | null): selectedObject is TextObject {
+
+        const now = performance.now();
+        const isDoubleClick = selectedObject instanceof TextObject &&
+            selectedObject === this.lastTextClick &&
+            now - this.lastTextClickTime < 350;
+
+        this.lastTextClick = selectedObject instanceof TextObject ? selectedObject : null;
+        this.lastTextClickTime = now;
+
+        return isDoubleClick;
+
+    }
+
+    public selectText(textObject: TextObject): void {
+
+        this.clearSelectedObjects();
+        this.addObject(textObject);
+        this.updateRendererSelection();
+        this.renderer.render();
+
+    }
+
+    private editText(textObject: TextObject): void {
+
+        this.renderer.setSelectedTexts([]);
+        this.renderer.render();
+        this.removeDeleteButton();
+
+        openTextEditor(textObject, (value) => {
+            const page = this.document.getCurrentPage();
+
+            this.history.begin();
+
+            if (value.trim() === "") {
+                page.removeText(textObject);
+                this.selectedTexts.delete(textObject);
+                textObject.setSelected(false);
+            } else {
+                textObject.setText(value);
+            }
+
+            this.history.commit();
+            this.updateRendererSelection();
+            this.renderer.render();
+        });
+
+    }
+
+    private updateDeleteButton(): void {
+
+        const bounds = this.renderer.getSelectionBounds();
+
+        if (bounds === null) {
+            if (this.deleteButton !== null) {
+                this.deleteButton.hidden = true;
+            }
+
+            return;
+        }
+
+        if (this.deleteButton === null) {
+            this.deleteButton = document.createElement("button");
+            this.deleteButton.type = "button";
+            this.deleteButton.className = "selection-delete-button";
+            this.deleteButton.textContent = "✕";
+            this.deleteButton.setAttribute("aria-label", "Seçili nesneleri sil");
+            this.deleteButton.addEventListener("click", (event) => {
+                event.preventDefault();
+                event.stopPropagation();
+                this.deleteSelection();
+            });
+            document.body.appendChild(this.deleteButton);
+        }
+
+        this.deleteButton.style.left = `${bounds.maxX}px`;
+        this.deleteButton.style.top = `${bounds.minY}px`;
+        this.deleteButton.hidden = false;
+
+    }
+
+    private removeDeleteButton(): void {
+
+        if (this.deleteButton !== null) {
+            this.deleteButton.remove();
+            this.deleteButton = null;
+        }
 
     }
 

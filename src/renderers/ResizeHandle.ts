@@ -1,7 +1,6 @@
 export type ResizeHandle =
     | "topLeft"
     | "top"
-    | "topRight"
     | "right"
     | "bottomRight"
     | "bottom"
@@ -11,7 +10,6 @@ export type ResizeHandle =
 export const ALL_RESIZE_HANDLES: readonly ResizeHandle[] = [
     "topLeft",
     "top",
-    "topRight",
     "right",
     "bottomRight",
     "bottom",
@@ -39,8 +37,6 @@ export function getResizeHandlePosition(
             return { x: bounds.minX, y: bounds.minY };
         case "top":
             return { x: centerX, y: bounds.minY };
-        case "topRight":
-            return { x: bounds.maxX, y: bounds.minY };
         case "right":
             return { x: bounds.maxX, y: centerY };
         case "bottomRight":
@@ -61,7 +57,6 @@ export function getResizeCursor(handle: ResizeHandle): string {
         case "topLeft":
         case "bottomRight":
             return "nwse-resize";
-        case "topRight":
         case "bottomLeft":
             return "nesw-resize";
         case "top":
