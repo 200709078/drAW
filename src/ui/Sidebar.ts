@@ -8,12 +8,14 @@ import { PenTool } from "../tools/PenTool";
 import { PartialEraserTool } from "../tools/PartialEraserTool";
 import { HistoryManager } from "../core/HistoryManager";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
+import { TextTool } from "../tools/TextTool";
 import pencilIcon from "../assets/icons/pencil.svg";
 import highlighterIcon from "../assets/icons/highlighter.svg";
 import eraserNormalIcon from "../assets/icons/eraser_normal.svg";
 import eraserStrokeIcon from "../assets/icons/eraser_stroke.svg";
 import selectMoveIcon from "../assets/icons/select_move.svg";
 import captureIcon from "../assets/icons/capture.svg";
+import textIcon from "../assets/icons/text.svg";
 import undoIcon from "../assets/icons/undo.svg";
 import redoIcon from "../assets/icons/redo.svg";
 import newDrawIcon from "../assets/icons/newdraw.svg";
@@ -31,7 +33,8 @@ export class Sidebar {
         drawingDocument: Document,
         documentRenderer: DocumentRenderer,
         historyManager: HistoryManager,
-        screenCaptureTool: ScreenCaptureTool
+        screenCaptureTool: ScreenCaptureTool,
+        textTool: TextTool
     ) {
 
         const sidebar = document.createElement("aside");
@@ -121,9 +124,17 @@ export class Sidebar {
                 toolManager.setTool(screenCaptureTool);
             }
         });
+        const textButton = this.createIconButton("Metin", textIcon, {
+            className: "sidebar__tool",
+            isSelected: false,
+            selectedClass: "sidebar__tool--selected",
+            onSelect: () => {
+                toolManager.setTool(textTool);
+            }
+        });
 
         const selectTool = (selectedButton: HTMLButtonElement): void => {
-            for (const button of [penButton, eraserButton, selectionButton, screenCaptureButton]) {
+            for (const button of [penButton, eraserButton, selectionButton, screenCaptureButton, textButton]) {
                 const isSelected = button === selectedButton;
 
                 button.classList.toggle("sidebar__tool--selected", isSelected);
@@ -133,6 +144,7 @@ export class Sidebar {
 
         selectionButton.addEventListener("click", () => selectTool(selectionButton));
         screenCaptureButton.addEventListener("click", () => selectTool(screenCaptureButton));
+        textButton.addEventListener("click", () => selectTool(textButton));
 
         const penControl = document.createElement("div");
         penControl.className = "sidebar__control";
@@ -424,6 +436,8 @@ export class Sidebar {
                 highlightPen(highlighterButton);
             } else if (activeTool === selectionTool) {
                 selectTool(selectionButton);
+            } else if (activeTool === textTool) {
+                selectTool(textButton);
             }
         });
 
@@ -576,6 +590,7 @@ export class Sidebar {
             eraserControl,
             selectionButton,
             screenCaptureButton,
+            textButton,
             colorControl,
             widthControl
         );

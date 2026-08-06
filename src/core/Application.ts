@@ -18,7 +18,8 @@ export class Application {
             this.managers.getDocument(),
             this.managers.getDocumentRenderer(),
             this.managers.getHistoryManager(),
-            this.managers.getScreenCaptureTool()
+            this.managers.getScreenCaptureTool(),
+            this.managers.getTextTool()
         );
 
     }

@@ -1,6 +1,7 @@
 import { Document } from "../document/Document";
 import { Stroke } from "../document/Stroke";
 import { DocumentImage } from "../document/DocumentImage";
+import { TextObject, TEXT_FONT_FAMILY, TEXT_LINE_HEIGHT } from "../document/TextObject";
 import { DrawingContext } from "../models/DrawingContext";
 import { StrokeRenderer } from "./StrokeRenderer";
 import { ALL_RESIZE_HANDLES, getResizeHandlePosition, type SelectionBounds } from "./ResizeHandle";
@@ -12,6 +13,7 @@ export class DocumentRenderer {
     private readonly strokeRenderer: StrokeRenderer;
     private selectedStrokes: Set<Stroke>;
     private selectedImages: Set<DocumentImage>;
+    private selectedTexts: Set<TextObject>;
     private selectionBounds: { startX: number; startY: number; endX: number; endY: number } | null;
     private readonly loadedImages: Map<string, HTMLImageElement>;
 
@@ -28,6 +30,7 @@ export class DocumentRenderer {
         );
         this.selectedStrokes = new Set();
         this.selectedImages = new Set();
+        this.selectedTexts = new Set();
         this.selectionBounds = null;
         this.loadedImages = new Map();
 
@@ -49,6 +52,10 @@ export class DocumentRenderer {
 
         }
 
+        for (const text of page.getTexts()) {
+            this.renderText(text);
+        }
+
         if (activeStroke !== null) {
             this.strokeRenderer.render(activeStroke);
         }
@@ -59,6 +66,10 @@ export class DocumentRenderer {
 
         for (const image of this.selectedImages) {
             this.renderImageSelection(image);
+        }
+
+        for (const text of this.selectedTexts) {
+            this.renderTextSelection(text);
         }
 
         this.renderSelectionBounds();
@@ -84,6 +95,18 @@ export class DocumentRenderer {
 
     }
 
+    public setSelectedTexts(texts: readonly TextObject[]): void {
+
+        this.selectedTexts = new Set(texts);
+
+    }
+
+    public removeSelectedText(text: TextObject): void {
+
+        this.selectedTexts.delete(text);
+
+    }
+
     public setSelectionBounds(
         startX: number,
         startY: number,
@@ -99,6 +122,7 @@ export class DocumentRenderer {
 
         this.selectedStrokes.clear();
         this.selectedImages.clear();
+        this.selectedTexts.clear();
         this.selectionBounds = null;
 
     }
@@ -130,6 +154,15 @@ export class DocumentRenderer {
             minY = Math.min(minY, image.getY());
             maxX = Math.max(maxX, image.getX() + image.getWidth());
             maxY = Math.max(maxY, image.getY() + image.getHeight());
+        }
+
+        for (const text of this.selectedTexts) {
+            const bounds = this.getTextBounds(text);
+
+            minX = Math.min(minX, bounds.minX);
+            minY = Math.min(minY, bounds.minY);
+            maxX = Math.max(maxX, bounds.maxX);
+            maxY = Math.max(maxY, bounds.maxY);
         }
 
         if (minX === Infinity) {
@@ -244,6 +277,80 @@ export class DocumentRenderer {
             documentImage.getY() - 3,
             documentImage.getWidth() + 6,
             documentImage.getHeight() + 6
+        );
+        context.restore();
+
+    }
+
+    public measureText(text: string, fontSize: number): { width: number; height: number } {
+
+        const context = this.drawingContext.getContext();
+        const lines = text.split("\n");
+
+        context.save();
+        context.font = `${fontSize}px ${TEXT_FONT_FAMILY}`;
+
+        let width = 0;
+
+        for (const line of lines) {
+            width = Math.max(width, context.measureText(line).width);
+        }
+
+        context.restore();
+
+        return {
+            width,
+            height: lines.length * fontSize * TEXT_LINE_HEIGHT
+        };
+
+    }
+
+    public getTextBounds(text: TextObject): SelectionBounds {
+
+        return text.getBounds((content, fontSize) => this.measureText(content, fontSize));
+
+    }
+
+    private renderText(text: TextObject): void {
+
+        const context = this.drawingContext.getContext();
+        const fontSize = text.getFontSize() * text.getScale();
+        const lineHeight = fontSize * TEXT_LINE_HEIGHT;
+        const lines = text.getText().split("\n");
+        const blockHeight = lines.length * lineHeight;
+        const topY = text.getY() - blockHeight / 2;
+
+        context.save();
+        context.font = `${fontSize}px ${TEXT_FONT_FAMILY}`;
+        context.fillStyle = text.getColor();
+        context.textBaseline = "top";
+
+        for (let index = 0; index < lines.length; index++) {
+            context.fillText(
+                lines[index],
+                text.getX(),
+                topY + index * lineHeight
+            );
+        }
+
+        context.restore();
+
+    }
+
+    private renderTextSelection(text: TextObject): void {
+
+        const bounds = this.getTextBounds(text);
+        const context = this.drawingContext.getContext();
+
+        context.save();
+        context.strokeStyle = "#2563eb";
+        context.lineWidth = 2;
+        context.setLineDash([6, 6]);
+        context.strokeRect(
+            bounds.minX - 3,
+            bounds.minY - 3,
+            bounds.maxX - bounds.minX + 6,
+            bounds.maxY - bounds.minY + 6
         );
         context.restore();
 
