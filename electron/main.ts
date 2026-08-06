@@ -17,7 +17,7 @@ function createWindow(): void {
         title: "drAW",
         minWidth: 800,
         minHeight: 600,
-        autoHideMenuBar: false,
+        autoHideMenuBar: true,
         icon: iconPath,
         webPreferences: {
             preload: path.join(process.cwd(), "electron", "preload.cjs"),

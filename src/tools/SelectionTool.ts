@@ -87,6 +87,7 @@ export class SelectionTool extends Tool {
 
         this.canvas.style.cursor = "default";
         this.canvas.addEventListener("mousemove", this.handleHover);
+        this.canvas.addEventListener("mouseleave", this.handleCanvasLeave);
         window.addEventListener("keydown", this.handleKeyDown);
 
     }
@@ -94,8 +95,10 @@ export class SelectionTool extends Tool {
     public override deactivate(): void {
 
         this.canvas.removeEventListener("mousemove", this.handleHover);
+        this.canvas.removeEventListener("mouseleave", this.handleCanvasLeave);
         window.removeEventListener("keydown", this.handleKeyDown);
         this.canvas.style.cursor = "";
+        this.canvas.title = "";
         closeTextEditor();
         this.history.commit();
         this.clearSelection();
@@ -148,9 +151,16 @@ export class SelectionTool extends Tool {
 
     }
 
+    private readonly handleCanvasLeave = (): void => {
+
+        this.canvas.title = "";
+
+    };
+
     private readonly handleHover = (event: MouseEvent): void => {
 
         if (this.isResizing) {
+            this.canvas.title = "Basılı tutarak sürükleyin.";
             this.canvas.style.cursor = this.activeHandle !== null ?
                 getResizeCursor(this.activeHandle) : "move";
 
@@ -158,6 +168,7 @@ export class SelectionTool extends Tool {
         }
 
         if (this.isDragging || this.isSelecting) {
+            this.canvas.title = "";
             this.canvas.style.cursor = "move";
 
             return;
@@ -166,16 +177,28 @@ export class SelectionTool extends Tool {
         const handle = this.getHandleAt(event.offsetX, event.offsetY);
 
         if (handle !== null) {
+            this.canvas.title = "Basılı tutarak sürükleyin.";
             this.canvas.style.cursor = getResizeCursor(handle);
 
             return;
         }
 
-        this.canvas.style.cursor = this.isPointOnSelectionBorder(
+        if (this.isPointOnSelectionBorder(
             event.offsetX,
             event.offsetY,
             BORDER_GRAB_TOLERANCE
-        ) ? "move" : "default";
+        )) {
+            this.canvas.title = "Basılı tutarak sürükleyin.";
+            this.canvas.style.cursor = "move";
+
+            return;
+        }
+
+        this.canvas.title = this.selectedTexts.size > 0 &&
+            this.isPointInsideSelectionBounds(event.offsetX, event.offsetY)
+            ? "Düzenlemek için çift tıklayın."
+            : "";
+        this.canvas.style.cursor = "default";
 
     };
 
@@ -362,6 +385,19 @@ export class SelectionTool extends Tool {
         }
 
         return null;
+
+    }
+
+    private isPointInsideSelectionBounds(x: number, y: number): boolean {
+
+        const bounds = this.renderer.getSelectionBounds();
+
+        if (bounds === null) {
+            return false;
+        }
+
+        return x >= bounds.minX && x <= bounds.maxX &&
+            y >= bounds.minY && y <= bounds.maxY;
 
     }
 
@@ -937,6 +973,7 @@ export class SelectionTool extends Tool {
             this.deleteButton.type = "button";
             this.deleteButton.className = "selection-delete-button";
             this.deleteButton.textContent = "✕";
+            this.deleteButton.title = "Sil";
             this.deleteButton.setAttribute("aria-label", "Seçili nesneleri sil");
             this.deleteButton.addEventListener("click", (event) => {
                 event.preventDefault();
