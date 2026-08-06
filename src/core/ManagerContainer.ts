@@ -1,5 +1,5 @@
 import { CanvasManager } from "../core/CanvasManager";
-import { PointerManager } from "../core//PointerManager";
+import { PointerManager } from "../core/PointerManager";
 import { ToolManager } from "../core/ToolManager";
 
 import { DrawingContext } from "../models/DrawingContext";

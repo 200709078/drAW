@@ -55,17 +55,13 @@ export class Sidebar {
         toolbar.appendChild(handle);
 
 
-        const undoButton = this.createHistoryButton(
-            "Geri al",
-            undoIcon,
-            true
-        );
+        const undoButton = this.createIconButton("Geri al", undoIcon, {
+            className: "sidebar__history"
+        });
 
-        const redoButton = this.createHistoryButton(
-            "Yinele",
-            redoIcon,
-            true
-        );
+        const redoButton = this.createIconButton("Yinele", redoIcon, {
+            className: "sidebar__history"
+        });
 
 
 
@@ -91,22 +87,40 @@ export class Sidebar {
         historyManager.addChangeListener(refreshHistoryButtons);
         refreshHistoryButtons();
 
-        const penButton = this.createToolButton("Kalem", pencilIcon, true, () => {
-            void penTool;
-        }, true);
-        const eraserButton = this.createToolButton("Silgi", eraserNormalIcon, false, () => {
-            void eraserTool;
-        }, true);
+        const penButton = this.createIconButton("Kalem", pencilIcon, {
+            className: "sidebar__tool",
+            isSelected: true,
+            selectedClass: "sidebar__tool--selected"
+        });
+        const eraserButton = this.createIconButton("Silgi", eraserNormalIcon, {
+            className: "sidebar__tool",
+            isSelected: false,
+            selectedClass: "sidebar__tool--selected"
+        });
 
-        const highlighterButton = this.createToolButton("Fosforlu kalem", highlighterIcon, false, () => {
-            void highlighterTool;
-        }, true);
-        const selectionButton = this.createToolButton("Çoklu seç ve taşı", selectMoveIcon, false, () => {
-            toolManager.setTool(selectionTool);
-        }, true);
-        const screenCaptureButton = this.createToolButton("Ekran alıntısı", captureIcon, false, () => {
-            toolManager.setTool(screenCaptureTool);
-        }, true);
+        const highlighterButton = this.createIconButton("Fosforlu kalem", highlighterIcon, {
+            className: "sidebar__pen-option",
+            isSelected: false,
+            onSelect: () => {
+                selectPen(highlighterTool, highlighterButton);
+            }
+        });
+        const selectionButton = this.createIconButton("Çoklu seç ve taşı", selectMoveIcon, {
+            className: "sidebar__tool",
+            isSelected: false,
+            selectedClass: "sidebar__tool--selected",
+            onSelect: () => {
+                toolManager.setTool(selectionTool);
+            }
+        });
+        const screenCaptureButton = this.createIconButton("Ekran alıntısı", captureIcon, {
+            className: "sidebar__tool",
+            isSelected: false,
+            selectedClass: "sidebar__tool--selected",
+            onSelect: () => {
+                toolManager.setTool(screenCaptureTool);
+            }
+        });
 
         const selectTool = (selectedButton: HTMLButtonElement): void => {
             for (const button of [penButton, eraserButton, selectionButton, screenCaptureButton]) {
@@ -182,16 +196,9 @@ export class Sidebar {
         widthPalette.setAttribute("role", "group");
         widthPalette.setAttribute("aria-label", "Kalem kalınlığı");
 
-        const newDrawButton = document.createElement("button");
-        newDrawButton.type = "button";
-        newDrawButton.className = "sidebar__history";
-        const newDrawImg = document.createElement("img");
-        newDrawImg.src = newDrawIcon;
-        newDrawImg.alt = "";
-        newDrawImg.draggable = false;
-        newDrawButton.appendChild(newDrawImg);
-        newDrawButton.title = "Yeni çizim";
-        newDrawButton.setAttribute("aria-label", "Yeni çizim");
+        const newDrawButton = this.createIconButton("Yeni çizim", newDrawIcon, {
+            className: "sidebar__history"
+        });
         newDrawButton.addEventListener("click", async () => {
             const confirmed = await confirmDialog({
                 title: "Yeni çizim",
@@ -218,7 +225,7 @@ export class Sidebar {
             colorPreview.style.backgroundColor = "#111827";
             colorButton.setAttribute("aria-label", "Renk: Siyah");
             widthButton.style.setProperty("--line-width", "6px");
-            widthButton.setAttribute("aria-label", "KalÄ±nlÄ±k: 6 piksel");
+            widthButton.setAttribute("aria-label", "Kalınlık: 6 piksel");
 
             for (const [index, button] of colorPalette.querySelectorAll("button").entries()) {
                 const isSelected = index === 0;
@@ -236,28 +243,7 @@ export class Sidebar {
 
 
 
-            eraserButton.replaceChildren();
-
-            const img = document.createElement("img");
-            img.src = eraserStrokeIcon;
-            img.alt = "";
-            img.draggable = false;
-
-            eraserButton.appendChild(img);
-
-            eraserButton.title = "Silgi: Stroke Sil";
-            eraserButton.setAttribute("aria-label", "Silgi: Stroke Sil");
-
-            lastSelectedEraserTool = eraserTool;
-            lastSelectedEraserButton = strokeEraserButton;
-
-            for (const [index, button] of eraserPalette.querySelectorAll(".sidebar__eraser-option").entries()) {
-                const isSelected = index === 0;
-
-                button.classList.toggle("sidebar__eraser-option--selected", isSelected);
-                button.setAttribute("aria-pressed", String(isSelected));
-            }
-
+            selectEraser(eraserTool, strokeEraserButton);
             selectPen(penTool, normalPenButton);
         });
 
@@ -341,6 +327,36 @@ export class Sidebar {
         let lastSelectedPenTool: PenTool | HighlighterTool = penTool;
         let lastSelectedPenButton: HTMLButtonElement | null = null;
 
+        const updatePenButton = (selectedButton: HTMLButtonElement): void => {
+            penButton.replaceChildren();
+
+            const icon = selectedButton.querySelector("img");
+
+            if (icon) {
+                const img = document.createElement("img");
+                img.src = (icon as HTMLImageElement).src;
+                img.alt = "";
+                img.draggable = false;
+
+                penButton.appendChild(img);
+            } else {
+                penButton.textContent = selectedButton.textContent ?? "";
+            }
+
+            penButton.title = `Kalem: ${selectedButton.title}`;
+            penButton.setAttribute("aria-label", `Kalem: ${selectedButton.title}`);
+
+            for (const button of penPalette.querySelectorAll("button")) {
+                const isSelected = button === selectedButton;
+
+                button.classList.toggle("sidebar__pen-option--selected", isSelected);
+                button.setAttribute("aria-pressed", String(isSelected));
+            }
+
+            penPalette.hidden = true;
+            penButton.setAttribute("aria-expanded", "false");
+        };
+
         const selectPen = (
             tool: PenTool | HighlighterTool,
             selectedButton: HTMLButtonElement
@@ -350,88 +366,22 @@ export class Sidebar {
             lastSelectedPenTool = tool;
             lastSelectedPenButton = selectedButton;
             selectTool(penButton);
-
-
-
-            penButton.replaceChildren();
-
-            const icon = selectedButton.querySelector("img");
-
-            if (icon) {
-                const img = document.createElement("img");
-                img.src = (icon as HTMLImageElement).src;
-                img.alt = "";
-                img.draggable = false;
-
-                penButton.appendChild(img);
-            } else {
-                penButton.textContent = selectedButton.textContent ?? "";
-            }
-
-
-            penButton.title = `Kalem: ${selectedButton.title}`;
-            penButton.setAttribute("aria-label", `Kalem: ${selectedButton.title}`);
-
-            for (const button of penPalette.querySelectorAll("button")) {
-                const isSelected = button === selectedButton;
-
-                button.classList.toggle("sidebar__pen-option--selected", isSelected);
-                button.setAttribute("aria-pressed", String(isSelected));
-            }
-
-            penPalette.hidden = true;
-            penButton.setAttribute("aria-expanded", "false");
+            updatePenButton(selectedButton);
         };
 
-        const highlightPen = (
-            tool: PenTool | HighlighterTool,
-            selectedButton: HTMLButtonElement
-        ): void => {
-            void tool;
+        const highlightPen = (selectedButton: HTMLButtonElement): void => {
             selectTool(penButton);
-
-
-            penButton.replaceChildren();
-
-            const icon = selectedButton.querySelector("img");
-
-            if (icon) {
-                const img = document.createElement("img");
-                img.src = (icon as HTMLImageElement).src;
-                img.alt = "";
-                img.draggable = false;
-                penButton.appendChild(img);
-            } else {
-                penButton.textContent = selectedButton.textContent ?? "";
-            }
-
-
-
-            penButton.title = `Kalem: ${selectedButton.title}`;
-            penButton.setAttribute("aria-label", `Kalem: ${selectedButton.title}`);
-
-            for (const button of penPalette.querySelectorAll("button")) {
-                const isSelected = button === selectedButton;
-
-                button.classList.toggle("sidebar__pen-option--selected", isSelected);
-                button.setAttribute("aria-pressed", String(isSelected));
-            }
-
-            penPalette.hidden = true;
-            penButton.setAttribute("aria-expanded", "false");
+            updatePenButton(selectedButton);
         };
 
-        const normalPenButton = this.createPenOption("Normal kalem", pencilIcon, () => {
-            selectPen(penTool, normalPenButton);
-        }, true);
-        highlighterButton.className = "sidebar__pen-option";
-        highlighterButton.title = "Fosforlu kalem";
-        highlighterButton.setAttribute("aria-label", "Fosforlu kalem");
-        highlighterButton.addEventListener("click", () => {
-            selectPen(highlighterTool, highlighterButton);
+        const normalPenButton = this.createIconButton("Normal kalem", pencilIcon, {
+            className: "sidebar__pen-option",
+            isSelected: true,
+            selectedClass: "sidebar__pen-option--selected",
+            onSelect: () => {
+                selectPen(penTool, normalPenButton);
+            }
         });
-        normalPenButton.classList.add("sidebar__pen-option--selected");
-        normalPenButton.setAttribute("aria-pressed", "true");
         lastSelectedPenButton = normalPenButton;
 
 
@@ -469,20 +419,28 @@ export class Sidebar {
             const activeTool = toolManager.getActiveTool();
 
             if (activeTool === penTool) {
-                highlightPen(penTool, normalPenButton);
+                highlightPen(normalPenButton);
             } else if (activeTool === highlighterTool) {
-                highlightPen(highlighterTool, highlighterButton);
+                highlightPen(highlighterButton);
             } else if (activeTool === selectionTool) {
                 selectTool(selectionButton);
             }
         });
 
-        const strokeEraserButton = this.createEraserOption("Stroke Sil", eraserStrokeIcon, () => {
-            selectEraser(eraserTool, strokeEraserButton);
-        }, true);
-        const partialEraserButton = this.createEraserOption("Normal Silgi", eraserNormalIcon, () => {
-            selectEraser(partialEraserTool, partialEraserButton);
-        }, true);
+        const strokeEraserButton = this.createIconButton("Stroke Sil", eraserStrokeIcon, {
+            className: "sidebar__eraser-option",
+            isSelected: false,
+            onSelect: () => {
+                selectEraser(eraserTool, strokeEraserButton);
+            }
+        });
+        const partialEraserButton = this.createIconButton("Normal Silgi", eraserNormalIcon, {
+            className: "sidebar__eraser-option",
+            isSelected: false,
+            onSelect: () => {
+                selectEraser(partialEraserTool, partialEraserButton);
+            }
+        });
         lastSelectedEraserButton = strokeEraserButton;
         eraserPalette.append(strokeEraserButton, partialEraserButton);
 
@@ -631,132 +589,42 @@ export class Sidebar {
 
 
 
-    private createToolButton(
+    private createIconButton(
         label: string,
         icon: string,
-        isSelected: boolean,
-        onSelect: () => void,
-        isSvg = false
+        options: {
+            className: string;
+            isSelected?: boolean;
+            selectedClass?: string;
+            onSelect?: () => void;
+        }
     ): HTMLButtonElement {
         const button = document.createElement("button");
         button.type = "button";
-        button.className = "sidebar__tool";
+        button.className = options.className;
 
-        if (isSvg) {
-            const img = document.createElement("img");
-            img.src = icon;
-            img.alt = "";
-            img.draggable = false;
-            button.appendChild(img);
-        } else {
-            button.textContent = icon;
-        }
-
-        button.title = label;
-        button.setAttribute("aria-label", label);
-        button.setAttribute("aria-pressed", String(isSelected));
-        button.classList.toggle("sidebar__tool--selected", isSelected);
-        button.addEventListener("click", onSelect);
-
-        return button;
-
-    }
-
-
-
-    private createHistoryButton(
-        label: string,
-        icon: string,
-        isSvg = false
-    ): HTMLButtonElement {
-
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "sidebar__history";
-
-        if (isSvg) {
-            const img = document.createElement("img");
-            img.src = icon;
-            img.alt = "";
-            img.draggable = false;
-            button.appendChild(img);
-        } else {
-            button.textContent = icon;
-        }
+        const img = document.createElement("img");
+        img.src = icon;
+        img.alt = "";
+        img.draggable = false;
+        button.appendChild(img);
 
         button.title = label;
         button.setAttribute("aria-label", label);
 
-        return button;
-    }
-
-
-
-    private createEraserOption(
-        label: string,
-        icon: string,
-        onSelect: () => void,
-        isSvg = false
-    ): HTMLButtonElement {
-
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "sidebar__eraser-option";
-
-
-        if (isSvg) {
-            const img = document.createElement("img");
-            img.src = icon;
-            img.alt = "";
-            img.draggable = false;
-            button.appendChild(img);
-        } else {
-            button.textContent = icon;
+        if (options.isSelected !== undefined) {
+            button.setAttribute("aria-pressed", String(options.isSelected));
         }
 
-
-        button.title = label;
-        button.setAttribute("aria-label", label);
-        button.setAttribute("aria-pressed", "false");
-        button.addEventListener("click", onSelect);
-
-        return button;
-
-    }
-
-    private createPenOption(
-        label: string,
-        icon: string,
-        onSelect: () => void,
-        isSvg = false
-    ): HTMLButtonElement {
-
-        const button = document.createElement("button");
-        button.type = "button";
-        button.className = "sidebar__pen-option";
-
-
-
-        if (isSvg) {
-            const img = document.createElement("img");
-            img.src = icon;
-            img.alt = "";
-            img.draggable = false;
-            button.appendChild(img);
-        } else {
-            button.textContent = icon;
+        if (options.selectedClass !== undefined) {
+            button.classList.toggle(options.selectedClass, options.isSelected === true);
         }
 
-
-
-
-        button.title = label;
-        button.setAttribute("aria-label", label);
-        button.setAttribute("aria-pressed", "false");
-        button.addEventListener("click", onSelect);
+        if (options.onSelect !== undefined) {
+            button.addEventListener("click", options.onSelect);
+        }
 
         return button;
-
     }
 
 }

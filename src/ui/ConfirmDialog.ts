@@ -5,23 +5,29 @@ export type ConfirmDialogOptions = {
     cancelLabel?: string;
 };
 
+let modalIdCounter = 0;
+
+const focusableSelector = 'button, [href], input, select, textarea, [tabindex]:not([tabindex="-1"])';
+
 export function confirmDialog(options: ConfirmDialogOptions): Promise<boolean> {
     return new Promise<boolean>((resolve) => {
         const backdrop = document.createElement("div");
         backdrop.className = "modal-backdrop";
 
+        const titleId = `modal-title-${modalIdCounter++}`;
+
         const dialog = document.createElement("div");
         dialog.className = "modal";
         dialog.setAttribute("role", "dialog");
         dialog.setAttribute("aria-modal", "true");
-        dialog.setAttribute("aria-labelledby", "modal-title");
+        dialog.setAttribute("aria-labelledby", titleId);
 
         const titlebar = document.createElement("div");
         titlebar.className = "modal__titlebar";
 
         const title = document.createElement("h2");
         title.className = "modal__title";
-        title.id = "modal-title";
+        title.id = titleId;
         title.textContent = options.title;
 
         const closeButton = document.createElement("button");
@@ -72,10 +78,41 @@ export function confirmDialog(options: ConfirmDialogOptions): Promise<boolean> {
             resolve(result);
         };
 
+        const getFocusableElements = (): HTMLElement[] => {
+            return Array.from(dialog.querySelectorAll<HTMLElement>(focusableSelector))
+                .filter((element) => !element.hasAttribute("disabled") && !element.hasAttribute("hidden"));
+        };
+
         const onKeyDown = (event: KeyboardEvent): void => {
             if (event.key === "Escape") {
                 event.preventDefault();
                 close(false);
+
+                return;
+            }
+
+            if (event.key === "Tab") {
+                const focusable = getFocusableElements();
+
+                if (focusable.length === 0) {
+                    event.preventDefault();
+
+                    return;
+                }
+
+                const first = focusable[0];
+                const last = focusable[focusable.length - 1];
+                const currentIndex = focusable.indexOf(document.activeElement as HTMLElement);
+
+                if (event.shiftKey) {
+                    if (currentIndex <= 0) {
+                        event.preventDefault();
+                        last.focus();
+                    }
+                } else if (currentIndex === -1 || currentIndex === focusable.length - 1) {
+                    event.preventDefault();
+                    first.focus();
+                }
             }
         };
 

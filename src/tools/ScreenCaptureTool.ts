@@ -94,12 +94,12 @@ export class ScreenCaptureTool extends Tool {
                 result = captured;
                 this.addImage(result.dataUrl, result.width, result.height);
             }
-        } finally {
-            this.isCapturing = false;
 
             if (this.toolManager.getActiveTool() === this) {
                 this.toolManager.setTool(result !== null ? this.selectionTool : this.penTool);
             }
+        } finally {
+            this.isCapturing = false;
         }
 
     }
