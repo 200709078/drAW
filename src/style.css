@@ -73,7 +73,7 @@ canvas {
     box-shadow: -8px 0 24px rgb(15 23 42 / 10%);
     font-family: system-ui, sans-serif;
     transform: translateX(0);
-    transition: transform 0.18s ease;
+    transition: transform 0.36s ease;
 }
 
 body.drawings-closed .drawings-panel {
@@ -228,14 +228,14 @@ body.drawings-closed .drawings-panel {
     color: #374151;
     cursor: pointer;
     box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
-    transition: right 0.18s ease;
+    transition: right 0.36s ease;
 }
 
 .drawings-panel__toggle svg {
     display: block;
     width: 16px;
     height: 16px;
-    transition: transform 0.18s ease;
+    transition: transform 0.36s ease;
 }
 
 body.drawings-closed .drawings-panel__toggle {
@@ -278,7 +278,7 @@ body.drawings-closed .drawings-panel__toggle svg {
     margin: 0 auto;
     z-index: 1;
     font-family: system-ui, sans-serif;
-    transition: transform 0.18s ease;
+    transition: transform 0.36s ease;
 }
 
 body.sidebar-closed .sidebar {
@@ -287,7 +287,7 @@ body.sidebar-closed .sidebar {
 
 .sidebar__toggle {
     position: fixed;
-    top: var(--sidebar-toggle-top, 86px);
+    top: var(--sidebar-toggle-top, 82px);
     left: 50%;
     transform: translate(-50%, 0);
     z-index: 30;
@@ -302,21 +302,86 @@ body.sidebar-closed .sidebar {
     color: #374151;
     cursor: pointer;
     box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
-    transition: top 0.18s ease;
+    transition: transform 0.36s ease;
 }
 
 .sidebar__toggle svg {
     display: block;
     width: 16px;
     height: 16px;
-    transition: transform 0.18s ease;
+    transition: transform 0.36s ease;
 }
 
 body.sidebar-closed .sidebar__toggle {
-    top: 0;
+    transform: translate(-50%, calc(-1 * var(--sidebar-toggle-top, 82px)));
 }
 
 body.sidebar-closed .sidebar__toggle svg {
+    transform: rotate(180deg);
+}
+
+.toolbar-left-panel {
+    position: fixed;
+    top: 50%;
+    left: 16px;
+    transform: translateY(-50%);
+    z-index: 10;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+    padding: 8px;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: rgb(255 255 255 / 92%);
+    box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
+    font-family: system-ui, sans-serif;
+    transition: transform 0.36s ease;
+}
+
+body.toolbar-left-closed .toolbar-left-panel {
+    transform: translateY(-50%) translateX(calc(-100% - 16px));
+}
+
+.toolbar-left-panel__list {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 8px;
+}
+
+.toolbar-left-panel__toggle {
+    position: fixed;
+    top: 50%;
+    left: var(--toolbar-left-toggle-left, 84px);
+    transform: translate(0, -50%);
+    z-index: 30;
+    display: grid;
+    place-items: center;
+    width: 26px;
+    height: 44px;
+    padding: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+    box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
+    transition: left 0.36s ease;
+}
+
+.toolbar-left-panel__toggle svg {
+    display: block;
+    width: 16px;
+    height: 16px;
+    transition: transform 0.36s ease;
+}
+
+body.toolbar-left-closed .toolbar-left-panel__toggle {
+    left: 0;
+}
+
+body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     transform: rotate(180deg);
 }
 
