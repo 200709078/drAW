@@ -261,7 +261,7 @@ export class DrawingsPanel {
         deleteButton.setAttribute("aria-label", "Sil");
         deleteButton.innerHTML = DrawingsPanel.ICON_DELETE;
 
-        actions.append(renameButton, deleteButton);
+        actions.append(deleteButton, renameButton);
 
         card.append(openButton, actions);
 
