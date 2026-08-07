@@ -10,7 +10,11 @@ import { HistoryManager } from "../core/HistoryManager";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { TextTool } from "../tools/TextTool";
 import { ShapesTool } from "../tools/ShapesTool";
+import { AutoSaveManager } from "../autosave/AutoSaveManager";
+import type { DrawingRepository } from "../storage/DrawingRepository";
+import { DrawingsPanel } from "./DrawingsPanel";
 import type { ShapeType } from "../shapes/ShapeFactory";
+import type { Tool } from "../tools/Tool";
 import pencilIcon from "../assets/icons/pencil.svg";
 import highlighterIcon from "../assets/icons/highlighter.svg";
 import eraserNormalIcon from "../assets/icons/eraser_normal.svg";
@@ -25,7 +29,6 @@ import lineIcon from "../assets/icons/line.svg";
 import undoIcon from "../assets/icons/undo.svg";
 import redoIcon from "../assets/icons/redo.svg";
 import newDrawIcon from "../assets/icons/newdraw.svg";
-import { confirmDialog } from "./ConfirmDialog";
 
 export class Sidebar {
 
@@ -42,7 +45,10 @@ export class Sidebar {
         screenCaptureTool: ScreenCaptureTool,
         textTool: TextTool,
         shapesTool: ShapesTool,
-        desktopAvailable: boolean
+        desktopAvailable: boolean,
+        autoSaveManager: AutoSaveManager,
+        repository: DrawingRepository,
+        canvas: HTMLCanvasElement
     ) {
 
         const sidebar = document.createElement("aside");
@@ -256,20 +262,12 @@ export class Sidebar {
             className: "sidebar__history"
         });
         newDrawButton.addEventListener("click", async () => {
-            const confirmed = await confirmDialog({
-                title: "Yeni çizim",
-                message: "Yeni bir çizime geçilsin mi? Mevcut çizimler silinecek.",
-                confirmLabel: "Evet, başla",
-                cancelLabel: "İptal"
-            });
-
-            if (!confirmed) {
-                return;
-            }
+            await autoSaveManager.newDrawing();
 
             toolManager.getActiveTool()?.cancel();
             drawingDocument.clearCurrentPage();
             historyManager.reset();
+            autoSaveManager.resetActiveDocument();
             documentRenderer.render();
 
             penTool.setColor("#111827");
@@ -302,6 +300,7 @@ export class Sidebar {
             selectShape(shapeOptions[0].type, shapeButtons[0]);
             selectEraser(eraserTool, strokeEraserButton);
             selectPen(penTool, normalPenButton);
+            toolManager.setTool(selectionTool);
         });
 
         const flyouts = [
@@ -724,7 +723,6 @@ export class Sidebar {
         widthControl.append(widthButton, widthPalette);
         toolbar.append(
             undoButton,
-            newDrawButton,
             redoButton,
             penControl,
             eraserControl,
@@ -737,6 +735,74 @@ export class Sidebar {
         );
         sidebar.appendChild(toolbar);
         document.body.appendChild(sidebar);
+
+        const toggle = document.createElement("button");
+        toggle.type = "button";
+        toggle.className = "sidebar__toggle";
+        toggle.setAttribute("aria-label", "Araç çubuğunu kapat");
+        toggle.setAttribute("aria-expanded", "true");
+        toggle.innerHTML = [
+            `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"`,
+            ` stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+            `<path d="m18 15-6-6-6 6"/>`,
+            `</svg>`
+        ].join("");
+        document.body.appendChild(toggle);
+
+        const updateToggleTop = (): void => {
+            const rect = sidebar.getBoundingClientRect();
+            document.documentElement.style.setProperty(
+                "--sidebar-toggle-top",
+                `${rect.bottom}px`
+            );
+        };
+
+        updateToggleTop();
+        window.addEventListener("resize", updateToggleTop);
+
+        const setSidebarOpen = (isOpen: boolean): void => {
+            document.body.classList.toggle("sidebar-closed", !isOpen);
+            toggle.setAttribute("aria-expanded", String(isOpen));
+            toggle.setAttribute(
+                "aria-label",
+                isOpen ? "Araç çubuğunu kapat" : "Araç çubuğunu aç"
+            );
+        };
+
+        setSidebarOpen(true);
+
+        toggle.addEventListener("click", () => {
+            setSidebarOpen(document.body.classList.contains("sidebar-closed"));
+        });
+
+        const drawingTools: Array<Tool> = [
+            penTool,
+            highlighterTool,
+            eraserTool,
+            partialEraserTool,
+            shapesTool,
+            textTool
+        ];
+
+        canvas.addEventListener("pointerdown", () => {
+            const activeTool = toolManager.getActiveTool();
+
+            if (activeTool !== null && drawingTools.includes(activeTool)) {
+                setSidebarOpen(false);
+            }
+        });
+
+        new DrawingsPanel({
+            repository,
+            autoSaveManager,
+            toolManager,
+            selectionTool,
+            drawingDocument,
+            documentRenderer,
+            historyManager,
+            newDrawButton,
+            canvas
+        });
 
     }
 

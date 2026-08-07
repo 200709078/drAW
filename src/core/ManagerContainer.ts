@@ -18,6 +18,11 @@ import { ShapesTool } from "../tools/ShapesTool";
 import { HistoryManager } from "./HistoryManager";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { getScreenCaptureGateway, isDesktopAvailable } from "../platform/ScreenCaptureGateway";
+import { AutoSaveManager } from "../autosave/AutoSaveManager";
+import { ThumbnailGenerator } from "../autosave/ThumbnailGenerator";
+import { DrawingRepository } from "../storage/DrawingRepository";
+import { createStorageProvider } from "../storage/createStorageProvider";
+import { ThumbnailStorageDecorator } from "../storage/ThumbnailStorageDecorator";
 
 export class ManagerContainer {
 
@@ -34,6 +39,8 @@ export class ManagerContainer {
     private readonly historyManager: HistoryManager;
     private readonly screenCaptureTool: ScreenCaptureTool;
     private readonly desktopAvailable: boolean;
+    private readonly autoSaveManager: AutoSaveManager;
+    private readonly drawingRepository: DrawingRepository;
 
     private readonly drawingContext: DrawingContext;
 
@@ -54,6 +61,19 @@ export class ManagerContainer {
         // Document
         this.document = new Document();
         this.historyManager = new HistoryManager(this.document);
+
+        // Auto Save
+        this.drawingRepository = new DrawingRepository(
+            new ThumbnailStorageDecorator(
+                createStorageProvider(),
+                new ThumbnailGenerator()
+            )
+        );
+        this.autoSaveManager = new AutoSaveManager(
+            this.drawingRepository,
+            this.document,
+            this.historyManager
+        );
 
         // Renderer
         this.documentRenderer = new DocumentRenderer(
@@ -231,6 +251,18 @@ export class ManagerContainer {
     public getDesktopAvailable(): boolean {
 
         return this.desktopAvailable;
+
+    }
+
+    public getAutoSaveManager(): AutoSaveManager {
+
+        return this.autoSaveManager;
+
+    }
+
+    public getDrawingRepository(): DrawingRepository {
+
+        return this.drawingRepository;
 
     }
 
