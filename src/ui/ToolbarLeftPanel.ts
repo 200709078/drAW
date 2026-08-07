@@ -191,6 +191,8 @@ export class ToolbarLeftPanel {
             }
         });
 
+        window.addEventListener("newdraw:started", () => setPanelOpen(false));
+
     }
 
     private createIconButton(
