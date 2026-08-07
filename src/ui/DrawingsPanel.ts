@@ -82,6 +82,7 @@ export class DrawingsPanel {
         this.toggleElement = built.toggle;
 
         this.historyManager.addChangeListener(() => this.scheduleRefresh());
+        window.addEventListener("newdraw:started", () => this.close());
         void this.refresh();
 
     }
@@ -355,6 +356,7 @@ export class DrawingsPanel {
 
         this.close();
         this.scheduleRefresh();
+        window.dispatchEvent(new CustomEvent("drawing:opened"));
 
     }
 

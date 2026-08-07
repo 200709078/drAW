@@ -35,19 +35,29 @@ canvas {
     position: fixed;
     z-index: 10;
     display: grid;
-    width: 22px;
-    height: 22px;
+    width: 26px;
+    height: 26px;
     place-items: center;
     padding: 0;
-    border: 1px solid #2563eb;
-    border-radius: 50%;
-    background: #ef4444;
-    color: white;
-    font-size: 13px;
-    line-height: 1;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
+    background: rgb(255 255 255 / 92%);
+    color: #374151;
     cursor: pointer;
     transform: translate(-50%, -50%);
     touch-action: none;
+}
+
+.selection-delete-button:hover {
+    background: #ef4444;
+    border-color: #ef4444;
+    color: white;
+}
+
+.selection-delete-button svg {
+    display: block;
+    width: 14px;
+    height: 14px;
 }
 
 .selection-delete-button[hidden] {
@@ -305,6 +315,10 @@ body.sidebar-closed .sidebar {
     transition: transform 0.36s ease;
 }
 
+.sidebar__toggle[hidden] {
+    display: none;
+}
+
 .sidebar__toggle svg {
     display: block;
     width: 16px;
@@ -474,7 +488,7 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 
 .sidebar__history:disabled {
     color: #9ca3af;
-    cursor: not-allowed;
+    cursor: default;
 }
 
 .sidebar__history:disabled img {
@@ -587,7 +601,7 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 .sidebar__width-palette {
     position: fixed;
     left: 50%;
-    transform: translate(-50%, -100%);
+    transform: translate(-50%, 0);
 }
 
 .sidebar__color {

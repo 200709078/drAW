@@ -229,7 +229,8 @@ export class ToolbarPanel {
             selectShape(shapeOptions[0].type, shapeButtons[0]);
             selectEraser(eraserTool, strokeEraserButton);
             selectPen(penTool, normalPenButton);
-            toolManager.setTool(selectionTool);
+            setToolbarOpen(true);
+            window.dispatchEvent(new CustomEvent("newdraw:started"));
         });
 
         const flyouts = [
@@ -240,11 +241,25 @@ export class ToolbarPanel {
             { button: widthButton, panel: widthPalette }
         ];
 
+        let toggle: HTMLButtonElement | null = null;
+
+        const syncToggleVisibility = (): void => {
+            if (toggle === null) {
+                return;
+            }
+
+            const anyFlyoutOpen = flyouts.some((flyout) => !flyout.panel.hidden);
+
+            toggle.hidden = anyFlyoutOpen;
+        };
+
         const closeFlyouts = (): void => {
             for (const flyout of flyouts) {
                 flyout.panel.hidden = true;
                 flyout.button.setAttribute("aria-expanded", "false");
             }
+
+            syncToggleVisibility();
         };
 
         const toggleFlyout = (button: HTMLButtonElement, panel: HTMLDivElement): void => {
@@ -256,11 +271,12 @@ export class ToolbarPanel {
                 const buttonBounds = button.getBoundingClientRect();
 
                 panel.style.left = `${window.innerWidth / 2}px`;
-                panel.style.top = `${buttonBounds.top - 16}px`;
+                panel.style.top = `${buttonBounds.bottom + 16}px`;
+                panel.hidden = false;
+                button.setAttribute("aria-expanded", "true");
             }
 
-            panel.hidden = !shouldOpen;
-            button.setAttribute("aria-expanded", String(shouldOpen));
+            syncToggleVisibility();
         };
 
         colorButton.addEventListener("click", () => toggleFlyout(colorButton, colorPalette));
@@ -567,6 +583,7 @@ export class ToolbarPanel {
 
                 colorPalette.hidden = true;
                 colorButton.setAttribute("aria-expanded", "false");
+                syncToggleVisibility();
             });
 
             colorPalette.appendChild(paletteButton);
@@ -602,6 +619,7 @@ export class ToolbarPanel {
 
                 widthPalette.hidden = true;
                 widthButton.setAttribute("aria-expanded", "false");
+                syncToggleVisibility();
             });
 
             widthPalette.appendChild(paletteButton);
@@ -642,18 +660,19 @@ export class ToolbarPanel {
         sidebar.appendChild(toolbar);
         document.body.appendChild(sidebar);
 
-        const toggle = document.createElement("button");
-        toggle.type = "button";
-        toggle.className = "sidebar__toggle";
-        toggle.setAttribute("aria-label", "Araç çubuğunu kapat");
-        toggle.setAttribute("aria-expanded", "true");
-        toggle.innerHTML = [
+        const toggleButton = document.createElement("button");
+        toggleButton.type = "button";
+        toggleButton.className = "sidebar__toggle";
+        toggleButton.setAttribute("aria-label", "Araç çubuğunu kapat");
+        toggleButton.setAttribute("aria-expanded", "true");
+        toggleButton.innerHTML = [
             `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"`,
             ` stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
             `<path d="m18 15-6-6-6 6"/>`,
             `</svg>`
         ].join("");
-        document.body.appendChild(toggle);
+        document.body.appendChild(toggleButton);
+        toggle = toggleButton;
 
         const updateToggleTop = (): void => {
             if (document.body.classList.contains("sidebar-closed")) {
@@ -700,6 +719,8 @@ export class ToolbarPanel {
                 setToolbarOpen(false);
             }
         });
+
+        window.addEventListener("drawing:opened", () => setToolbarOpen(true));
 
         new DrawingsPanel({
             repository,
