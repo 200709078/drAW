@@ -1,4 +1,4 @@
-export const MAX_DRAWING_RECORDS = 5;
+export const MAX_DRAWING_RECORDS = 50;
 
 export const STORAGE_DATABASE_NAME = "draw-storage";
 export const STORAGE_DATABASE_VERSION = 1;

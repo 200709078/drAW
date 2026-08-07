@@ -698,9 +698,31 @@ export class ToolbarPanel {
             );
         };
 
+        const AUTO_OPEN_DELAY = 5000;
+        let autoOpenTimer: ReturnType<typeof setTimeout> | null = null;
+
+        const scheduleAutoOpen = (): void => {
+            if (autoOpenTimer !== null) {
+                clearTimeout(autoOpenTimer);
+            }
+
+            autoOpenTimer = setTimeout(() => {
+                autoOpenTimer = null;
+                setToolbarOpen(true);
+            }, AUTO_OPEN_DELAY);
+        };
+
+        const cancelAutoOpen = (): void => {
+            if (autoOpenTimer !== null) {
+                clearTimeout(autoOpenTimer);
+                autoOpenTimer = null;
+            }
+        };
+
         setToolbarOpen(true);
 
         toggle.addEventListener("click", () => {
+            cancelAutoOpen();
             setToolbarOpen(document.body.classList.contains("sidebar-closed"));
         });
 
@@ -717,10 +739,30 @@ export class ToolbarPanel {
 
             if (activeTool !== null && drawingTools.includes(activeTool)) {
                 setToolbarOpen(false);
+                scheduleAutoOpen();
             }
         });
 
-        window.addEventListener("drawing:opened", () => setToolbarOpen(true));
+        canvas.addEventListener("pointermove", () => {
+            const activeTool = toolManager.getActiveTool();
+
+            if (activeTool !== null && drawingTools.includes(activeTool)) {
+                scheduleAutoOpen();
+            }
+        });
+
+        canvas.addEventListener("pointerup", () => {
+            const activeTool = toolManager.getActiveTool();
+
+            if (activeTool !== null && drawingTools.includes(activeTool)) {
+                scheduleAutoOpen();
+            }
+        });
+
+        window.addEventListener("drawing:opened", () => {
+            cancelAutoOpen();
+            setToolbarOpen(true);
+        });
 
         new DrawingsPanel({
             repository,
