@@ -5,6 +5,13 @@
   "version": "0.0.1",
   "type": "module",
   "main": "electron/main.ts",
+  "description": "drAW - Interactive whiteboard and drawing application",
+  "license": "MIT",
+  "author": {
+    "name": "Adem Varol",
+    "email": "ademvarol0808@gmail.com",
+    "url": "https://www.madematik.com"
+  },
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -27,16 +34,38 @@
     "directories": {
       "output": "release"
     },
+    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "compression": "maximum",
     "files": [
       "dist/**/*",
       "electron/**/*",
       "package.json"
     ],
+    "asar": true,
     "linux": {
-      "target": "AppImage"
+      "target": [
+        "AppImage",
+        "deb"
+      ],
+      "icon": "electron/assets/app-icons",
+      "category": "Graphics",
+      "executableName": "drAW"
     },
     "win": {
-      "target": "nsis"
+      "target": "nsis",
+      "icon": "electron/assets/app-icons/draw.ico"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true,
+      "createDesktopShortcut": true,
+      "createStartMenuShortcut": true,
+      "shortcutName": "drAW"
+    },
+    "mac": {
+      "target": "dmg",
+      "icon": "electron/assets/app-icons/draw.icns",
+      "category": "public.app-category.education"
     }
   }
 }

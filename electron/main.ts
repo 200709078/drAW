@@ -70,9 +70,22 @@ function registerStorageHandlers(): void {
 
 }
 
+function getBasePath(): string {
+    return app.isPackaged ? app.getAppPath() : process.cwd();
+}
+
+function getAppPath(...segments: string[]): string {
+    return path.join(getBasePath(), ...segments);
+}
+
 function createWindow(): void {
 
-    const iconPath = path.join(process.cwd(), "electron/assets/app-icons/draw.png");
+    const iconPath = getAppPath(
+        "electron",
+        "assets",
+        "app-icons",
+        "draw.png"
+    );
 
     const window = new BrowserWindow({
         width: 1280,
@@ -83,7 +96,10 @@ function createWindow(): void {
         autoHideMenuBar: true,
         icon: iconPath,
         webPreferences: {
-            preload: path.join(process.cwd(), "electron", "preload.cjs"),
+            preload: getAppPath(
+                "electron",
+                "preload.cjs"
+            ),
             contextIsolation: true,
             nodeIntegration: false
         }
@@ -105,8 +121,7 @@ function createWindow(): void {
         }, 3000);
     });
 
-    const indexPath = path.join(
-        process.cwd(),
+    const indexPath = getAppPath(
         "dist",
         "index.html"
     );
