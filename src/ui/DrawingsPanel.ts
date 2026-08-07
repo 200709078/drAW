@@ -97,7 +97,7 @@ export class DrawingsPanel {
 
         this.openState = true;
         document.body.classList.remove("drawings-closed");
-        this.toggleElement.setAttribute("aria-label", "Drawings panelini kapat");
+        this.toggleElement.setAttribute("aria-label", "Kapat");
 
     }
 
@@ -105,7 +105,7 @@ export class DrawingsPanel {
 
         this.openState = false;
         document.body.classList.add("drawings-closed");
-        this.toggleElement.setAttribute("aria-label", "Drawings panelini aç");
+        this.toggleElement.setAttribute("aria-label", "Aç");
 
     }
 
@@ -186,7 +186,7 @@ export class DrawingsPanel {
 
         const title = document.createElement("h2");
         title.className = "drawings-panel__title";
-        title.textContent = "Drawings";
+        title.textContent = "ÇİZİMLER";
 
         const newDrawingArea = document.createElement("div");
         newDrawingArea.className = "drawings-panel__new";
@@ -250,7 +250,7 @@ export class DrawingsPanel {
         const renameButton = document.createElement("button");
         renameButton.type = "button";
         renameButton.className = "drawings-card__action";
-        renameButton.title = "Yeniden adlandır";
+        renameButton.title = "Yeniden Adlandır";
         renameButton.setAttribute("aria-label", "Yeniden adlandır");
         renameButton.innerHTML = DrawingsPanel.ICON_RENAME;
 

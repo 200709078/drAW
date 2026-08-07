@@ -29,7 +29,7 @@ export class ToolbarLeftPanel {
         const list = document.createElement("div");
         list.className = "toolbar-left-panel__list";
 
-        const undoButton = this.createIconButton("Geri al", undoIcon, {
+        const undoButton = this.createIconButton("Geri Al", undoIcon, {
             className: "sidebar__history"
         });
 
@@ -68,7 +68,7 @@ export class ToolbarLeftPanel {
         });
 
         const screenCaptureButton = desktopAvailable
-            ? this.createIconButton("Ekran alıntısı", captureIcon, {
+            ? this.createIconButton("Ekran Alıntısı", captureIcon, {
                 className: "sidebar__tool",
                 isSelected: false,
                 selectedClass: "sidebar__tool--selected",

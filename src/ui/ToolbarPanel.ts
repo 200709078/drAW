@@ -68,7 +68,7 @@ export class ToolbarPanel {
             isSelected: true,
             selectedClass: "sidebar__tool--selected"
         });
-        const eraserButton = this.createIconButton("Silgi", eraserNormalIcon, {
+        const eraserButton = this.createIconButton("Stroke Silgi", eraserStrokeIcon, {
             className: "sidebar__tool",
             isSelected: false,
             selectedClass: "sidebar__tool--selected"
@@ -80,14 +80,14 @@ export class ToolbarPanel {
             selectedClass: "sidebar__tool--selected"
         });
 
-        const highlighterButton = this.createIconButton("Fosforlu kalem", highlighterIcon, {
+        const highlighterButton = this.createIconButton("Fosforlu Kalem", highlighterIcon, {
             className: "sidebar__pen-option",
             isSelected: false,
             onSelect: () => {
                 selectPen(highlighterTool, highlighterButton);
             }
         });
-        const selectionButton = this.createIconButton("Çoklu seç ve taşı", selectMoveIcon, {
+        const selectionButton = this.createIconButton("Seç ve Taşı", selectMoveIcon, {
             className: "sidebar__tool",
             isSelected: false,
             selectedClass: "sidebar__tool--selected",
@@ -187,7 +187,7 @@ export class ToolbarPanel {
         widthPalette.setAttribute("role", "group");
         widthPalette.setAttribute("aria-label", "Kalem kalınlığı");
 
-        const newDrawButton = this.createIconButton("Yeni çizim", newDrawIcon, {
+        const newDrawButton = this.createIconButton("Yeni Çizim", newDrawIcon, {
             className: "sidebar__history"
         });
         newDrawButton.addEventListener("click", async () => {
@@ -312,7 +312,7 @@ export class ToolbarPanel {
             }
 
 
-            eraserButton.title = `Silgi: ${selectedButton.title}`;
+            eraserButton.title = `${selectedButton.title}`;
             eraserButton.setAttribute("aria-label", `Silgi: ${selectedButton.title}`);
 
             for (const button of eraserPalette.querySelectorAll("button")) {
@@ -345,7 +345,7 @@ export class ToolbarPanel {
                 penButton.textContent = selectedButton.textContent ?? "";
             }
 
-            penButton.title = `Kalem: ${selectedButton.title}`;
+            penButton.title = `${selectedButton.title}`;
             penButton.setAttribute("aria-label", `Kalem: ${selectedButton.title}`);
 
             for (const button of penPalette.querySelectorAll("button")) {
@@ -376,7 +376,7 @@ export class ToolbarPanel {
             updatePenButton(selectedButton);
         };
 
-        const normalPenButton = this.createIconButton("Normal kalem", pencilIcon, {
+        const normalPenButton = this.createIconButton("Normal Kalem", pencilIcon, {
             className: "sidebar__pen-option",
             isSelected: true,
             selectedClass: "sidebar__pen-option--selected",
@@ -400,7 +400,7 @@ export class ToolbarPanel {
         }
 
 
-        penButton.title = `Kalem: ${normalPenButton.title}`;
+        penButton.title = `${normalPenButton.title}`;
         penButton.setAttribute("aria-label", `Kalem: ${normalPenButton.title}`);
         penPalette.append(normalPenButton, highlighterButton);
 
@@ -431,7 +431,7 @@ export class ToolbarPanel {
             }
         });
 
-        const strokeEraserButton = this.createIconButton("Stroke Sil", eraserStrokeIcon, {
+        const strokeEraserButton = this.createIconButton("Stroke Silgi", eraserStrokeIcon, {
             className: "sidebar__eraser-option",
             isSelected: false,
             onSelect: () => {
@@ -464,7 +464,7 @@ export class ToolbarPanel {
         const shapeOptions: Array<{ type: ShapeType; label: string; icon: string }> = [
             { type: "line", label: "Çizgi", icon: lineIcon },
             { type: "rectangle", label: "Dikdörtgen", icon: rectangleIcon },
-            { type: "ellipse", label: "Elips", icon: circleIcon },
+            { type: "ellipse", label: "Çember", icon: circleIcon },
             { type: "triangle", label: "Üçgen", icon: triangleIcon }
         ];
 
@@ -483,7 +483,7 @@ export class ToolbarPanel {
             selectTool(shapesButton);
             this.copyButtonIcon(shapesButton, selectedButton);
 
-            shapesButton.title = `Şekil: ${selectedButton.title}`;
+            shapesButton.title = `${selectedButton.title}`;
             shapesButton.setAttribute("aria-label", `Şekil: ${selectedButton.title}`);
 
             for (const button of shapesPalette.querySelectorAll("button")) {
@@ -515,7 +515,7 @@ export class ToolbarPanel {
 
         lastSelectedShapeButton = shapeButtons[0];
         this.copyButtonIcon(shapesButton, shapeButtons[0]);
-        shapesButton.title = `Şekil: ${shapeButtons[0].title}`;
+        shapesButton.title = `${shapeButtons[0].title}`;
         shapesButton.setAttribute("aria-label", `Şekil: ${shapeButtons[0].title}`);
 
         shapesButton.addEventListener("click", () => {
