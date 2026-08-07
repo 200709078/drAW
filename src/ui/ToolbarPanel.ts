@@ -7,8 +7,6 @@ import { SelectionTool } from "../tools/SelectionTool";
 import { PenTool } from "../tools/PenTool";
 import { PartialEraserTool } from "../tools/PartialEraserTool";
 import { HistoryManager } from "../core/HistoryManager";
-import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
-import { TextTool } from "../tools/TextTool";
 import { ShapesTool } from "../tools/ShapesTool";
 import { AutoSaveManager } from "../autosave/AutoSaveManager";
 import type { DrawingRepository } from "../storage/DrawingRepository";
@@ -20,17 +18,13 @@ import highlighterIcon from "../assets/icons/highlighter.svg";
 import eraserNormalIcon from "../assets/icons/eraser_normal.svg";
 import eraserStrokeIcon from "../assets/icons/eraser_stroke.svg";
 import selectMoveIcon from "../assets/icons/select_move.svg";
-import captureIcon from "../assets/icons/capture.svg";
-import textIcon from "../assets/icons/text.svg";
 import rectangleIcon from "../assets/icons/rectangle.svg";
 import circleIcon from "../assets/icons/circle.svg";
 import triangleIcon from "../assets/icons/triangle.svg";
 import lineIcon from "../assets/icons/line.svg";
-import undoIcon from "../assets/icons/undo.svg";
-import redoIcon from "../assets/icons/redo.svg";
 import newDrawIcon from "../assets/icons/newdraw.svg";
 
-export class Sidebar {
+export class ToolbarPanel {
 
     constructor(
         toolManager: ToolManager,
@@ -42,10 +36,7 @@ export class Sidebar {
         drawingDocument: Document,
         documentRenderer: DocumentRenderer,
         historyManager: HistoryManager,
-        screenCaptureTool: ScreenCaptureTool,
-        textTool: TextTool,
         shapesTool: ShapesTool,
-        desktopAvailable: boolean,
         autoSaveManager: AutoSaveManager,
         repository: DrawingRepository,
         canvas: HTMLCanvasElement
@@ -71,38 +62,6 @@ export class Sidebar {
 
         toolbar.appendChild(handle);
 
-
-        const undoButton = this.createIconButton("Geri al", undoIcon, {
-            className: "sidebar__history"
-        });
-
-        const redoButton = this.createIconButton("Yinele", redoIcon, {
-            className: "sidebar__history"
-        });
-
-
-
-
-        const refreshHistoryButtons = (): void => {
-            undoButton.disabled = !historyManager.canUndo();
-            redoButton.disabled = !historyManager.canRedo();
-        };
-
-        const restoreHistory = (action: () => boolean): void => {
-            toolManager.getActiveTool()?.cancel();
-
-            if (!action()) {
-                return;
-            }
-
-            documentRenderer.clearSelection();
-            documentRenderer.render();
-        };
-
-        undoButton.addEventListener("click", () => restoreHistory(() => historyManager.undo()));
-        redoButton.addEventListener("click", () => restoreHistory(() => historyManager.redo()));
-        historyManager.addChangeListener(refreshHistoryButtons);
-        refreshHistoryButtons();
 
         const penButton = this.createIconButton("Kalem", pencilIcon, {
             className: "sidebar__tool",
@@ -136,24 +95,6 @@ export class Sidebar {
                 toolManager.setTool(selectionTool);
             }
         });
-        const screenCaptureButton = desktopAvailable
-            ? this.createIconButton("Ekran alıntısı", captureIcon, {
-                className: "sidebar__tool",
-                isSelected: false,
-                selectedClass: "sidebar__tool--selected",
-                onSelect: () => {
-                    toolManager.setTool(screenCaptureTool);
-                }
-            })
-            : null;
-        const textButton = this.createIconButton("Metin", textIcon, {
-            className: "sidebar__tool",
-            isSelected: false,
-            selectedClass: "sidebar__tool--selected",
-            onSelect: () => {
-                toolManager.setTool(textTool);
-            }
-        });
 
         const toolButtons: HTMLButtonElement[] = [
             penButton,
@@ -161,12 +102,6 @@ export class Sidebar {
             shapesButton,
             selectionButton
         ];
-
-        if (screenCaptureButton !== null) {
-            toolButtons.push(screenCaptureButton);
-        }
-
-        toolButtons.push(textButton);
 
         const selectTool = (selectedButton: HTMLButtonElement): void => {
             for (const button of toolButtons) {
@@ -178,12 +113,6 @@ export class Sidebar {
         };
 
         selectionButton.addEventListener("click", () => selectTool(selectionButton));
-
-        if (screenCaptureButton !== null) {
-            screenCaptureButton.addEventListener("click", () => selectTool(screenCaptureButton));
-        }
-
-        textButton.addEventListener("click", () => selectTool(textButton));
 
         const penControl = document.createElement("div");
         penControl.className = "sidebar__control";
@@ -481,8 +410,6 @@ export class Sidebar {
                 highlightPen(highlighterButton);
             } else if (activeTool === selectionTool) {
                 selectTool(selectionButton);
-            } else if (activeTool === textTool) {
-                selectTool(textButton);
             } else if (activeTool === shapesTool) {
                 selectTool(shapesButton);
             }
@@ -604,23 +531,6 @@ export class Sidebar {
             }
         });
 
-        document.addEventListener("keydown", (event) => {
-            if (!event.ctrlKey && !event.metaKey) {
-                return;
-            }
-
-            const key = event.key.toLowerCase();
-            const isRedo = key === "y" || (key === "z" && event.shiftKey);
-            const isUndo = key === "z" && !event.shiftKey;
-
-            if (!isUndo && !isRedo) {
-                return;
-            }
-
-            event.preventDefault();
-            restoreHistory(isRedo ? () => historyManager.redo() : () => historyManager.undo());
-        });
-
         const colors = [
             { name: "Siyah", value: "#111827" },
             { name: "Kırmızı", value: "#ef4444" },
@@ -722,14 +632,10 @@ export class Sidebar {
         colorControl.append(colorButton, colorPalette);
         widthControl.append(widthButton, widthPalette);
         toolbar.append(
-            undoButton,
-            redoButton,
             penControl,
             eraserControl,
             shapesControl,
             selectionButton,
-            ...(screenCaptureButton !== null ? [screenCaptureButton] : []),
-            textButton,
             colorControl,
             widthControl
         );
@@ -750,6 +656,10 @@ export class Sidebar {
         document.body.appendChild(toggle);
 
         const updateToggleTop = (): void => {
+            if (document.body.classList.contains("sidebar-closed")) {
+                return;
+            }
+
             const rect = sidebar.getBoundingClientRect();
             document.documentElement.style.setProperty(
                 "--sidebar-toggle-top",
@@ -760,7 +670,7 @@ export class Sidebar {
         updateToggleTop();
         window.addEventListener("resize", updateToggleTop);
 
-        const setSidebarOpen = (isOpen: boolean): void => {
+        const setToolbarOpen = (isOpen: boolean): void => {
             document.body.classList.toggle("sidebar-closed", !isOpen);
             toggle.setAttribute("aria-expanded", String(isOpen));
             toggle.setAttribute(
@@ -769,10 +679,10 @@ export class Sidebar {
             );
         };
 
-        setSidebarOpen(true);
+        setToolbarOpen(true);
 
         toggle.addEventListener("click", () => {
-            setSidebarOpen(document.body.classList.contains("sidebar-closed"));
+            setToolbarOpen(document.body.classList.contains("sidebar-closed"));
         });
 
         const drawingTools: Array<Tool> = [
@@ -780,15 +690,14 @@ export class Sidebar {
             highlighterTool,
             eraserTool,
             partialEraserTool,
-            shapesTool,
-            textTool
+            shapesTool
         ];
 
         canvas.addEventListener("pointerdown", () => {
             const activeTool = toolManager.getActiveTool();
 
             if (activeTool !== null && drawingTools.includes(activeTool)) {
-                setSidebarOpen(false);
+                setToolbarOpen(false);
             }
         });
 

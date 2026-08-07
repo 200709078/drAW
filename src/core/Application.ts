@@ -1,5 +1,6 @@
 import { ManagerContainer } from "./ManagerContainer";
-import { Sidebar } from "../ui/Sidebar";
+import { ToolbarPanel } from "../ui/ToolbarPanel";
+import { ToolbarLeftPanel } from "../ui/ToolbarLeftPanel";
 
 export class Application {
 
@@ -8,7 +9,7 @@ export class Application {
     constructor() {
 
         this.managers = new ManagerContainer();
-        new Sidebar(
+        new ToolbarPanel(
             this.managers.getToolManager(),
             this.managers.getPenTool(),
             this.managers.getEraserTool(),
@@ -18,13 +19,28 @@ export class Application {
             this.managers.getDocument(),
             this.managers.getDocumentRenderer(),
             this.managers.getHistoryManager(),
-            this.managers.getScreenCaptureTool(),
-            this.managers.getTextTool(),
             this.managers.getShapesTool(),
-            this.managers.getDesktopAvailable(),
             this.managers.getAutoSaveManager(),
             this.managers.getDrawingRepository(),
             this.managers.getCanvasManager().getCanvas()
+        );
+
+        new ToolbarLeftPanel(
+            this.managers.getToolManager(),
+            this.managers.getHistoryManager(),
+            this.managers.getDocumentRenderer(),
+            this.managers.getTextTool(),
+            this.managers.getScreenCaptureTool(),
+            this.managers.getDesktopAvailable(),
+            this.managers.getCanvasManager().getCanvas(),
+            [
+                this.managers.getPenTool(),
+                this.managers.getHighlighterTool(),
+                this.managers.getEraserTool(),
+                this.managers.getPartialEraserTool(),
+                this.managers.getShapesTool(),
+                this.managers.getTextTool()
+            ]
         );
 
         this.registerShutdownHandlers();
