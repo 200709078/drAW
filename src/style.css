@@ -77,6 +77,38 @@ canvas {
     box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
 }
 
+@media (max-width: 767px) {
+    .sidebar {
+        width: max-content;
+        max-width: 100%;
+        overflow-x: auto;
+        overflow-y: hidden;
+        overscroll-behavior-x: contain;
+        scrollbar-width: none;
+        -webkit-overflow-scrolling: touch;
+        touch-action: pan-x;
+        box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
+    }
+
+    .sidebar::-webkit-scrollbar {
+        display: none;
+    }
+
+    .sidebar__toolbar {
+        width: max-content;
+        flex-wrap: nowrap;
+        box-shadow: none;
+    }
+
+    .sidebar__handle {
+        position: sticky;
+        left: 0;
+        z-index: 1;
+        touch-action: pan-x;
+        box-shadow: 1px 0 0 #d1d5db;
+    }
+}
+
 .sidebar__tool {
     display: flex;
     align-items: center;
