@@ -67,5 +67,10 @@
       "icon": "electron/assets/app-icons/draw.icns",
       "category": "public.app-category.education"
     }
+  },
+  "dependencies": {
+    "@capacitor/android": "^8.5.0",
+    "@capacitor/cli": "^8.5.0",
+    "@capacitor/core": "^8.5.0"
   }
 }
