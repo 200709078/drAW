@@ -47,6 +47,7 @@ function createEllipsePoints(bounds: ShapeBounds): readonly Point[] {
     const centerY = (bounds.startY + bounds.endY) / 2;
     const radiusX = Math.abs(bounds.endX - bounds.startX) / 2;
     const radiusY = Math.abs(bounds.endY - bounds.startY) / 2;
+    const radius = Math.max(radiusX, radiusY);
     const segments = 96;
     const points: Point[] = [];
 
@@ -54,8 +55,8 @@ function createEllipsePoints(bounds: ShapeBounds): readonly Point[] {
         const angle = index / segments * Math.PI * 2;
 
         points.push(new Point(
-            centerX + radiusX * Math.cos(angle),
-            centerY + radiusY * Math.sin(angle)
+            centerX + radius * Math.cos(angle),
+            centerY + radius * Math.sin(angle)
         ));
     }
 

@@ -625,28 +625,6 @@ export class ToolbarPanel {
             widthPalette.appendChild(paletteButton);
         }
 
-        sidebar.addEventListener("wheel", (event) => {
-            if (sidebar.scrollWidth <= sidebar.clientWidth) {
-                return;
-            }
-
-            if (event.deltaY === 0) {
-                return;
-            }
-
-            for (const flyout of flyouts) {
-                if (!flyout.panel.hidden) {
-                    return;
-                }
-            }
-
-            event.preventDefault();
-
-            const multiplier = event.deltaMode === 1 ? 16 : 1;
-
-            sidebar.scrollLeft += event.deltaY * multiplier;
-        });
-
         colorControl.append(colorButton, colorPalette);
         widthControl.append(widthButton, widthPalette);
         toolbar.append(
@@ -735,10 +713,11 @@ export class ToolbarPanel {
         ];
 
         canvas.addEventListener("pointerdown", () => {
+            setToolbarOpen(false);
+
             const activeTool = toolManager.getActiveTool();
 
             if (activeTool !== null && drawingTools.includes(activeTool)) {
-                setToolbarOpen(false);
                 scheduleAutoOpen();
             }
         });
