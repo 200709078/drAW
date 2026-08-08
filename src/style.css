@@ -109,14 +109,14 @@ body.drawings-closed .drawings-panel {
 }
 
 .drawings-panel__new .sidebar__history {
-    width: 36px;
-    height: 36px;
+    width: 35px;
+    height: 35px;
     border-radius: 8px;
 }
 
 .drawings-panel__new .sidebar__history img {
-    width: 20px;
-    height: 20px;
+    width: 19.5px;
+    height: 19.5px;
 }
 
 .drawings-panel__list {
@@ -239,8 +239,8 @@ body.drawings-closed .drawings-panel {
     z-index: 30;
     display: grid;
     place-items: center;
-    width: 28px;
-    height: 44px;
+    width: 27px;
+    height: 43px;
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -253,8 +253,8 @@ body.drawings-closed .drawings-panel {
 
 .drawings-panel__toggle svg {
     display: block;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     transition: transform 0.36s ease;
 }
 
@@ -285,7 +285,7 @@ body.drawings-closed .drawings-panel__toggle svg {
 
 @media (max-width: 767px) {
     :root {
-        --drawings-panel-width: min(280px, 82vw);
+        --drawings-panel-width: 60vw;
     }
 }
 
@@ -313,8 +313,8 @@ body.sidebar-closed .sidebar {
     z-index: 15;
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 26px;
+    width: 43px;
+    height: 25px;
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -331,8 +331,8 @@ body.sidebar-closed .sidebar {
 
 .sidebar__toggle svg {
     display: block;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     transition: transform 0.36s ease;
 }
 
@@ -382,8 +382,8 @@ body.toolbar-left-closed .toolbar-left-panel {
     z-index: 30;
     display: grid;
     place-items: center;
-    width: 26px;
-    height: 44px;
+    width: 25px;
+    height: 43px;
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -396,8 +396,8 @@ body.toolbar-left-closed .toolbar-left-panel {
 
 .toolbar-left-panel__toggle svg {
     display: block;
-    width: 16px;
-    height: 16px;
+    width: 15px;
+    height: 15px;
     transition: transform 0.36s ease;
 }
 
@@ -448,15 +448,15 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    width: 47px;
+    height: 47px;
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
     background: white;
     color: #374151;
     cursor: pointer;
-    font-size: 22px;
+    font-size: 21.5px;
 }
 
 .sidebar__tool img,
@@ -464,8 +464,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 .sidebar__pen-option img,
 .sidebar__eraser-option img,
 .sidebar__shape-option img {
-    width: 24px;
-    height: 24px;
+    width: 23px;
+    height: 23px;
     display: block;
     margin: auto;
     pointer-events: none;
@@ -476,15 +476,15 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 48px;
-    height: 48px;
+    width: 47px;
+    height: 47px;
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
     background: white;
     color: #374151;
     cursor: pointer;
-    font-size: 23px;
+    font-size: 22.5px;
 }
 
 .sidebar__history:disabled {
@@ -498,15 +498,15 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 }
 
 .sidebar__handle {
-    width: 48px;
-    height: 48px;
+    width: 47px;
+    height: 47px;
     padding: 0;
     border: 0;
     border-radius: 8px;
     background: white;
     color: #111827;
     cursor: default;
-    font-size: 14.4px;
+    font-size: 14.1px;
     font-weight: 700;
     letter-spacing: 0.01em;
     touch-action: none;
@@ -530,8 +530,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 .sidebar__color-trigger,
 .sidebar__width-trigger {
     display: grid;
-    width: 48px;
-    height: 48px;
+    width: 47px;
+    height: 47px;
     place-items: center;
     padding: 0;
     border: 2px solid white;
@@ -544,8 +544,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     align-items: center;
     justify-content: center;
 
-    width: 48px;
-    height: 48px;
+    width: 47px;
+    height: 47px;
     padding: 0;
 
     border: 1px solid #d1d5db;
@@ -555,8 +555,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 }
 
 .sidebar__color-preview {
-    width: 28px;
-    height: 28px;
+    width: 27px;
+    height: 27px;
     border-radius: 50%;
     border: 1px solid rgb(0 0 0 / 12%);
     background: #111827;
@@ -569,9 +569,9 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 }
 
 .sidebar__width-trigger::before {
-    width: 26px;
+    width: 25px;
     height: var(--line-width);
-    max-height: 26px;
+    max-height: 25px;
     border-radius: 999px;
     background: #111827;
     content: "";
@@ -580,7 +580,7 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 .sidebar__flyout {
     position: absolute;
     top: 50%;
-    left: 56px;
+    left: 55px;
     display: flex;
     gap: 8px;
     padding: 8px;
@@ -606,8 +606,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 }
 
 .sidebar__color {
-    width: 36px;
-    height: 36px;
+    width: 35px;
+    height: 35px;
     padding: 0;
     border: 2px solid transparent;
     border-radius: 50%;
@@ -635,8 +635,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 .sidebar__width {
     display: grid;
     place-items: center;
-    width: 36px;
-    height: 36px;
+    width: 35px;
+    height: 35px;
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -647,7 +647,7 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 }
 
 .sidebar__width::before {
-    width: 26px;
+    width: 25px;
     height: var(--line-width);
     max-height: 24px;
     border-radius: 999px;
@@ -663,8 +663,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 .sidebar__eraser-option,
 .sidebar__pen-option,
 .sidebar__shape-option {
-    width: 48px;
-    height: 48px;
+    width: 47px;
+    height: 47px;
     padding: 0;
 
     display: flex;
