@@ -310,7 +310,7 @@ body.sidebar-closed .sidebar {
     top: var(--sidebar-toggle-top, 82px);
     left: 50%;
     transform: translate(-50%, 0);
-    z-index: 30;
+    z-index: 15;
     display: grid;
     place-items: center;
     width: 44px;
@@ -425,17 +425,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     .sidebar {
         width: max-content;
         max-width: 100%;
-        overflow-x: auto;
-        overflow-y: hidden;
-        overscroll-behavior-x: contain;
-        scrollbar-width: none;
-        -webkit-overflow-scrolling: touch;
-        touch-action: pan-x;
+        overflow: hidden;
         box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
-    }
-
-    .sidebar::-webkit-scrollbar {
-        display: none;
     }
 
     .sidebar__toolbar {
@@ -515,7 +506,7 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     background: white;
     color: #111827;
     cursor: default;
-    font-size: 18px;
+    font-size: 14.4px;
     font-weight: 700;
     letter-spacing: 0.01em;
     touch-action: none;

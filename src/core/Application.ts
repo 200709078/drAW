@@ -32,15 +32,7 @@ export class Application {
             this.managers.getTextTool(),
             this.managers.getScreenCaptureTool(),
             this.managers.getDesktopAvailable(),
-            this.managers.getCanvasManager().getCanvas(),
-            [
-                this.managers.getPenTool(),
-                this.managers.getHighlighterTool(),
-                this.managers.getEraserTool(),
-                this.managers.getPartialEraserTool(),
-                this.managers.getShapesTool(),
-                this.managers.getTextTool()
-            ]
+            this.managers.getCanvasManager().getCanvas()
         );
 
         this.registerShutdownHandlers();

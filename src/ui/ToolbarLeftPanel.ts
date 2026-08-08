@@ -3,7 +3,6 @@ import { HistoryManager } from "../core/HistoryManager";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { TextTool } from "../tools/TextTool";
-import type { Tool } from "../tools/Tool";
 import undoIcon from "../assets/icons/undo.svg";
 import redoIcon from "../assets/icons/redo.svg";
 import captureIcon from "../assets/icons/capture.svg";
@@ -18,8 +17,7 @@ export class ToolbarLeftPanel {
         textTool: TextTool,
         screenCaptureTool: ScreenCaptureTool,
         desktopAvailable: boolean,
-        canvas: HTMLCanvasElement,
-        drawingTools: ReadonlyArray<Tool>
+        canvas: HTMLCanvasElement
     ) {
 
         const panel = document.createElement("aside");
@@ -177,21 +175,18 @@ export class ToolbarLeftPanel {
             );
         };
 
-        setPanelOpen(false);
+        setPanelOpen(true);
 
         toggle.addEventListener("click", () => {
             setPanelOpen(document.body.classList.contains("toolbar-left-closed"));
         });
 
         canvas.addEventListener("pointerdown", () => {
-            const activeTool = toolManager.getActiveTool();
-
-            if (activeTool !== null && drawingTools.includes(activeTool)) {
-                setPanelOpen(false);
-            }
+            setPanelOpen(false);
         });
 
-        window.addEventListener("newdraw:started", () => setPanelOpen(false));
+        window.addEventListener("newdraw:started", () => setPanelOpen(true));
+        window.addEventListener("drawing:opened", () => setPanelOpen(true));
 
     }
 
