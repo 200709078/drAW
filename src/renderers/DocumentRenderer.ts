@@ -6,6 +6,8 @@ import { DrawingContext } from "../models/DrawingContext";
 import { StrokeRenderer } from "./StrokeRenderer";
 import { ALL_RESIZE_HANDLES, getResizeHandlePosition, type SelectionBounds } from "./ResizeHandle";
 
+export type GuideLineType = "none" | "grid" | "rows" | "columns";
+
 export class DocumentRenderer {
 
     private readonly drawingContext: DrawingContext;
@@ -14,8 +16,9 @@ export class DocumentRenderer {
     private selectedStrokes: Set<Stroke>;
     private selectedImages: Set<DocumentImage>;
     private selectedTexts: Set<TextObject>;
-    private selectionBounds: { startX: number; startY: number; endX: number; endY: number } | null;
+private selectionBounds: { startX: number; startY: number; endX: number; endY: number } | null;
     private readonly loadedImages: Map<string, HTMLImageElement>;
+    private guideLines: GuideLineType;
 
     constructor(
         drawingContext: DrawingContext,
@@ -30,15 +33,29 @@ export class DocumentRenderer {
         );
         this.selectedStrokes = new Set();
         this.selectedImages = new Set();
-        this.selectedTexts = new Set();
+this.selectedTexts = new Set();
         this.selectionBounds = null;
         this.loadedImages = new Map();
+        this.guideLines = "none";
+
+    }
+
+    public setGuideLines(guideLines: GuideLineType): void {
+
+        this.guideLines = guideLines;
+
+    }
+
+    public getGuideLines(): GuideLineType {
+
+        return this.guideLines;
 
     }
 
     public render(activeStroke: Stroke | null = null): void {
 
-        this.drawingContext.clear();
+this.drawingContext.clear();
+        this.renderGuideLines();
 
         const page = this.document.getCurrentPage();
 
@@ -234,6 +251,48 @@ export class DocumentRenderer {
         context.setLineDash([5, 5]);
         context.fillRect(startX, startY, endX - startX, endY - startY);
         context.strokeRect(startX, startY, endX - startX, endY - startY);
+        context.restore();
+
+    }
+
+    private renderGuideLines(): void {
+
+        const type = this.guideLines;
+
+        if (type === "none") {
+            return;
+        }
+
+        const context = this.drawingContext.getContext();
+        const width = this.drawingContext.getCssWidth();
+        const height = this.drawingContext.getCssHeight();
+        const spacing = 50;
+
+        context.save();
+        context.strokeStyle = "#d1d5db";
+        context.fillStyle = "#d1d5db";
+        context.lineWidth = 1;
+        context.setLineDash([]);
+        context.beginPath();
+
+        const drawVerticals = type === "grid" || type === "columns";
+        const drawHorizontals = type === "grid" || type === "rows";
+
+        if (drawVerticals) {
+            for (let x = spacing; x < width; x += spacing) {
+                context.moveTo(x, 0);
+                context.lineTo(x, height);
+            }
+        }
+
+        if (drawHorizontals) {
+            for (let y = spacing; y < height; y += spacing) {
+                context.moveTo(0, y);
+                context.lineTo(width, y);
+            }
+        }
+
+        context.stroke();
         context.restore();
 
     }

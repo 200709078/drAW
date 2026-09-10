@@ -7,6 +7,11 @@ import undoIcon from "../assets/icons/undo.svg";
 import redoIcon from "../assets/icons/redo.svg";
 import captureIcon from "../assets/icons/capture.svg";
 import textIcon from "../assets/icons/text.svg";
+import squareIcon from "../assets/icons/square.svg";
+import gridIcon from "../assets/icons/grid.svg";
+import rowsIcon from "../assets/icons/rows.svg";
+import columnsIcon from "../assets/icons/columns.svg";
+import type { GuideLineType } from "../renderers/DocumentRenderer";
 
 export class ToolbarLeftPanel {
 
@@ -97,6 +102,104 @@ export class ToolbarLeftPanel {
             screenCaptureButton.addEventListener("click", () => selectTool(screenCaptureButton));
         }
 
+        const guideControl = document.createElement("div");
+        guideControl.className = "sidebar__control";
+
+        const guideButton = this.createIconButton("Kılavuz Çizgileri", squareIcon, {
+            className: "sidebar__tool"
+        });
+        guideButton.setAttribute("aria-expanded", "false");
+        guideControl.appendChild(guideButton);
+
+        const guidePalette = document.createElement("div");
+        guidePalette.className = "sidebar__flyout sidebar__guideline-palette";
+        guidePalette.hidden = true;
+        guidePalette.setAttribute("role", "group");
+        guidePalette.setAttribute("aria-label", "Kılavuz çizgileri");
+        document.body.appendChild(guidePalette);
+
+        const guideOptions: Array<{ type: GuideLineType; label: string; icon: string }> = [
+            { type: "none", label: "Çizgi Yok", icon: squareIcon },
+            { type: "grid", label: "Kareli", icon: gridIcon },
+            { type: "rows", label: "Yatay Çizgili", icon: rowsIcon },
+            { type: "columns", label: "Dikey Çizgili", icon: columnsIcon }
+        ];
+
+        const selectGuideLines = (
+            type: GuideLineType,
+            selectedButton: HTMLButtonElement
+        ): void => {
+            documentRenderer.setGuideLines(type);
+            documentRenderer.render();
+
+            guideButton.replaceChildren();
+
+            const icon = selectedButton.querySelector("img");
+
+            if (icon) {
+                const img = document.createElement("img");
+                img.src = (icon as HTMLImageElement).src;
+                img.alt = "";
+                img.draggable = false;
+
+                guideButton.appendChild(img);
+            } else {
+                guideButton.textContent = selectedButton.textContent ?? "";
+            }
+
+            guideButton.title = selectedButton.title;
+            guideButton.setAttribute("aria-label", `Kılavuz Çizgileri: ${selectedButton.title}`);
+
+            for (const button of guidePalette.querySelectorAll("button")) {
+                const isSelected = button === selectedButton;
+
+                button.classList.toggle("sidebar__guideline-option--selected", isSelected);
+                button.setAttribute("aria-pressed", String(isSelected));
+            }
+
+            guidePalette.hidden = true;
+            guideButton.setAttribute("aria-expanded", "false");
+        };
+
+        let guideNoneButton: HTMLButtonElement | null = null;
+
+        for (const option of guideOptions) {
+            const guideOptionButton = this.createIconButton(option.label, option.icon, {
+                className: "sidebar__guideline-option",
+                isSelected: option.type === "none",
+                selectedClass: "sidebar__guideline-option--selected",
+                onSelect: () => {
+                    selectGuideLines(option.type, guideOptionButton);
+                }
+            });
+
+            if (option.type === "none") {
+                guideNoneButton = guideOptionButton;
+            }
+
+            guidePalette.appendChild(guideOptionButton);
+        }
+
+        guideButton.addEventListener("click", () => {
+            guidePalette.hidden = !guidePalette.hidden;
+            guideButton.setAttribute("aria-expanded", String(!guidePalette.hidden));
+        });
+
+        document.addEventListener("pointerdown", (event) => {
+            const target = event.target;
+
+            if (!(target instanceof Node)) {
+                return;
+            }
+
+            if (guideControl.contains(target) || guidePalette.contains(target)) {
+                return;
+            }
+
+            guidePalette.hidden = true;
+            guideButton.setAttribute("aria-expanded", "false");
+        });
+
         toolManager.addChangeListener(() => {
             const activeTool = toolManager.getActiveTool();
 
@@ -133,7 +236,8 @@ export class ToolbarLeftPanel {
             undoButton,
             redoButton,
             textButton,
-            ...(screenCaptureButton !== null ? [screenCaptureButton] : [])
+            ...(screenCaptureButton !== null ? [screenCaptureButton] : []),
+            guideControl
         );
         panel.appendChild(list);
         document.body.appendChild(panel);
@@ -185,7 +289,14 @@ export class ToolbarLeftPanel {
             setPanelOpen(false);
         });
 
-        window.addEventListener("newdraw:started", () => setPanelOpen(true));
+        window.addEventListener("newdraw:started", () => {
+            if (guideNoneButton !== null) {
+                selectGuideLines("none", guideNoneButton);
+            }
+
+            setPanelOpen(true);
+        });
+
         window.addEventListener("drawing:opened", () => setPanelOpen(true));
 
     }
