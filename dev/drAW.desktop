@@ -1,0 +1,10 @@
+[Desktop Entry]
+Name=drAW (Geliştirme)
+Comment=drAW masaüstü uygulaması - geliştirme kipi
+Exec=/home/madematik/Belgeler/drAW/node_modules/.bin/electron /home/madematik/Belgeler/drAW/electron/main.ts
+Path=/home/madematik/Belgeler/drAW
+Icon=/home/madematik/Belgeler/drAW/electron/assets/app-icons/draw.png
+Terminal=false
+Type=Application
+Categories=Graphics;
+StartupWMClass=drAW

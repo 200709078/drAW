@@ -1,6 +1,8 @@
 {
   "name": "draw",
   "productName": "drAW",
+  "desktopName": "drAW",
+  "homepage": "https://www.madematik.com",
   "private": true,
   "version": "0.0.1",
   "type": "module",
@@ -8,8 +10,8 @@
   "description": "drAW - Interactive whiteboard and drawing application",
   "license": "MIT",
   "author": {
-    "name": "Adem Varol",
-    "email": "ademvarol0808@gmail.com",
+    "name": "mADEMatik",
+    "email": "madematik@madematik.com",
     "url": "https://www.madematik.com"
   },
   "scripts": {
@@ -47,6 +49,7 @@
         "AppImage",
         "deb"
       ],
+      "syncDesktopName": true,
       "icon": "electron/assets/app-icons",
       "category": "Graphics",
       "executableName": "drAW"

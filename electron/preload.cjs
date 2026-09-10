@@ -15,5 +15,19 @@ contextBridge.exposeInMainWorld("drAWDesktop", {
     },
     shutdownComplete: () => {
         ipcRenderer.send("app:shutdown-complete");
+    },
+    windowControls: {
+        minimize: () => {
+            ipcRenderer.send("window:minimize");
+        },
+        toggleMaximize: () => {
+            ipcRenderer.send("window:toggle-maximize");
+        },
+        close: () => {
+            ipcRenderer.send("window:close");
+        },
+        onMaximizeChanged: (callback) => {
+            ipcRenderer.on("window:maximize-changed", (_event, maximized) => callback(maximized));
+        }
     }
 });

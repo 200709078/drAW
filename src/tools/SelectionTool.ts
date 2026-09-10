@@ -15,6 +15,7 @@ import {
     type ResizeHandle,
     type SelectionBounds
 } from "../renderers/ResizeHandle";
+import { getTitlebarOffset } from "../ui/TitleBar";
 
 type SelectableObject = Stroke | DocumentImage | TextObject;
 type CornerHandle = "topLeft" | "bottomRight" | "bottomLeft";
@@ -990,7 +991,7 @@ export class SelectionTool extends Tool {
         }
 
         this.deleteButton.style.left = `${bounds.maxX}px`;
-        this.deleteButton.style.top = `${bounds.minY}px`;
+        this.deleteButton.style.top = `${bounds.minY + getTitlebarOffset()}px`;
         this.deleteButton.hidden = false;
 
     }

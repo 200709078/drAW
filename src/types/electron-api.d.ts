@@ -24,6 +24,13 @@ export type ElectronStorageBridge = {
     list: () => Promise<StorageOperationResult<DrawingDocumentJson[]>>;
 };
 
+export type ElectronWindowControls = {
+    minimize: () => void;
+    toggleMaximize: () => void;
+    close: () => void;
+    onMaximizeChanged: (callback: (maximized: boolean) => void) => void;
+};
+
 declare global {
     interface Window {
         drAWDesktop?: {
@@ -32,6 +39,7 @@ declare global {
             storage: ElectronStorageBridge;
             onShutdownRequest: (callback: () => void) => void;
             shutdownComplete: () => void;
+            windowControls?: ElectronWindowControls;
         };
     }
 }
