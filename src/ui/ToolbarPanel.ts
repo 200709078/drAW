@@ -199,6 +199,9 @@ export class ToolbarPanel {
             autoSaveManager.resetActiveDocument();
             documentRenderer.render();
 
+            documentRenderer.setGuideLines("none");
+            documentRenderer.render();
+
             penTool.setColor("#111827");
             highlighterTool.setColor("#111827");
             penTool.setLineWidth(6);

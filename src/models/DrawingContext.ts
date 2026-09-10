@@ -37,6 +37,18 @@ export class DrawingContext {
 
     }
 
+    public getCssWidth(): number {
+
+        return this.canvas.clientWidth;
+
+    }
+
+    public getCssHeight(): number {
+
+        return this.canvas.clientHeight;
+
+    }
+
     public clear(): void {
 
         this.context.save();

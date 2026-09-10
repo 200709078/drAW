@@ -463,7 +463,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 .sidebar__history img,
 .sidebar__pen-option img,
 .sidebar__eraser-option img,
-.sidebar__shape-option img {
+.sidebar__shape-option img,
+.sidebar__guideline-option img {
     width: 23px;
     height: 23px;
     display: block;
@@ -621,7 +622,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 .sidebar__history:focus-visible,
 .sidebar__width:focus-visible,
 .sidebar__eraser-option:focus-visible,
-.sidebar__shape-option:focus-visible {
+.sidebar__shape-option:focus-visible,
+.sidebar__guideline-option:focus-visible {
     border-color: #111827;
     outline: 2px solid white;
     outline-offset: -4px;
@@ -691,6 +693,40 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 
 .sidebar__eraser-palette {
     margin-top: 0;
+}
+
+.sidebar__guideline-option {
+    width: 47px;
+    height: 47px;
+    padding: 0;
+
+    display: flex;
+    align-items: center;
+    justify-content: center;
+
+
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: white;
+    color: #374151;
+    cursor: pointer;
+    font-size: 13px;
+    font-weight: 700;
+}
+
+.sidebar__guideline-option--selected {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+.sidebar__guideline-palette {
+    position: fixed;
+    top: 50%;
+    left: 88px;
+    transform: translateY(-50%);
+    flex-direction: column;
+    z-index: 20;
 }
 
 .modal-backdrop {
