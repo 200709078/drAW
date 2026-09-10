@@ -6,6 +6,11 @@ import { StorageError } from "./storage/StorageError.ts";
 
 const electron = createRequire(import.meta.url)("electron") as typeof import("electron");
 const { app, BrowserWindow, ipcMain } = electron;
+
+if (!app.isPackaged) {
+    app.setName("drAW");
+    app.commandLine.appendSwitch("class", "drAW");
+}
 const screenCaptureService = new ScreenCaptureService();
 const storageService = new ElectronStorageService();
 
@@ -78,6 +83,32 @@ function getAppPath(...segments: string[]): string {
     return path.join(getBasePath(), ...segments);
 }
 
+function registerWindowControls(): void {
+
+    ipcMain.on("window:minimize", (event) => {
+        BrowserWindow.fromWebContents(event.sender)?.minimize();
+    });
+
+    ipcMain.on("window:toggle-maximize", (event) => {
+        const window = BrowserWindow.fromWebContents(event.sender);
+
+        if (window === null || window === undefined) {
+            return;
+        }
+
+        if (window.isMaximized()) {
+            window.unmaximize();
+        } else {
+            window.maximize();
+        }
+    });
+
+    ipcMain.on("window:close", (event) => {
+        BrowserWindow.fromWebContents(event.sender)?.close();
+    });
+
+}
+
 function createWindow(): void {
 
     const iconPath = getAppPath(
@@ -90,10 +121,12 @@ function createWindow(): void {
     const window = new BrowserWindow({
         width: 1280,
         height: 800,
-        title: "drAW",
+        title: "mADEMatik | drAW",
         minWidth: 800,
         minHeight: 600,
         autoHideMenuBar: true,
+        frame: false,
+        titleBarStyle: "hidden",
         icon: iconPath,
         webPreferences: {
             preload: getAppPath(
@@ -106,6 +139,14 @@ function createWindow(): void {
     });
 
     allowWindowClose = false;
+
+    window.on("maximize", () => {
+        window.webContents.send("window:maximize-changed", true);
+    });
+
+    window.on("unmaximize", () => {
+        window.webContents.send("window:maximize-changed", false);
+    });
 
     window.on("close", (event) => {
         if (allowWindowClose) {
@@ -144,6 +185,7 @@ app.whenReady().then(() => {
     });
 
     registerStorageHandlers();
+    registerWindowControls();
 
     ipcMain.on("app:shutdown-complete", (event) => {
         if (shutdownTimer !== null) {

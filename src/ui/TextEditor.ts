@@ -1,4 +1,5 @@
 import { TextObject, TEXT_FONT_FAMILY, TEXT_LINE_HEIGHT } from "../document/TextObject";
+import { getTitlebarOffset } from "./TitleBar";
 
 let activeTextEditor: TextEditor | null = null;
 
@@ -98,7 +99,7 @@ class TextEditor {
 
     private centerVertically = (): void => {
 
-        this.textarea.style.top = `${this.anchorY - this.textarea.offsetHeight / 2}px`;
+        this.textarea.style.top = `${this.anchorY + getTitlebarOffset() - this.textarea.offsetHeight / 2}px`;
 
     };
 

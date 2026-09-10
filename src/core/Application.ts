@@ -1,6 +1,7 @@
 import { ManagerContainer } from "./ManagerContainer";
 import { ToolbarPanel } from "../ui/ToolbarPanel";
 import { ToolbarLeftPanel } from "../ui/ToolbarLeftPanel";
+import { TitleBar } from "../ui/TitleBar";
 
 export class Application {
 
@@ -8,6 +9,7 @@ export class Application {
 
     constructor() {
 
+        new TitleBar();
         this.managers = new ManagerContainer();
         new ToolbarPanel(
             this.managers.getToolManager(),

@@ -1,3 +1,5 @@
+import { getTitlebarOffset } from "../ui/TitleBar";
+
 export class CanvasManager {
 
     private canvas!: HTMLCanvasElement;
@@ -33,7 +35,7 @@ export class CanvasManager {
     private resizeCanvas(): void {
 
         const width = window.innerWidth;
-        const height = window.innerHeight;
+        const height = window.innerHeight - getTitlebarOffset();
         const pixelRatio = window.devicePixelRatio || 1;
 
         this.canvas.width = Math.floor(width * pixelRatio);
