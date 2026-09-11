@@ -453,7 +453,11 @@ body.sidebar-closed .sidebar {
 }
 
 body.sidebar-closed .sidebar__toggle {
-    transform: translate(-50%, calc(-1 * var(--sidebar-toggle-top, 82px)));
+    transform: translate(-50%, calc(-1 * var(--sidebar-toggle-top, 82px) + 8px));
+}
+
+body.has-custom-titlebar.sidebar-closed .sidebar__toggle {
+    transform: translate(-50%, calc(-1 * var(--sidebar-toggle-top, 82px) + 44px));
 }
 
 body.sidebar-closed .sidebar__toggle svg {
