@@ -7,8 +7,12 @@ import { promisify } from "node:util";
 import type { BrowserWindow as ElectronBrowserWindow, Display, NativeImage, WebContents } from "electron";
 
 const electron = createRequire(import.meta.url)("electron") as typeof import("electron");
-const { BrowserWindow, desktopCapturer, nativeImage, screen } = electron;
+const { app, BrowserWindow, desktopCapturer, nativeImage, screen } = electron;
 const executeFile = promisify(execFile);
+
+function getBasePath(): string {
+    return app.isPackaged ? app.getAppPath() : process.cwd();
+}
 
 type SelectionPayload = {
     x: number;
@@ -202,13 +206,13 @@ export class ScreenCaptureService {
             resizable: false,
             backgroundColor: "#000000",
             webPreferences: {
-                preload: path.join(process.cwd(), "electron", "overlay-preload.cjs"),
+                preload: path.join(getBasePath(), "electron", "overlay-preload.cjs"),
                 contextIsolation: true,
                 nodeIntegration: false
             }
         });
 
-        await overlay.loadFile(path.join(process.cwd(), "electron", "overlay.html"));
+        await overlay.loadFile(path.join(getBasePath(), "electron", "overlay.html"));
         overlay.webContents.setZoomFactor(1);
         overlay.show();
         overlay.focus();
