@@ -27,8 +27,12 @@ export type ElectronStorageBridge = {
 export type ElectronWindowControls = {
     minimize: () => void;
     toggleMaximize: () => void;
+    toggleFullscreen: () => void;
+    setFullscreen: (enabled: boolean) => void;
+    isFullscreen: () => Promise<boolean>;
     close: () => void;
     onMaximizeChanged: (callback: (maximized: boolean) => void) => void;
+    onFullscreenChanged: (callback: (fullscreen: boolean) => void) => void;
 };
 
 declare global {
