@@ -59,7 +59,7 @@ export class EraserTool extends Tool {
         this.activePointerId = event.pointerId;
         this.history.begin();
         this.isErasing = true;
-        this.eraseAt(event.offsetX, event.offsetY);
+        this.eraseAt(this.worldX(event), this.worldY(event));
 
     }
 
@@ -70,7 +70,7 @@ export class EraserTool extends Tool {
         }
 
         if (this.isErasing) {
-            this.eraseAt(event.offsetX, event.offsetY);
+            this.eraseAt(this.worldX(event), this.worldY(event));
         }
 
     }
@@ -82,7 +82,7 @@ export class EraserTool extends Tool {
         }
 
         this.activePointerId = null;
-        this.eraseAt(event.offsetX, event.offsetY);
+        this.eraseAt(this.worldX(event), this.worldY(event));
         this.isErasing = false;
         this.history.commit();
 

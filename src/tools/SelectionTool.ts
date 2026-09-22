@@ -105,6 +105,7 @@ export class SelectionTool extends Tool {
         this.canvas.addEventListener("mousemove", this.handleHover);
         this.canvas.addEventListener("mouseleave", this.handleCanvasLeave);
         window.addEventListener("keydown", this.handleKeyDown);
+        this.drawingContext.getViewport().addChangeListener(this.handleViewportChange);
 
     }
 
@@ -113,6 +114,7 @@ export class SelectionTool extends Tool {
         this.canvas.removeEventListener("mousemove", this.handleHover);
         this.canvas.removeEventListener("mouseleave", this.handleCanvasLeave);
         window.removeEventListener("keydown", this.handleKeyDown);
+        this.drawingContext.getViewport().removeChangeListener(this.handleViewportChange);
         this.canvas.style.cursor = "";
         this.canvas.title = "";
         closeTextEditor();
@@ -121,6 +123,12 @@ export class SelectionTool extends Tool {
         this.removeDeleteButton();
 
     }
+
+    private readonly handleViewportChange = (): void => {
+
+        this.updateDeleteButton();
+
+    };
 
     private readonly handleKeyDown = (event: KeyboardEvent): void => {
 
@@ -190,7 +198,10 @@ export class SelectionTool extends Tool {
             return;
         }
 
-        const handle = this.getHandleAt(event.offsetX, event.offsetY);
+        const worldX = this.worldX(event);
+        const worldY = this.worldY(event);
+        const unit = 1 / this.drawingContext.getViewport().getScale();
+        const handle = this.getHandleAt(worldX, worldY, HANDLE_HIT_RADIUS * unit);
 
         if (handle !== null) {
             this.canvas.title = "Basılı tutarak sürükleyin.";
@@ -200,9 +211,9 @@ export class SelectionTool extends Tool {
         }
 
         if (this.isPointOnSelectionBorder(
-            event.offsetX,
-            event.offsetY,
-            BORDER_GRAB_TOLERANCE
+            worldX,
+            worldY,
+            BORDER_GRAB_TOLERANCE * unit
         )) {
             this.canvas.title = "Basılı tutarak sürükleyin.";
             this.canvas.style.cursor = "move";
@@ -211,7 +222,7 @@ export class SelectionTool extends Tool {
         }
 
         this.canvas.title = this.selectedTexts.size > 0 &&
-            this.isPointInsideSelectionBounds(event.offsetX, event.offsetY)
+            this.isPointInsideSelectionBounds(worldX, worldY)
             ? "Düzenlemek için çift tıklayın."
             : "";
         this.canvas.style.cursor = "default";
@@ -228,22 +239,26 @@ export class SelectionTool extends Tool {
         this.activePointerId = event.pointerId;
         this.activePointerType = event.pointerType;
         this.dragThresholdPassed = false;
-        this.smoothX = event.offsetX;
-        this.smoothY = event.offsetY;
+
+        const worldStartX = this.worldX(event);
+        const worldStartY = this.worldY(event);
+        this.smoothX = worldStartX;
+        this.smoothY = worldStartY;
 
         const isTouch = event.pointerType === "touch";
-        const grabTolerance = isTouch ? TOUCH_BORDER_GRAB_TOLERANCE : BORDER_GRAB_TOLERANCE;
-        const handleRadius = isTouch ? TOUCH_HANDLE_HIT_RADIUS : HANDLE_HIT_RADIUS;
+        const unit = 1 / this.drawingContext.getViewport().getScale();
+        const grabTolerance = (isTouch ? TOUCH_BORDER_GRAB_TOLERANCE : BORDER_GRAB_TOLERANCE) * unit;
+        const handleRadius = (isTouch ? TOUCH_HANDLE_HIT_RADIUS : HANDLE_HIT_RADIUS) * unit;
 
         this.history.begin();
 
-        this.startX = event.offsetX;
-        this.startY = event.offsetY;
-        this.lastX = event.offsetX;
-        this.lastY = event.offsetY;
+        this.startX = worldStartX;
+        this.startY = worldStartY;
+        this.lastX = worldStartX;
+        this.lastY = worldStartY;
         this.isAdditiveSelection = event.shiftKey || event.ctrlKey || event.metaKey;
 
-        const selectedObject = this.findObjectAt(event.offsetX, event.offsetY);
+        const selectedObject = this.findObjectAt(worldStartX, worldStartY, unit);
 
         if (this.isDoubleClickOnText(selectedObject)) {
             this.clearSelectedObjects();
@@ -310,8 +325,11 @@ export class SelectionTool extends Tool {
             return;
         }
 
+        const worldMoveX = this.worldX(event);
+        const worldMoveY = this.worldY(event);
+
         if (this.isSelecting) {
-            this.renderer.setSelectionBounds(this.startX, this.startY, event.offsetX, event.offsetY);
+            this.renderer.setSelectionBounds(this.startX, this.startY, worldMoveX, worldMoveY);
             this.renderer.render();
 
             return;
@@ -319,11 +337,11 @@ export class SelectionTool extends Tool {
 
         if (this.isResizing) {
             if (this.activePointerType === "touch") {
-                this.smoothX += TOUCH_SMOOTHING_FACTOR * (event.offsetX - this.smoothX);
-                this.smoothY += TOUCH_SMOOTHING_FACTOR * (event.offsetY - this.smoothY);
+                this.smoothX += TOUCH_SMOOTHING_FACTOR * (worldMoveX - this.smoothX);
+                this.smoothY += TOUCH_SMOOTHING_FACTOR * (worldMoveY - this.smoothY);
                 this.applyResize(this.smoothX, this.smoothY);
             } else {
-                this.applyResize(event.offsetX, event.offsetY);
+                this.applyResize(worldMoveX, worldMoveY);
             }
 
             return;
@@ -334,15 +352,17 @@ export class SelectionTool extends Tool {
         }
 
         if (this.activePointerType === "touch" && !this.dragThresholdPassed) {
-            if (Math.hypot(event.offsetX - this.startX, event.offsetY - this.startY) < TOUCH_DRAG_THRESHOLD) {
+            const threshold = TOUCH_DRAG_THRESHOLD / this.drawingContext.getViewport().getScale();
+
+            if (Math.hypot(worldMoveX - this.startX, worldMoveY - this.startY) < threshold) {
                 return;
             }
 
             this.dragThresholdPassed = true;
-            this.lastX = event.offsetX;
-            this.lastY = event.offsetY;
-            this.smoothX = event.offsetX;
-            this.smoothY = event.offsetY;
+            this.lastX = worldMoveX;
+            this.lastY = worldMoveY;
+            this.smoothX = worldMoveX;
+            this.smoothY = worldMoveY;
 
             return;
         }
@@ -351,17 +371,17 @@ export class SelectionTool extends Tool {
         let deltaY: number;
 
         if (this.activePointerType === "touch") {
-            this.smoothX += TOUCH_SMOOTHING_FACTOR * (event.offsetX - this.smoothX);
-            this.smoothY += TOUCH_SMOOTHING_FACTOR * (event.offsetY - this.smoothY);
+            this.smoothX += TOUCH_SMOOTHING_FACTOR * (worldMoveX - this.smoothX);
+            this.smoothY += TOUCH_SMOOTHING_FACTOR * (worldMoveY - this.smoothY);
             deltaX = this.smoothX - this.lastX;
             deltaY = this.smoothY - this.lastY;
             this.lastX = this.smoothX;
             this.lastY = this.smoothY;
         } else {
-            deltaX = event.offsetX - this.lastX;
-            deltaY = event.offsetY - this.lastY;
-            this.lastX = event.offsetX;
-            this.lastY = event.offsetY;
+            deltaX = worldMoveX - this.lastX;
+            deltaY = worldMoveY - this.lastY;
+            this.lastX = worldMoveX;
+            this.lastY = worldMoveY;
         }
 
         for (const stroke of this.selectedStrokes) {
@@ -383,6 +403,12 @@ export class SelectionTool extends Tool {
         if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
             return;
         }
+
+        this.interruptGesture();
+
+    }
+
+    public override interruptGesture(): void {
 
         this.activePointerId = null;
         this.activePointerType = null;
@@ -421,7 +447,7 @@ export class SelectionTool extends Tool {
         }
 
         if (this.isSelecting) {
-            this.selectObjectsInBounds(event.offsetX, event.offsetY);
+            this.selectObjectsInBounds(this.worldX(event), this.worldY(event));
             this.renderer.clearSelectionBounds();
             this.updateRendererSelection();
             this.renderer.render();
@@ -795,14 +821,14 @@ export class SelectionTool extends Tool {
 
     }
 
-    private findObjectAt(x: number, y: number): SelectableObject | null {
+    private findObjectAt(x: number, y: number, unit: number = 1): SelectableObject | null {
 
         const strokes = this.document.getCurrentPage().getStrokes();
 
         for (let index = strokes.length - 1; index >= 0; index--) {
             const stroke = strokes[index];
 
-            if (this.isStrokeHit(stroke, x, y)) {
+            if (this.isStrokeHit(stroke, x, y, 6 * unit)) {
                 return stroke;
             }
         }
@@ -1049,7 +1075,7 @@ export class SelectionTool extends Tool {
             this.history.commit();
             this.updateRendererSelection();
             this.renderer.render();
-        });
+        }, this.drawingContext.getViewport());
 
     }
 
@@ -1086,8 +1112,8 @@ export class SelectionTool extends Tool {
             document.body.appendChild(this.deleteButton);
         }
 
-        this.deleteButton.style.left = `${bounds.maxX}px`;
-        this.deleteButton.style.top = `${bounds.minY + getTitlebarOffset()}px`;
+        this.deleteButton.style.left = `${this.drawingContext.getViewport().worldToScreenX(bounds.maxX)}px`;
+        this.deleteButton.style.top = `${this.drawingContext.getViewport().worldToScreenY(bounds.minY) + getTitlebarOffset()}px`;
         this.deleteButton.hidden = false;
 
     }
@@ -1101,7 +1127,7 @@ export class SelectionTool extends Tool {
 
     }
 
-    private isStrokeHit(stroke: Stroke, x: number, y: number): boolean {
+    private isStrokeHit(stroke: Stroke, x: number, y: number, padding: number): boolean {
 
         const points = stroke.getPoints();
 
@@ -1111,7 +1137,7 @@ export class SelectionTool extends Tool {
 
         if (points.length === 1) {
             return this.getDistance(points[0].getX(), points[0].getY(), x, y) <= (
-                this.getLineWidth(stroke, points[0]) / 2 + 6
+                this.getLineWidth(stroke, points[0]) / 2 + padding
             );
         }
 
@@ -1131,7 +1157,7 @@ export class SelectionTool extends Tool {
                 this.getLineWidth(stroke, endPoint)
             ) / 2;
 
-            if (distance <= lineWidth / 2 + 6) {
+            if (distance <= lineWidth / 2 + padding) {
                 return true;
             }
         }

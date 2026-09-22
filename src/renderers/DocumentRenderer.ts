@@ -54,7 +54,8 @@ this.selectedTexts = new Set();
 
     public render(activeStroke: Stroke | null = null): void {
 
-this.drawingContext.clear();
+        this.drawingContext.clear();
+        this.applyViewportTransform();
         this.renderGuideLines();
 
         const page = this.document.getCurrentPage();
@@ -190,6 +191,24 @@ this.drawingContext.clear();
 
     }
 
+    private applyViewportTransform(): void {
+
+        const viewport = this.drawingContext.getViewport();
+        const context = this.drawingContext.getContext();
+        const pixelRatio = window.devicePixelRatio || 1;
+        const scale = viewport.getScale();
+
+        context.setTransform(
+            pixelRatio * scale,
+            0,
+            0,
+            pixelRatio * scale,
+            pixelRatio * viewport.getOffsetX(),
+            pixelRatio * viewport.getOffsetY()
+        );
+
+    }
+
     private renderResizeHandles(): void {
 
         const bounds = this.getSelectionBounds();
@@ -199,11 +218,13 @@ this.drawingContext.clear();
         }
 
         const context = this.drawingContext.getContext();
-        const handleSize = 6;
+        // Seçim çizgileri ekranda sabit kalınlıkta görünsün.
+        const unit = 1 / this.drawingContext.getViewport().getScale();
+        const handleSize = 6 * unit;
 
         context.save();
         context.strokeStyle = "#2563eb";
-        context.lineWidth = 1.5;
+        context.lineWidth = 1.5 * unit;
         context.setLineDash([]);
         context.strokeRect(
             bounds.minX,
@@ -243,12 +264,13 @@ this.drawingContext.clear();
 
         const { startX, startY, endX, endY } = this.selectionBounds;
         const context = this.drawingContext.getContext();
+        const unit = 1 / this.drawingContext.getViewport().getScale();
 
         context.save();
         context.strokeStyle = "#2563eb";
         context.fillStyle = "rgb(37 99 235 / 8%)";
-        context.lineWidth = 1;
-        context.setLineDash([5, 5]);
+        context.lineWidth = 1 * unit;
+        context.setLineDash([5 * unit, 5 * unit]);
         context.fillRect(startX, startY, endX - startX, endY - startY);
         context.strokeRect(startX, startY, endX - startX, endY - startY);
         context.restore();
@@ -264,6 +286,8 @@ this.drawingContext.clear();
         }
 
         const context = this.drawingContext.getContext();
+        const viewport = this.drawingContext.getViewport();
+        const unit = 1 / viewport.getScale();
         const width = this.drawingContext.getCssWidth();
         const height = this.drawingContext.getCssHeight();
         const spacing = 50;
@@ -271,24 +295,30 @@ this.drawingContext.clear();
         context.save();
         context.strokeStyle = "#d1d5db";
         context.fillStyle = "#d1d5db";
-        context.lineWidth = 1;
+        context.lineWidth = 1 * unit;
         context.setLineDash([]);
         context.beginPath();
 
         const drawVerticals = type === "grid" || type === "columns";
         const drawHorizontals = type === "grid" || type === "rows";
 
+        // Görünür dünya alanını kapla.
+        const minWorldX = viewport.screenToWorldX(0);
+        const maxWorldX = viewport.screenToWorldX(width);
+        const minWorldY = viewport.screenToWorldY(0);
+        const maxWorldY = viewport.screenToWorldY(height);
+
         if (drawVerticals) {
-            for (let x = spacing; x < width; x += spacing) {
-                context.moveTo(x, 0);
-                context.lineTo(x, height);
+            for (let x = Math.floor(minWorldX / spacing) * spacing; x <= maxWorldX; x += spacing) {
+                context.moveTo(x, minWorldY);
+                context.lineTo(x, maxWorldY);
             }
         }
 
         if (drawHorizontals) {
-            for (let y = spacing; y < height; y += spacing) {
-                context.moveTo(0, y);
-                context.lineTo(width, y);
+            for (let y = Math.floor(minWorldY / spacing) * spacing; y <= maxWorldY; y += spacing) {
+                context.moveTo(minWorldX, y);
+                context.lineTo(maxWorldX, y);
             }
         }
 
@@ -326,16 +356,17 @@ this.drawingContext.clear();
     private renderImageSelection(documentImage: DocumentImage): void {
 
         const context = this.drawingContext.getContext();
+        const unit = 1 / this.drawingContext.getViewport().getScale();
 
         context.save();
         context.strokeStyle = "#2563eb";
-        context.lineWidth = 2;
-        context.setLineDash([6, 6]);
+        context.lineWidth = 2 * unit;
+        context.setLineDash([6 * unit, 6 * unit]);
         context.strokeRect(
-            documentImage.getX() - 3,
-            documentImage.getY() - 3,
-            documentImage.getWidth() + 6,
-            documentImage.getHeight() + 6
+            documentImage.getX() - 3 * unit,
+            documentImage.getY() - 3 * unit,
+            documentImage.getWidth() + 6 * unit,
+            documentImage.getHeight() + 6 * unit
         );
         context.restore();
 
@@ -400,16 +431,17 @@ this.drawingContext.clear();
 
         const bounds = this.getTextBounds(text);
         const context = this.drawingContext.getContext();
+        const unit = 1 / this.drawingContext.getViewport().getScale();
 
         context.save();
         context.strokeStyle = "#2563eb";
-        context.lineWidth = 2;
-        context.setLineDash([6, 6]);
+        context.lineWidth = 2 * unit;
+        context.setLineDash([6 * unit, 6 * unit]);
         context.strokeRect(
-            bounds.minX - 3,
-            bounds.minY - 3,
-            bounds.maxX - bounds.minX + 6,
-            bounds.maxY - bounds.minY + 6
+            bounds.minX - 3 * unit,
+            bounds.minY - 3 * unit,
+            bounds.maxX - bounds.minX + 6 * unit,
+            bounds.maxY - bounds.minY + 6 * unit
         );
         context.restore();
 

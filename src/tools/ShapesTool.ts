@@ -77,9 +77,9 @@ export class ShapesTool extends Tool {
         this.activePointerId = event.pointerId;
         this.history.begin();
 
-        this.startX = event.offsetX;
-        this.startY = event.offsetY;
-        this.previewStroke = this.createStroke(event.offsetX, event.offsetY);
+        this.startX = this.worldX(event);
+        this.startY = this.worldY(event);
+        this.previewStroke = this.createStroke(this.startX, this.startY);
 
     }
 
@@ -93,7 +93,7 @@ export class ShapesTool extends Tool {
             return;
         }
 
-        this.previewStroke = this.createStroke(event.offsetX, event.offsetY);
+        this.previewStroke = this.createStroke(this.worldX(event), this.worldY(event));
         this.renderer.render(this.previewStroke);
 
     }
@@ -109,7 +109,7 @@ export class ShapesTool extends Tool {
         }
 
         this.activePointerId = null;
-        const stroke = this.createStroke(event.offsetX, event.offsetY);
+        const stroke = this.createStroke(this.worldX(event), this.worldY(event));
 
         this.previewStroke = null;
 

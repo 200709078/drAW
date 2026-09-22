@@ -91,8 +91,13 @@ export class ManagerContainer {
         // Pointer Manager
         this.pointerManager = new PointerManager(
             this.canvasManager.getCanvas(),
-            this.toolManager
+            this.toolManager,
+            this.drawingContext.getViewport()
         );
+
+        this.drawingContext.getViewport().addChangeListener(() => {
+            this.documentRenderer.render();
+        });
 
         // Varsayılan araç
         this.penTool = new PenTool(

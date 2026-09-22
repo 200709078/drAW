@@ -10,6 +10,7 @@ import { generateDisplayName } from "./displayName";
 export class AutoSaveManager {
 
     private static readonly AUTOSAVE_INTERVAL_MS = 10000;
+    private static readonly AUTOSAVE_BATTERY_INTERVAL_MS = 30000;
 
     private readonly repository: DrawingRepository;
     private readonly document: Document;
@@ -129,9 +130,39 @@ export class AutoSaveManager {
             return;
         }
 
-        this.autosaveTimer = setInterval(() => {
-            void this.saveIfNeeded();
-        }, AutoSaveManager.AUTOSAVE_INTERVAL_MS);
+        const start = (intervalMs: number): void => {
+            this.stopAutoSave();
+            this.autosaveTimer = setInterval(() => {
+                void this.saveIfNeeded();
+            }, intervalMs);
+        };
+
+        start(AutoSaveManager.AUTOSAVE_INTERVAL_MS);
+
+        // Pilde daha seyrek kaydet.
+        try {
+            const navigatorWithBattery = navigator as Navigator & {
+                getBattery?: () => Promise<{
+                    charging: boolean;
+                    addEventListener: (type: string, listener: () => void) => void;
+                }>;
+            };
+
+            if (typeof navigatorWithBattery.getBattery === "function") {
+                void navigatorWithBattery.getBattery().then((battery) => {
+                    const applyInterval = (): void => {
+                        start(battery.charging
+                            ? AutoSaveManager.AUTOSAVE_INTERVAL_MS
+                            : AutoSaveManager.AUTOSAVE_BATTERY_INTERVAL_MS);
+                    };
+
+                    battery.addEventListener("chargingchange", applyInterval);
+                    applyInterval();
+                }).catch(() => undefined);
+            }
+        } catch {
+            // yok say, varsayılan aralıkla devam et
+        }
 
     }
 
