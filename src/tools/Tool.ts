@@ -50,6 +50,13 @@ export abstract class Tool {
 
     public abstract onPointerUp(event: PointerEvent): void;
 
+    public onPointerCancel(event: PointerEvent): void {
+
+        void event;
+        this.cancel();
+
+    }
+
     public cancel(): void {
 
     }

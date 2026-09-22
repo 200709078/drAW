@@ -54,7 +54,7 @@ export class PointerManager {
 
     private onPointerCancel = (event: PointerEvent): void => {
 
-        this.toolManager.getActiveTool()?.cancel();
+        this.toolManager.getActiveTool()?.onPointerCancel(event);
         this.releasePointerCapture(event.pointerId);
 
     };

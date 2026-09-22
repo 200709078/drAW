@@ -28,6 +28,11 @@ type ResizeOriginals = {
 };
 
 const BORDER_GRAB_TOLERANCE = 8;
+const TOUCH_BORDER_GRAB_TOLERANCE = 24;
+const HANDLE_HIT_RADIUS = 10;
+const TOUCH_HANDLE_HIT_RADIUS = 28;
+const TOUCH_DRAG_THRESHOLD = 4;
+const TOUCH_SMOOTHING_FACTOR = 0.6;
 
 export class SelectionTool extends Tool {
 
@@ -51,6 +56,11 @@ export class SelectionTool extends Tool {
     private deleteButton: HTMLButtonElement | null;
     private lastTextClick: TextObject | null;
     private lastTextClickTime: number;
+    private activePointerId: number | null;
+    private activePointerType: string | null;
+    private dragThresholdPassed: boolean;
+    private smoothX: number;
+    private smoothY: number;
 
     constructor(
         drawingContext: DrawingContext,
@@ -81,6 +91,11 @@ export class SelectionTool extends Tool {
         this.deleteButton = null;
         this.lastTextClick = null;
         this.lastTextClickTime = 0;
+        this.activePointerId = null;
+        this.activePointerType = null;
+        this.dragThresholdPassed = false;
+        this.smoothX = 0;
+        this.smoothY = 0;
 
     }
 
@@ -205,6 +220,21 @@ export class SelectionTool extends Tool {
 
     public override onPointerDown(event: PointerEvent): void {
 
+        // Devam eden bir hareket varken ikinci parmağı yok say.
+        if (this.activePointerId !== null) {
+            return;
+        }
+
+        this.activePointerId = event.pointerId;
+        this.activePointerType = event.pointerType;
+        this.dragThresholdPassed = false;
+        this.smoothX = event.offsetX;
+        this.smoothY = event.offsetY;
+
+        const isTouch = event.pointerType === "touch";
+        const grabTolerance = isTouch ? TOUCH_BORDER_GRAB_TOLERANCE : BORDER_GRAB_TOLERANCE;
+        const handleRadius = isTouch ? TOUCH_HANDLE_HIT_RADIUS : HANDLE_HIT_RADIUS;
+
         this.history.begin();
 
         this.startX = event.offsetX;
@@ -225,7 +255,7 @@ export class SelectionTool extends Tool {
             return;
         }
 
-        const handle = this.getHandleAt(this.startX, this.startY);
+        const handle = this.getHandleAt(this.startX, this.startY, handleRadius);
 
         if (handle !== null && !this.isAdditiveSelection) {
             this.startResize(handle);
@@ -235,7 +265,7 @@ export class SelectionTool extends Tool {
             return;
         }
 
-        if (this.isPointOnSelectionBorder(this.startX, this.startY, BORDER_GRAB_TOLERANCE) &&
+        if (this.isPointOnSelectionBorder(this.startX, this.startY, grabTolerance) &&
             !this.isAdditiveSelection) {
             this.isDragging = true;
             this.isSelecting = false;
@@ -276,6 +306,10 @@ export class SelectionTool extends Tool {
 
     public override onPointerMove(event: PointerEvent): void {
 
+        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+            return;
+        }
+
         if (this.isSelecting) {
             this.renderer.setSelectionBounds(this.startX, this.startY, event.offsetX, event.offsetY);
             this.renderer.render();
@@ -284,7 +318,13 @@ export class SelectionTool extends Tool {
         }
 
         if (this.isResizing) {
-            this.applyResize(event.offsetX, event.offsetY);
+            if (this.activePointerType === "touch") {
+                this.smoothX += TOUCH_SMOOTHING_FACTOR * (event.offsetX - this.smoothX);
+                this.smoothY += TOUCH_SMOOTHING_FACTOR * (event.offsetY - this.smoothY);
+                this.applyResize(this.smoothX, this.smoothY);
+            } else {
+                this.applyResize(event.offsetX, event.offsetY);
+            }
 
             return;
         }
@@ -293,8 +333,36 @@ export class SelectionTool extends Tool {
             return;
         }
 
-        const deltaX = event.offsetX - this.lastX;
-        const deltaY = event.offsetY - this.lastY;
+        if (this.activePointerType === "touch" && !this.dragThresholdPassed) {
+            if (Math.hypot(event.offsetX - this.startX, event.offsetY - this.startY) < TOUCH_DRAG_THRESHOLD) {
+                return;
+            }
+
+            this.dragThresholdPassed = true;
+            this.lastX = event.offsetX;
+            this.lastY = event.offsetY;
+            this.smoothX = event.offsetX;
+            this.smoothY = event.offsetY;
+
+            return;
+        }
+
+        let deltaX: number;
+        let deltaY: number;
+
+        if (this.activePointerType === "touch") {
+            this.smoothX += TOUCH_SMOOTHING_FACTOR * (event.offsetX - this.smoothX);
+            this.smoothY += TOUCH_SMOOTHING_FACTOR * (event.offsetY - this.smoothY);
+            deltaX = this.smoothX - this.lastX;
+            deltaY = this.smoothY - this.lastY;
+            this.lastX = this.smoothX;
+            this.lastY = this.smoothY;
+        } else {
+            deltaX = event.offsetX - this.lastX;
+            deltaY = event.offsetY - this.lastY;
+            this.lastX = event.offsetX;
+            this.lastY = event.offsetY;
+        }
 
         for (const stroke of this.selectedStrokes) {
             stroke.translate(deltaX, deltaY);
@@ -305,14 +373,42 @@ export class SelectionTool extends Tool {
         for (const text of this.selectedTexts) {
             text.translate(deltaX, deltaY);
         }
-        this.lastX = event.offsetX;
-        this.lastY = event.offsetY;
         this.renderer.render();
         this.updateDeleteButton();
 
     }
 
+    public override onPointerCancel(event: PointerEvent): void {
+
+        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+            return;
+        }
+
+        this.activePointerId = null;
+        this.activePointerType = null;
+
+        // Hareketi bitir ama seçimi koru.
+        this.isDragging = false;
+        this.isSelecting = false;
+        this.isResizing = false;
+        this.activeHandle = null;
+        this.resizeBounds = null;
+        this.resizeOriginals = null;
+        this.renderer.clearSelectionBounds();
+        this.history.commit();
+        this.updateRendererSelection();
+        this.renderer.render();
+
+    }
+
     public override onPointerUp(event: PointerEvent): void {
+
+        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+            return;
+        }
+
+        this.activePointerId = null;
+        this.activePointerType = null;
 
         if (this.isResizing) {
             this.isResizing = false;
@@ -341,6 +437,8 @@ export class SelectionTool extends Tool {
 
     public override cancel(): void {
 
+        this.activePointerId = null;
+        this.activePointerType = null;
         this.isDragging = false;
         this.isSelecting = false;
         this.isResizing = false;
@@ -367,15 +465,13 @@ export class SelectionTool extends Tool {
 
     }
 
-    private getHandleAt(x: number, y: number): ResizeHandle | null {
+    private getHandleAt(x: number, y: number, hitRadius: number = HANDLE_HIT_RADIUS): ResizeHandle | null {
 
         const bounds = this.renderer.getSelectionBounds();
 
         if (bounds === null) {
             return null;
         }
-
-        const hitRadius = 10;
 
         for (const handle of ALL_RESIZE_HANDLES) {
             const position = getResizeHandlePosition(handle, bounds);
