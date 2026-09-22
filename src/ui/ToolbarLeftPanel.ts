@@ -22,8 +22,10 @@ export class ToolbarLeftPanel {
         textTool: TextTool,
         screenCaptureTool: ScreenCaptureTool,
         desktopAvailable: boolean,
-        canvas: HTMLCanvasElement
+        _canvas: HTMLCanvasElement
     ) {
+
+        void _canvas;
 
         const panel = document.createElement("aside");
         panel.className = "toolbar-left-panel";
@@ -32,11 +34,11 @@ export class ToolbarLeftPanel {
         const list = document.createElement("div");
         list.className = "toolbar-left-panel__list";
 
-        const undoButton = this.createIconButton("Geri Al", undoIcon, {
+        const undoButton = this.createIconButton("Çizimi Geri Al", undoIcon, {
             className: "sidebar__history"
         });
 
-        const redoButton = this.createIconButton("Yinele", redoIcon, {
+        const redoButton = this.createIconButton("Çizimi Yinele", redoIcon, {
             className: "sidebar__history"
         });
 
@@ -279,14 +281,11 @@ export class ToolbarLeftPanel {
             );
         };
 
+        // Açılışta açık gelsin; sadece toggle butonu kapatıp açabilsin.
         setPanelOpen(true);
 
         toggle.addEventListener("click", () => {
             setPanelOpen(document.body.classList.contains("toolbar-left-closed"));
-        });
-
-        canvas.addEventListener("pointerdown", () => {
-            setPanelOpen(false);
         });
 
         window.addEventListener("newdraw:started", () => {

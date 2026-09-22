@@ -45,6 +45,20 @@ export class DrawingsPanel {
         `</svg>`
     ].join("");
 
+    private static readonly ICON_PREV = [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"`,
+        ` stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+        `<path d="m15 18-6-6 6-6"/>`,
+        `</svg>`
+    ].join("");
+
+    private static readonly ICON_NEXT = [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"`,
+        ` stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+        `<path d="m9 18 6-6-6-6"/>`,
+        `</svg>`
+    ].join("");
+
     private readonly repository: DrawingRepository;
     private readonly autoSaveManager: AutoSaveManager;
     private readonly toolManager: ToolManager;
@@ -55,9 +69,14 @@ export class DrawingsPanel {
 
     private readonly listElement: HTMLElement;
     private readonly toggleElement: HTMLButtonElement;
+    private readonly prevButton: HTMLButtonElement;
+    private readonly nextButton: HTMLButtonElement;
 
     private readonly cards: Map<string, HTMLElement>;
     private readonly recordsById: Map<string, DrawingDocument>;
+    // Yeniden eskiye sıralı kayıt id listesi (refresh ile güncellenir).
+    private orderedIds: string[];
+    private navigating: boolean;
     private openState: boolean;
     private refreshScheduled: boolean;
 
@@ -73,6 +92,8 @@ export class DrawingsPanel {
 
         this.cards = new Map();
         this.recordsById = new Map();
+        this.orderedIds = [];
+        this.navigating = false;
         this.openState = true;
         this.refreshScheduled = false;
 
@@ -80,9 +101,12 @@ export class DrawingsPanel {
 
         this.listElement = built.list;
         this.toggleElement = built.toggle;
+        this.prevButton = built.prev;
+        this.nextButton = built.next;
 
         this.historyManager.addChangeListener(() => this.scheduleRefresh());
-        window.addEventListener("newdraw:started", () => this.close());
+        // Açılışta açık gelsin; sadece toggle butonu kapatıp açabilsin.
+        this.open();
         void this.refresh();
 
     }
@@ -133,13 +157,17 @@ export class DrawingsPanel {
             return;
         }
 
+        // Sabit sıralama: yeniden eskiye createdAt'e göre.
+        // updatedAt her kaydetmede değiştiği için gezinme sırasında
+        // listenin yer değiştirmesine yol açıyordu.
         documents.sort((first, second) => {
-            return second.getUpdatedAt().localeCompare(first.getUpdatedAt());
+            return second.getCreatedAt().localeCompare(first.getCreatedAt());
         });
 
         const activeId = this.autoSaveManager.getActiveDocument()?.getId() ?? null;
 
         this.recordsById.clear();
+        this.orderedIds = documents.map((document) => document.getId());
 
         const presentIds = new Set<string>();
 
@@ -169,13 +197,77 @@ export class DrawingsPanel {
         }
 
         this.listElement.hidden = documents.length === 0;
+        this.refreshNavButtons();
+
+    }
+
+    // direction: +1 eski kayıt (Önceki), -1 yeni kayıt (Sonraki).
+    // Liste yeniden eskiye sıralı.
+    private targetId(direction: 1 | -1): string | null {
+
+        if (this.orderedIds.length === 0) {
+            return null;
+        }
+
+        const activeId = this.autoSaveManager.getActiveDocument()?.getId() ?? null;
+        const activeIndex = activeId === null
+            ? -1
+            : this.orderedIds.indexOf(activeId);
+
+        // Aktif çizim listede yoksa (kaydedilmemiş yeni çizim) en yeninin
+        // öncesinde sayılır: Önceki en yeni kayıtlı çizime gider.
+        const baseIndex = activeIndex === -1 ? -1 : activeIndex;
+        const targetIndex = baseIndex + direction;
+
+        if (targetIndex < 0 || targetIndex >= this.orderedIds.length) {
+            return null;
+        }
+
+        return this.orderedIds[targetIndex];
+
+    }
+
+    private refreshNavButtons(): void {
+
+        this.prevButton.disabled = this.navigating || this.targetId(1) === null;
+        this.nextButton.disabled = this.navigating || this.targetId(-1) === null;
+
+    }
+
+    private async stepDrawing(direction: 1 | -1): Promise<void> {
+
+        if (this.navigating) {
+            return;
+        }
+
+        const id = this.targetId(direction);
+
+        if (id === null) {
+            return;
+        }
+
+        const stored = this.recordsById.get(id) ?? null;
+
+        if (stored === null) {
+            return;
+        }
+
+        this.navigating = true;
+        this.refreshNavButtons();
+
+        try {
+            await this.openDrawing(stored);
+        } finally {
+            this.navigating = false;
+            this.refreshNavButtons();
+        }
 
     }
 
     private buildDom(
         newDrawButton: HTMLButtonElement,
-        canvas: HTMLCanvasElement
-    ): { panel: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement } {
+        _canvas: HTMLCanvasElement
+    ): { panel: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement; prev: HTMLButtonElement; next: HTMLButtonElement } {
 
         const panel = document.createElement("aside");
         panel.className = "drawings-panel";
@@ -188,9 +280,33 @@ export class DrawingsPanel {
         title.className = "drawings-panel__title";
         title.textContent = "ÇİZİMLER";
 
+        const createNavButton = (
+            label: string,
+            icon: string
+        ): HTMLButtonElement => {
+            const button = document.createElement("button");
+            button.type = "button";
+            button.className = "sidebar__history";
+            button.title = label;
+            button.setAttribute("aria-label", label);
+            button.innerHTML = icon;
+            button.disabled = true;
+
+            return button;
+        };
+
+        const prev = createNavButton("Önceki Çizim", DrawingsPanel.ICON_PREV);
+        const next = createNavButton("Sonraki Çizim", DrawingsPanel.ICON_NEXT);
+        prev.addEventListener("click", () => {
+            void this.stepDrawing(1);
+        });
+        next.addEventListener("click", () => {
+            void this.stepDrawing(-1);
+        });
+
         const newDrawingArea = document.createElement("div");
         newDrawingArea.className = "drawings-panel__new";
-        newDrawingArea.appendChild(newDrawButton);
+        newDrawingArea.append(prev, newDrawButton, next);
 
         header.append(title, newDrawingArea);
         panel.appendChild(header);
@@ -210,13 +326,9 @@ export class DrawingsPanel {
         toggle.addEventListener("click", () => this.toggle());
         document.body.appendChild(toggle);
 
-        canvas.addEventListener("pointerdown", () => {
-            if (this.isOpen()) {
-                this.close();
-            }
-        });
+        void _canvas;
 
-        return { panel, list, toggle };
+        return { panel, list, toggle, prev, next };
 
     }
 
@@ -354,7 +466,6 @@ export class DrawingsPanel {
             this.documentRenderer.render();
         }
 
-        this.close();
         this.scheduleRefresh();
         window.dispatchEvent(new CustomEvent("drawing:opened"));
 

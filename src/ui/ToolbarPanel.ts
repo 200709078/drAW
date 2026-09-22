@@ -12,7 +12,6 @@ import { AutoSaveManager } from "../autosave/AutoSaveManager";
 import type { DrawingRepository } from "../storage/DrawingRepository";
 import { DrawingsPanel } from "./DrawingsPanel";
 import type { ShapeType } from "../shapes/ShapeFactory";
-import type { Tool } from "../tools/Tool";
 import pencilIcon from "../assets/icons/pencil.svg";
 import highlighterIcon from "../assets/icons/highlighter.svg";
 import eraserNormalIcon from "../assets/icons/eraser_normal.svg";
@@ -39,7 +38,7 @@ export class ToolbarPanel {
         shapesTool: ShapesTool,
         autoSaveManager: AutoSaveManager,
         repository: DrawingRepository,
-        canvas: HTMLCanvasElement
+        _canvas: HTMLCanvasElement
     ) {
 
         const sidebar = document.createElement("aside");
@@ -174,11 +173,60 @@ export class ToolbarPanel {
         const widthControl = document.createElement("div");
         widthControl.className = "sidebar__control";
 
+        // Kalem kalınlık profilleri: mobil/tablet/PC için standart,
+        // akıllı tahta için büyük değerler.
+        const STANDARD_WIDTHS = [1, 2, 4, 6, 10, 16, 24, 32];
+        const SMARTBOARD_WIDTHS = [24, 30, 36, 42, 50, 56, 70, 90];
+        const STANDARD_DEFAULT_WIDTH = 6;
+        const SMARTBOARD_DEFAULT_WIDTH = 42;
+
+        // Akıllı tahtada büyük kalem seti, diğer platformlarda standart set.
+        const detectSmartBoard = (): boolean => {
+            try {
+                const params = new URLSearchParams(window.location.search);
+
+                if (params.get("tahta") === "1" || params.get("board") === "smart") {
+                    return true;
+                }
+            } catch {
+                // yok say
+            }
+
+            const touchPoints = navigator.maxTouchPoints ?? 0;
+            const screenWidth = window.screen?.width ?? window.innerWidth;
+            const screenHeight = window.screen?.height ?? window.innerHeight;
+            const minSide = Math.min(screenWidth, screenHeight);
+            const maxSide = Math.max(screenWidth, screenHeight);
+
+            // Akıllı tahtalar genelde 20+ dokunmatik nokta bildirir.
+            if (touchPoints >= 20) {
+                return true;
+            }
+
+            if (touchPoints >= 10 && minSide >= 900 && maxSide >= 1800) {
+                return true;
+            }
+
+            return false;
+        };
+
+        const lineProfile: "standard" | "smartboard" = detectSmartBoard()
+            ? "smartboard"
+            : "standard";
+
+        const widthsForProfile = (): number[] => {
+            return lineProfile === "smartboard" ? SMARTBOARD_WIDTHS : STANDARD_WIDTHS;
+        };
+
+        const defaultWidthForProfile = (): number => {
+            return lineProfile === "smartboard" ? SMARTBOARD_DEFAULT_WIDTH : STANDARD_DEFAULT_WIDTH;
+        };
+
         const widthButton = document.createElement("button");
         widthButton.type = "button";
         widthButton.className = "sidebar__width-trigger";
-        widthButton.style.setProperty("--line-width", "6px");
-        widthButton.setAttribute("aria-label", "Kalınlık: 6 piksel");
+        widthButton.style.setProperty("--line-width", `${defaultWidthForProfile()}px`);
+        widthButton.setAttribute("aria-label", `Kalınlık: ${defaultWidthForProfile()} piksel`);
         widthButton.setAttribute("aria-expanded", "false");
 
         const widthPalette = document.createElement("div");
@@ -204,14 +252,15 @@ export class ToolbarPanel {
 
             penTool.setColor("#111827");
             highlighterTool.setColor("#111827");
-            penTool.setLineWidth(6);
-            highlighterTool.setLineWidth(6);
-            eraserTool.setLineWidth(6);
-            partialEraserTool.setLineWidth(6);
+            const resetWidth = defaultWidthForProfile();
+            penTool.setLineWidth(resetWidth);
+            highlighterTool.setLineWidth(resetWidth);
+            eraserTool.setLineWidth(resetWidth);
+            partialEraserTool.setLineWidth(resetWidth);
             colorPreview.style.backgroundColor = "#111827";
             colorButton.setAttribute("aria-label", "Renk: Siyah");
-            widthButton.style.setProperty("--line-width", "6px");
-            widthButton.setAttribute("aria-label", "Kalınlık: 6 piksel");
+            widthButton.style.setProperty("--line-width", `${resetWidth}px`);
+            widthButton.setAttribute("aria-label", `Kalınlık: ${resetWidth} piksel`);
 
             for (const [index, button] of colorPalette.querySelectorAll("button").entries()) {
                 const isSelected = index === 0;
@@ -220,8 +269,8 @@ export class ToolbarPanel {
                 button.setAttribute("aria-pressed", String(isSelected));
             }
 
-            for (const [index, button] of widthPalette.querySelectorAll("button").entries()) {
-                const isSelected = index === 3;
+            for (const button of widthPalette.querySelectorAll("button[data-width]")) {
+                const isSelected = button.getAttribute("data-width") === String(resetWidth);
 
                 button.classList.toggle("sidebar__width--selected", isSelected);
                 button.setAttribute("aria-pressed", String(isSelected));
@@ -592,41 +641,51 @@ export class ToolbarPanel {
             colorPalette.appendChild(paletteButton);
         }
 
-        const lineWidths = [1, 2, 4, 6, 10, 16, 24, 32];
+        const applyLineWidth = (lineWidth: number): void => {
+            penTool.setLineWidth(lineWidth);
+            highlighterTool.setLineWidth(lineWidth);
+            eraserTool.setLineWidth(lineWidth);
+            partialEraserTool.setLineWidth(lineWidth);
+            widthButton.style.setProperty("--line-width", `${lineWidth}px`);
+            widthButton.setAttribute("aria-label", `Kalınlık: ${lineWidth} piksel`);
 
-        for (const lineWidth of lineWidths) {
-            const paletteButton = document.createElement("button");
-            const isSelected = lineWidth === 6;
+            for (const button of widthPalette.querySelectorAll("button[data-width]")) {
+                const isCurrentWidth = button.getAttribute("data-width") === String(lineWidth);
 
-            paletteButton.type = "button";
-            paletteButton.className = "sidebar__width";
-            paletteButton.style.setProperty("--line-width", `${lineWidth}px`);
-            paletteButton.setAttribute("aria-label", `${lineWidth} piksel kalınlık`);
-            paletteButton.setAttribute("aria-pressed", String(isSelected));
-            paletteButton.classList.toggle("sidebar__width--selected", isSelected);
+                button.classList.toggle("sidebar__width--selected", isCurrentWidth);
+                button.setAttribute("aria-pressed", String(isCurrentWidth));
+            }
 
-            paletteButton.addEventListener("click", () => {
-                penTool.setLineWidth(lineWidth);
-                highlighterTool.setLineWidth(lineWidth);
-                eraserTool.setLineWidth(lineWidth);
-                partialEraserTool.setLineWidth(lineWidth);
-                widthButton.style.setProperty("--line-width", `${lineWidth}px`);
-                widthButton.setAttribute("aria-label", `Kalınlık: ${lineWidth} piksel`);
+            widthPalette.hidden = true;
+            widthButton.setAttribute("aria-expanded", "false");
+            syncToggleVisibility();
+        };
 
-                for (const button of widthPalette.querySelectorAll("button")) {
-                    const isCurrentWidth = button === paletteButton;
+        const buildWidthPalette = (): void => {
+            widthPalette.replaceChildren();
 
-                    button.classList.toggle("sidebar__width--selected", isCurrentWidth);
-                    button.setAttribute("aria-pressed", String(isCurrentWidth));
-                }
+            for (const lineWidth of widthsForProfile()) {
+                const paletteButton = document.createElement("button");
+                const isSelected = lineWidth === defaultWidthForProfile();
 
-                widthPalette.hidden = true;
-                widthButton.setAttribute("aria-expanded", "false");
-                syncToggleVisibility();
-            });
+                paletteButton.type = "button";
+                paletteButton.className = "sidebar__width";
+                paletteButton.style.setProperty("--line-width", `${lineWidth}px`);
+                paletteButton.setAttribute("data-width", String(lineWidth));
+                paletteButton.setAttribute("aria-label", `${lineWidth} piksel kalınlık`);
+                paletteButton.setAttribute("aria-pressed", String(isSelected));
+                paletteButton.classList.toggle("sidebar__width--selected", isSelected);
 
-            widthPalette.appendChild(paletteButton);
-        }
+                paletteButton.addEventListener("click", () => {
+                    applyLineWidth(lineWidth);
+                });
+
+                widthPalette.appendChild(paletteButton);
+            }
+        };
+
+        buildWidthPalette();
+        applyLineWidth(defaultWidthForProfile());
 
         colorControl.append(colorButton, colorPalette);
         widthControl.append(widthButton, widthPalette);
@@ -679,70 +738,14 @@ export class ToolbarPanel {
             );
         };
 
-        const AUTO_OPEN_DELAY = 5000;
-        let autoOpenTimer: ReturnType<typeof setTimeout> | null = null;
-
-        const scheduleAutoOpen = (): void => {
-            if (autoOpenTimer !== null) {
-                clearTimeout(autoOpenTimer);
-            }
-
-            autoOpenTimer = setTimeout(() => {
-                autoOpenTimer = null;
-                setToolbarOpen(true);
-            }, AUTO_OPEN_DELAY);
-        };
-
-        const cancelAutoOpen = (): void => {
-            if (autoOpenTimer !== null) {
-                clearTimeout(autoOpenTimer);
-                autoOpenTimer = null;
-            }
-        };
-
+        // Açılışta açık gelsin; sadece toggle butonu kapatıp açabilsin.
         setToolbarOpen(true);
 
         toggle.addEventListener("click", () => {
-            cancelAutoOpen();
             setToolbarOpen(document.body.classList.contains("sidebar-closed"));
         });
 
-        const drawingTools: Array<Tool> = [
-            penTool,
-            highlighterTool,
-            eraserTool,
-            partialEraserTool,
-            shapesTool
-        ];
-
-        canvas.addEventListener("pointerdown", () => {
-            setToolbarOpen(false);
-
-            const activeTool = toolManager.getActiveTool();
-
-            if (activeTool !== null && drawingTools.includes(activeTool)) {
-                scheduleAutoOpen();
-            }
-        });
-
-        canvas.addEventListener("pointermove", () => {
-            const activeTool = toolManager.getActiveTool();
-
-            if (activeTool !== null && drawingTools.includes(activeTool)) {
-                scheduleAutoOpen();
-            }
-        });
-
-        canvas.addEventListener("pointerup", () => {
-            const activeTool = toolManager.getActiveTool();
-
-            if (activeTool !== null && drawingTools.includes(activeTool)) {
-                scheduleAutoOpen();
-            }
-        });
-
         window.addEventListener("drawing:opened", () => {
-            cancelAutoOpen();
             setToolbarOpen(true);
         });
 
@@ -755,7 +758,7 @@ export class ToolbarPanel {
             documentRenderer,
             historyManager,
             newDrawButton,
-            canvas
+            canvas: _canvas
         });
 
     }

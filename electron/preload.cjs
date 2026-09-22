@@ -23,11 +23,23 @@ contextBridge.exposeInMainWorld("drAWDesktop", {
         toggleMaximize: () => {
             ipcRenderer.send("window:toggle-maximize");
         },
+        toggleFullscreen: () => {
+            ipcRenderer.send("window:toggle-fullscreen");
+        },
+        setFullscreen: (enabled) => {
+            ipcRenderer.send("window:set-fullscreen", enabled);
+        },
+        isFullscreen: () => {
+            return ipcRenderer.invoke("window:is-fullscreen");
+        },
         close: () => {
             ipcRenderer.send("window:close");
         },
         onMaximizeChanged: (callback) => {
             ipcRenderer.on("window:maximize-changed", (_event, maximized) => callback(maximized));
+        },
+        onFullscreenChanged: (callback) => {
+            ipcRenderer.on("window:fullscreen-changed", (_event, fullscreen) => callback(fullscreen));
         }
     }
 });

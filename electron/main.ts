@@ -107,6 +107,30 @@ function registerWindowControls(): void {
         BrowserWindow.fromWebContents(event.sender)?.close();
     });
 
+    ipcMain.on("window:toggle-fullscreen", (event) => {
+        const window = BrowserWindow.fromWebContents(event.sender);
+
+        if (window === null || window === undefined) {
+            return;
+        }
+
+        window.setFullScreen(!window.isFullScreen());
+    });
+
+    ipcMain.on("window:set-fullscreen", (event, enabled: unknown) => {
+        const window = BrowserWindow.fromWebContents(event.sender);
+
+        if (window === null || window === undefined) {
+            return;
+        }
+
+        window.setFullScreen(enabled === true);
+    });
+
+    ipcMain.handle("window:is-fullscreen", (event) => {
+        return BrowserWindow.fromWebContents(event.sender)?.isFullScreen() ?? false;
+    });
+
 }
 
 function createWindow(): void {
@@ -127,6 +151,8 @@ function createWindow(): void {
         autoHideMenuBar: true,
         frame: false,
         titleBarStyle: "hidden",
+        fullscreenable: true,
+        fullscreen: true,
         icon: iconPath,
         webPreferences: {
             preload: getAppPath(
@@ -146,6 +172,22 @@ function createWindow(): void {
 
     window.on("unmaximize", () => {
         window.webContents.send("window:maximize-changed", false);
+    });
+
+    window.on("enter-full-screen", () => {
+        window.webContents.send("window:fullscreen-changed", true);
+    });
+
+    window.on("leave-full-screen", () => {
+        window.webContents.send("window:fullscreen-changed", false);
+    });
+
+    // F11: gerçek tam ekran (görev çubuğu arka planda kalır)
+    window.webContents.on("before-input-event", (event, input) => {
+        if (input.key === "F11" && input.type === "keyDown") {
+            event.preventDefault();
+            window.setFullScreen(!window.isFullScreen());
+        }
     });
 
     window.on("close", (event) => {
