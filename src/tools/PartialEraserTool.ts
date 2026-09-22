@@ -6,6 +6,7 @@ import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { Tool } from "./Tool";
 import { HistoryManager } from "../core/HistoryManager";
 import { ERASER_CURSOR } from "./EraserTool";
+import { EraserIndicator } from "../ui/EraserIndicator";
 
 export class PartialEraserTool extends Tool {
 
@@ -14,6 +15,7 @@ export class PartialEraserTool extends Tool {
     private readonly history: HistoryManager;
     private isErasing: boolean;
     private activePointerId: number | null;
+    private indicator: EraserIndicator | null;
     private radius: number;
 
     constructor(
@@ -30,6 +32,7 @@ export class PartialEraserTool extends Tool {
         this.history = history;
         this.isErasing = false;
         this.activePointerId = null;
+        this.indicator = null;
         this.radius = 12;
 
     }
@@ -37,14 +40,41 @@ export class PartialEraserTool extends Tool {
     public override activate(): void {
 
         this.canvas.style.cursor = ERASER_CURSOR;
+        this.indicator = new EraserIndicator();
+        this.canvas.addEventListener("mousemove", this.handleHover);
+        this.canvas.addEventListener("mouseleave", this.handleHoverLeave);
 
     }
 
     public override deactivate(): void {
 
+        this.canvas.removeEventListener("mousemove", this.handleHover);
+        this.canvas.removeEventListener("mouseleave", this.handleHoverLeave);
+        this.indicator?.destroy();
+        this.indicator = null;
         this.isErasing = false;
         this.activePointerId = null;
         this.history.commit();
+
+    }
+
+    private readonly handleHover = (event: MouseEvent): void => {
+
+        this.indicator?.move(event.clientX, event.clientY, this.screenRadius());
+
+    };
+
+    private readonly handleHoverLeave = (): void => {
+
+        if (!this.isErasing) {
+            this.indicator?.hide();
+        }
+
+    };
+
+    private screenRadius(): number {
+
+        return this.radius * this.drawingContext.getViewport().getScale();
 
     }
 
@@ -59,6 +89,7 @@ export class PartialEraserTool extends Tool {
         this.history.begin();
         this.isErasing = true;
         this.eraseAt(this.worldX(event), this.worldY(event));
+        this.indicator?.move(event.clientX, event.clientY, this.screenRadius());
 
     }
 
@@ -70,6 +101,7 @@ export class PartialEraserTool extends Tool {
 
         if (this.isErasing) {
             this.eraseAt(this.worldX(event), this.worldY(event));
+            this.indicator?.move(event.clientX, event.clientY, this.screenRadius());
         }
 
     }
@@ -85,12 +117,19 @@ export class PartialEraserTool extends Tool {
         this.isErasing = false;
         this.history.commit();
 
+        if (event.pointerType === "touch") {
+            this.indicator?.hide();
+        } else {
+            this.indicator?.move(event.clientX, event.clientY, this.screenRadius());
+        }
+
     }
 
     public override cancel(): void {
 
         this.isErasing = false;
         this.activePointerId = null;
+        this.indicator?.hide();
         this.history.commit();
 
     }

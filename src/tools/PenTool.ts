@@ -7,6 +7,7 @@ import { Point } from "../document/Point";
 
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { HistoryManager } from "../core/HistoryManager";
+import { CursorRing } from "../ui/CursorRing";
 
 export class PenTool extends Tool {
 
@@ -18,6 +19,7 @@ export class PenTool extends Tool {
 
     private currentStroke: Stroke | null;
     private activePointerId: number | null;
+    private cursorRing: CursorRing | null;
     private color: string;
     private lineWidth: number;
     private readonly opacity: number;
@@ -40,6 +42,7 @@ export class PenTool extends Tool {
 
         this.currentStroke = null;
         this.activePointerId = null;
+        this.cursorRing = null;
         this.color = "#111827";
         this.lineWidth = 6;
         this.opacity = opacity;
@@ -50,14 +53,48 @@ export class PenTool extends Tool {
     public override activate(): void {
 
         this.canvas.style.cursor = PenTool.CURSOR;
+        this.cursorRing = new CursorRing();
+        this.cursorRing.setColor(this.color);
+        this.canvas.addEventListener("mousemove", this.handleHover);
+        this.canvas.addEventListener("mouseleave", this.handleHoverLeave);
 
     }
 
     public override deactivate(): void {
 
+        this.canvas.removeEventListener("mousemove", this.handleHover);
+        this.canvas.removeEventListener("mouseleave", this.handleHoverLeave);
+        this.cursorRing?.destroy();
+        this.cursorRing = null;
         this.currentStroke = null;
         this.activePointerId = null;
         this.history.discard();
+
+    }
+
+    private readonly handleHover = (event: MouseEvent): void => {
+
+        this.cursorRing?.move(event.clientX, event.clientY, this.screenDiameter());
+
+    };
+
+    private readonly handleHoverLeave = (): void => {
+
+        if (this.currentStroke === null) {
+            this.cursorRing?.hide();
+        }
+
+    };
+
+    private effectiveLineWidth(): number {
+
+        return this.lineWidth * this.lineWidthMultiplier;
+
+    }
+
+    private screenDiameter(): number {
+
+        return this.effectiveLineWidth() * this.drawingContext.getViewport().getScale();
 
     }
 
@@ -73,7 +110,7 @@ export class PenTool extends Tool {
 
         this.currentStroke = new Stroke(
             this.color,
-            this.lineWidth * this.lineWidthMultiplier,
+            this.effectiveLineWidth(),
             this.opacity
         );
 
@@ -84,6 +121,8 @@ export class PenTool extends Tool {
                 this.getPressure(event)
             )
         );
+
+        this.cursorRing?.move(event.clientX, event.clientY, this.screenDiameter());
 
     }
 
@@ -99,6 +138,7 @@ export class PenTool extends Tool {
 
         this.appendPointerPoint(event);
         this.renderer.render(this.currentStroke);
+        this.cursorRing?.move(event.clientX, event.clientY, this.screenDiameter());
 
     }
 
@@ -125,12 +165,19 @@ export class PenTool extends Tool {
 
         this.renderer.render();
 
+        if (event.pointerType === "touch") {
+            this.cursorRing?.hide();
+        } else {
+            this.cursorRing?.move(event.clientX, event.clientY, this.screenDiameter());
+        }
+
     }
 
     public override cancel(): void {
 
         this.currentStroke = null;
         this.activePointerId = null;
+        this.cursorRing?.hide();
         this.history.discard();
         this.renderer.render();
 
@@ -139,6 +186,7 @@ export class PenTool extends Tool {
     public setColor(color: string): void {
 
         this.color = color;
+        this.cursorRing?.setColor(color);
 
     }
 

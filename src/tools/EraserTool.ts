@@ -5,6 +5,7 @@ import { DrawingContext } from "../models/DrawingContext";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { Tool } from "./Tool";
 import { HistoryManager } from "../core/HistoryManager";
+import { EraserIndicator } from "../ui/EraserIndicator";
 
 export const ERASER_CURSOR = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%23fda4af' stroke='%239e2940' stroke-width='1.5' stroke-linejoin='round' d='m5 27 4-12L20 4l8 8-11 11z'/%3E%3Cpath fill='%23f8fafc' stroke='%2394a3b8' stroke-width='1.5' stroke-linejoin='round' d='m5 27 4-12 8 8z'/%3E%3Cpath fill='%23fecdd3' d='m20 4 8 8-2.5 2.5-8-8z'/%3E%3C/svg%3E\") 5 27, cell";
 
@@ -15,6 +16,7 @@ export class EraserTool extends Tool {
     private readonly history: HistoryManager;
     private isErasing: boolean;
     private activePointerId: number | null;
+    private indicator: EraserIndicator | null;
     private radius: number;
 
     constructor(
@@ -31,6 +33,7 @@ export class EraserTool extends Tool {
         this.history = history;
         this.isErasing = false;
         this.activePointerId = null;
+        this.indicator = null;
         this.radius = 12;
 
     }
@@ -38,14 +41,41 @@ export class EraserTool extends Tool {
     public override activate(): void {
 
         this.canvas.style.cursor = ERASER_CURSOR;
+        this.indicator = new EraserIndicator();
+        this.canvas.addEventListener("mousemove", this.handleHover);
+        this.canvas.addEventListener("mouseleave", this.handleHoverLeave);
 
     }
 
     public override deactivate(): void {
 
+        this.canvas.removeEventListener("mousemove", this.handleHover);
+        this.canvas.removeEventListener("mouseleave", this.handleHoverLeave);
+        this.indicator?.destroy();
+        this.indicator = null;
         this.isErasing = false;
         this.activePointerId = null;
         this.history.commit();
+
+    }
+
+    private readonly handleHover = (event: MouseEvent): void => {
+
+        this.indicator?.move(event.clientX, event.clientY, this.screenRadius());
+
+    };
+
+    private readonly handleHoverLeave = (): void => {
+
+        if (!this.isErasing) {
+            this.indicator?.hide();
+        }
+
+    };
+
+    private screenRadius(): number {
+
+        return this.radius * this.drawingContext.getViewport().getScale();
 
     }
 
@@ -60,6 +90,7 @@ export class EraserTool extends Tool {
         this.history.begin();
         this.isErasing = true;
         this.eraseAt(this.worldX(event), this.worldY(event));
+        this.indicator?.move(event.clientX, event.clientY, this.screenRadius());
 
     }
 
@@ -71,6 +102,7 @@ export class EraserTool extends Tool {
 
         if (this.isErasing) {
             this.eraseAt(this.worldX(event), this.worldY(event));
+            this.indicator?.move(event.clientX, event.clientY, this.screenRadius());
         }
 
     }
@@ -86,12 +118,19 @@ export class EraserTool extends Tool {
         this.isErasing = false;
         this.history.commit();
 
+        if (event.pointerType === "touch") {
+            this.indicator?.hide();
+        } else {
+            this.indicator?.move(event.clientX, event.clientY, this.screenRadius());
+        }
+
     }
 
     public override cancel(): void {
 
         this.isErasing = false;
         this.activePointerId = null;
+        this.indicator?.hide();
         this.history.commit();
 
     }
