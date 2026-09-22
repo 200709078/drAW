@@ -12,6 +12,11 @@ import { AutoSaveManager } from "../autosave/AutoSaveManager";
 import type { DrawingRepository } from "../storage/DrawingRepository";
 import { DrawingsPanel } from "./DrawingsPanel";
 import type { ShapeType } from "../shapes/ShapeFactory";
+import {
+    defaultWidthForDeviceProfile,
+    getLineProfile,
+    widthsForDeviceProfile
+} from "../platform/DeviceProfile";
 import pencilIcon from "../assets/icons/pencil.svg";
 import highlighterIcon from "../assets/icons/highlighter.svg";
 import eraserNormalIcon from "../assets/icons/eraser_normal.svg";
@@ -175,51 +180,14 @@ export class ToolbarPanel {
 
         // Kalem kalınlık profilleri: mobil/tablet/PC için standart,
         // akıllı tahta için büyük değerler.
-        const STANDARD_WIDTHS = [1, 2, 4, 6, 10, 16, 24, 32];
-        const SMARTBOARD_WIDTHS = [24, 30, 36, 42, 50, 56, 70, 90];
-        const STANDARD_DEFAULT_WIDTH = 6;
-        const SMARTBOARD_DEFAULT_WIDTH = 42;
-
-        // Akıllı tahtada büyük kalem seti, diğer platformlarda standart set.
-        const detectSmartBoard = (): boolean => {
-            try {
-                const params = new URLSearchParams(window.location.search);
-
-                if (params.get("tahta") === "1" || params.get("board") === "smart") {
-                    return true;
-                }
-            } catch {
-                // yok say
-            }
-
-            const touchPoints = navigator.maxTouchPoints ?? 0;
-            const screenWidth = window.screen?.width ?? window.innerWidth;
-            const screenHeight = window.screen?.height ?? window.innerHeight;
-            const minSide = Math.min(screenWidth, screenHeight);
-            const maxSide = Math.max(screenWidth, screenHeight);
-
-            // Akıllı tahtalar genelde 20+ dokunmatik nokta bildirir.
-            if (touchPoints >= 20) {
-                return true;
-            }
-
-            if (touchPoints >= 10 && minSide >= 900 && maxSide >= 1800) {
-                return true;
-            }
-
-            return false;
-        };
-
-        const lineProfile: "standard" | "smartboard" = detectSmartBoard()
-            ? "smartboard"
-            : "standard";
+        const lineProfile = getLineProfile();
 
         const widthsForProfile = (): number[] => {
-            return lineProfile === "smartboard" ? SMARTBOARD_WIDTHS : STANDARD_WIDTHS;
+            return widthsForDeviceProfile(lineProfile);
         };
 
         const defaultWidthForProfile = (): number => {
-            return lineProfile === "smartboard" ? SMARTBOARD_DEFAULT_WIDTH : STANDARD_DEFAULT_WIDTH;
+            return defaultWidthForDeviceProfile(lineProfile);
         };
 
         const widthButton = document.createElement("button");
@@ -322,10 +290,17 @@ export class ToolbarPanel {
             if (shouldOpen) {
                 const buttonBounds = button.getBoundingClientRect();
 
-                panel.style.left = `${window.innerWidth / 2}px`;
-                panel.style.top = `${buttonBounds.bottom + 16}px`;
                 panel.hidden = false;
                 button.setAttribute("aria-expanded", "true");
+
+                if (document.body.classList.contains("board-mode")) {
+                    // Alt dock: palet butonun üstünde açılır.
+                    panel.style.left = `${window.innerWidth / 2}px`;
+                    panel.style.top = `${Math.max(8, buttonBounds.top - panel.offsetHeight - 16)}px`;
+                } else {
+                    panel.style.left = `${window.innerWidth / 2}px`;
+                    panel.style.top = `${buttonBounds.bottom + 16}px`;
+                }
             }
 
             syncToggleVisibility();
@@ -723,6 +698,10 @@ export class ToolbarPanel {
             document.documentElement.style.setProperty(
                 "--sidebar-toggle-top",
                 `${rect.bottom}px`
+            );
+            document.documentElement.style.setProperty(
+                "--sidebar-toggle-bottom",
+                `${window.innerHeight - rect.top}px`
             );
         };
 

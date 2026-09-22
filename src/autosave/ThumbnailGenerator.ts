@@ -6,8 +6,8 @@ import type { ThumbnailData } from "../storage/DrawingDocument";
 
 export class ThumbnailGenerator {
 
-    private static readonly WIDTH = 800;
-    private static readonly HEIGHT = 600;
+    private static readonly WIDTH = 400;
+    private static readonly HEIGHT = 300;
     private readonly serializer: DocumentStateSerializer;
 
     constructor(

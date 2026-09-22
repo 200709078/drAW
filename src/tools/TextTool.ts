@@ -8,6 +8,7 @@ import { Tool } from "./Tool";
 import { PenTool } from "./PenTool";
 import { SelectionTool } from "./SelectionTool";
 import { openTextEditor, closeTextEditor } from "../ui/TextEditor";
+import { getLineProfile, textFontSizeForProfile } from "../platform/DeviceProfile";
 
 export function fontSizeFromLineWidth(lineWidth: number): number {
 
@@ -79,7 +80,7 @@ export class TextTool extends Tool {
             event.offsetX,
             event.offsetY,
             this.penTool.getColor(),
-            fontSizeFromLineWidth(this.penTool.getLineWidth()),
+            textFontSizeForProfile(this.penTool.getLineWidth(), getLineProfile()),
             1
         );
 
