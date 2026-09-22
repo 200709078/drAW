@@ -248,10 +248,10 @@ body.drawings-closed .drawings-panel {
     width: 27px;
     height: 43px;
     padding: 0;
-    border: 1px solid #d1d5db;
+    border: 1px solid #93c5fd;
     border-radius: 8px;
-    background: white;
-    color: #374151;
+    background: #dbeafe;
+    color: #1e40af;
     cursor: pointer;
     box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
     transition: right 0.36s ease;
@@ -367,11 +367,7 @@ body.has-custom-titlebar #app {
 }
 
 body.has-custom-titlebar .sidebar {
-    top: 52px;
-}
-
-body.has-custom-titlebar {
-    --sidebar-toggle-top: 118px;
+    top: auto;
 }
 
 body.has-custom-titlebar .drawings-panel {
@@ -413,8 +409,9 @@ body.has-custom-titlebar .modal-backdrop {
 
 .sidebar {
     position: fixed;
-    top: 16px;
+    top: auto;
     right: 0;
+    bottom: 16px;
     left: 0;
     width: max-content;
     margin: 0 auto;
@@ -424,12 +421,13 @@ body.has-custom-titlebar .modal-backdrop {
 }
 
 body.sidebar-closed .sidebar {
-    transform: translateY(calc(-100% - 16px));
+    transform: translateY(calc(100% + 16px));
 }
 
 .sidebar__toggle {
     position: fixed;
-    top: var(--sidebar-toggle-top, 82px);
+    top: auto;
+    bottom: var(--sidebar-toggle-bottom, 82px);
     left: 50%;
     transform: translate(-50%, 0);
     z-index: 15;
@@ -438,10 +436,10 @@ body.sidebar-closed .sidebar {
     width: 43px;
     height: 25px;
     padding: 0;
-    border: 1px solid #d1d5db;
+    border: 1px solid #93c5fd;
     border-radius: 8px;
-    background: white;
-    color: #374151;
+    background: #dbeafe;
+    color: #1e40af;
     cursor: pointer;
     box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
     transition: transform 0.36s ease;
@@ -455,19 +453,16 @@ body.sidebar-closed .sidebar {
     display: block;
     width: 15px;
     height: 15px;
+    transform: rotate(180deg);
     transition: transform 0.36s ease;
 }
 
 body.sidebar-closed .sidebar__toggle {
-    transform: translate(-50%, calc(-1 * var(--sidebar-toggle-top, 82px) + 8px));
-}
-
-body.has-custom-titlebar.sidebar-closed .sidebar__toggle {
-    transform: translate(-50%, calc(-1 * var(--sidebar-toggle-top, 82px) + 44px));
+    transform: translate(-50%, calc(var(--sidebar-toggle-bottom, 82px) - 8px));
 }
 
 body.sidebar-closed .sidebar__toggle svg {
-    transform: rotate(180deg);
+    transform: none;
 }
 
 .toolbar-left-panel {
@@ -511,10 +506,10 @@ body.toolbar-left-closed .toolbar-left-panel {
     width: 25px;
     height: 43px;
     padding: 0;
-    border: 1px solid #d1d5db;
+    border: 1px solid #93c5fd;
     border-radius: 8px;
-    background: white;
-    color: #374151;
+    background: #dbeafe;
+    color: #1e40af;
     cursor: pointer;
     box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
     transition: left 0.36s ease;
@@ -973,35 +968,11 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
 
-/* Akıllı tahta modu: alt araç çubuğu, uzaktan okunabilir yazılar,
-   parmakla tutulabilir hedefler. */
-body.board-mode .sidebar {
-    top: auto;
-    bottom: 16px;
-}
-
-body.has-custom-titlebar.board-mode .sidebar {
-    top: auto;
-    bottom: 16px;
-}
-
-body.board-mode.sidebar-closed .sidebar {
-    transform: translateY(calc(100% + 16px));
-}
-
+/* Akıllı tahta modu: uzaktan okunabilir yazılar,
+   parmakla tutulabilir hedefler. (Araç çubuğu tüm modlarda altta.) */
 body.board-mode .sidebar__toggle {
-    top: auto;
-    bottom: var(--sidebar-toggle-bottom, 82px);
     width: 64px;
     height: 40px;
-}
-
-body.board-mode.sidebar-closed .sidebar__toggle {
-    transform: translate(-50%, calc(var(--sidebar-toggle-bottom, 82px) - 8px));
-}
-
-body.has-custom-titlebar.board-mode.sidebar-closed .sidebar__toggle {
-    transform: translate(-50%, calc(var(--sidebar-toggle-bottom, 82px) - 8px));
 }
 
 body.board-mode .drawings-panel__title {
