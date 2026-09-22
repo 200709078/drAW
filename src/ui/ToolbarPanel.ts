@@ -293,14 +293,9 @@ export class ToolbarPanel {
                 panel.hidden = false;
                 button.setAttribute("aria-expanded", "true");
 
-                if (document.body.classList.contains("board-mode")) {
-                    // Alt dock: palet butonun üstünde açılır.
-                    panel.style.left = `${window.innerWidth / 2}px`;
-                    panel.style.top = `${Math.max(8, buttonBounds.top - panel.offsetHeight - 16)}px`;
-                } else {
-                    panel.style.left = `${window.innerWidth / 2}px`;
-                    panel.style.top = `${buttonBounds.bottom + 16}px`;
-                }
+                // Araç çubuğu altta dock'lu: palet butonun üstünde açılır.
+                panel.style.left = `${window.innerWidth / 2}px`;
+                panel.style.top = `${Math.max(8, buttonBounds.top - panel.offsetHeight - 16)}px`;
             }
 
             syncToggleVisibility();
