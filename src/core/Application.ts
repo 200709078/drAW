@@ -2,6 +2,7 @@ import { ManagerContainer } from "./ManagerContainer";
 import { ToolbarPanel } from "../ui/ToolbarPanel";
 import { ToolbarLeftPanel } from "../ui/ToolbarLeftPanel";
 import { TitleBar } from "../ui/TitleBar";
+import { ZoomControls } from "../ui/ZoomControls";
 import { isSmartBoard } from "../platform/DeviceProfile";
 
 export class Application {
@@ -11,6 +12,15 @@ export class Application {
     constructor() {
 
         document.body.classList.toggle("board-mode", isSmartBoard());
+
+        // Trackpad pinch'i sayfa zoom'una dönüşmesin (gerçek yakınlaştırma
+        // aracı gelene kadar düzeni koru).
+        window.addEventListener("wheel", (event) => {
+            if (event.ctrlKey) {
+                event.preventDefault();
+            }
+        }, { passive: false });
+
         new TitleBar();
         this.managers = new ManagerContainer();
         new ToolbarPanel(
@@ -38,6 +48,8 @@ export class Application {
             this.managers.getDesktopAvailable(),
             this.managers.getCanvasManager().getCanvas()
         );
+
+        new ZoomControls(this.managers.getDrawingContext().getViewport());
 
         this.registerShutdownHandlers();
 

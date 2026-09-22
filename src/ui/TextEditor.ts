@@ -1,16 +1,18 @@
 import { TextObject, TEXT_FONT_FAMILY, TEXT_LINE_HEIGHT } from "../document/TextObject";
+import type { ViewportManager } from "../core/ViewportManager";
 import { getTitlebarOffset } from "./TitleBar";
 
 let activeTextEditor: TextEditor | null = null;
 
 export function openTextEditor(
     textObject: TextObject,
-    onFinish?: (value: string) => void
+    onFinish?: (value: string) => void,
+    viewport?: ViewportManager
 ): void {
 
     closeTextEditor();
 
-    const editor = new TextEditor(textObject, onFinish);
+    const editor = new TextEditor(textObject, onFinish, viewport);
 
     activeTextEditor = editor;
     editor.open();
@@ -29,16 +31,21 @@ export function closeTextEditor(): void {
 class TextEditor {
 
     private readonly textarea: HTMLTextAreaElement;
+    private readonly textObject: TextObject;
     private readonly onFinish: ((value: string) => void) | undefined;
+    private readonly viewport: ViewportManager | undefined;
     private readonly anchorY: number;
     private finished: boolean;
 
     constructor(
         textObject: TextObject,
-        onFinish?: (value: string) => void
+        onFinish?: (value: string) => void,
+        viewport?: ViewportManager
     ) {
 
+        this.textObject = textObject;
         this.onFinish = onFinish;
+        this.viewport = viewport;
         this.finished = false;
         this.anchorY = textObject.getY();
 
@@ -47,13 +54,7 @@ class TextEditor {
         this.textarea.value = textObject.getText();
         this.textarea.spellcheck = false;
 
-        const fontSize = textObject.getFontSize() * textObject.getScale();
-
-        this.textarea.style.left = `${textObject.getX()}px`;
-        this.textarea.style.fontFamily = TEXT_FONT_FAMILY;
-        this.textarea.style.fontSize = `${fontSize}px`;
-        this.textarea.style.lineHeight = `${TEXT_LINE_HEIGHT}`;
-        this.textarea.style.color = textObject.getColor();
+        this.reposition();
 
     }
 
@@ -64,6 +65,10 @@ class TextEditor {
         this.textarea.addEventListener("blur", this.finish);
         this.textarea.addEventListener("input", this.handleInput);
         this.handleInput();
+
+        if (this.viewport !== undefined) {
+            this.viewport.addChangeListener(this.reposition);
+        }
 
         requestAnimationFrame(() => {
             if (!this.finished) {
@@ -99,7 +104,28 @@ class TextEditor {
 
     private centerVertically = (): void => {
 
-        this.textarea.style.top = `${this.anchorY + getTitlebarOffset() - this.textarea.offsetHeight / 2}px`;
+        const anchorScreenY = this.viewport !== undefined
+            ? this.viewport.worldToScreenY(this.anchorY)
+            : this.anchorY;
+
+        this.textarea.style.top = `${anchorScreenY + getTitlebarOffset() - this.textarea.offsetHeight / 2}px`;
+
+    };
+
+    private reposition = (): void => {
+
+        const scale = this.viewport?.getScale() ?? 1;
+        const x = this.viewport !== undefined
+            ? this.viewport.worldToScreenX(this.textObject.getX())
+            : this.textObject.getX();
+        const fontSize = this.textObject.getFontSize() * this.textObject.getScale() * scale;
+
+        this.textarea.style.left = `${x}px`;
+        this.textarea.style.fontFamily = TEXT_FONT_FAMILY;
+        this.textarea.style.fontSize = `${fontSize}px`;
+        this.textarea.style.lineHeight = `${TEXT_LINE_HEIGHT}`;
+        this.textarea.style.color = this.textObject.getColor();
+        this.centerVertically();
 
     };
 
@@ -113,6 +139,11 @@ class TextEditor {
         this.textarea.removeEventListener("keydown", this.handleKeyDown);
         this.textarea.removeEventListener("blur", this.finish);
         this.textarea.removeEventListener("input", this.handleInput);
+
+        if (this.viewport !== undefined) {
+            this.viewport.removeChangeListener(this.reposition);
+        }
+
         this.textarea.remove();
         this.onFinish?.(this.textarea.value);
 

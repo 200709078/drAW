@@ -1,7 +1,10 @@
+import { ViewportManager } from "../core/ViewportManager";
+
 export class DrawingContext {
 
     private readonly canvas: HTMLCanvasElement;
     private readonly context: CanvasRenderingContext2D;
+    private readonly viewport: ViewportManager;
 
     constructor(
         canvas: HTMLCanvasElement,
@@ -10,6 +13,7 @@ export class DrawingContext {
 
         this.canvas = canvas;
         this.context = context;
+        this.viewport = new ViewportManager();
 
     }
 
@@ -22,6 +26,12 @@ export class DrawingContext {
     public getContext(): CanvasRenderingContext2D {
 
         return this.context;
+
+    }
+
+    public getViewport(): ViewportManager {
+
+        return this.viewport;
 
     }
 

@@ -79,8 +79,8 @@ export class PenTool extends Tool {
 
         this.currentStroke.addPoint(
             new Point(
-                event.offsetX,
-                event.offsetY,
+                this.worldX(event),
+                this.worldY(event),
                 this.getPressure(event)
             )
         );
@@ -178,8 +178,8 @@ export class PenTool extends Tool {
         if (coalesced.length === 0) {
             this.currentStroke.addPoint(
                 new Point(
-                    event.offsetX,
-                    event.offsetY,
+                    this.worldX(event),
+                    this.worldY(event),
                     this.getPressure(event)
                 )
             );
@@ -187,13 +187,14 @@ export class PenTool extends Tool {
             return;
         }
 
+        const viewport = this.drawingContext.getViewport();
         const rect = this.canvas.getBoundingClientRect();
 
         for (const coalescedEvent of coalesced) {
             this.currentStroke.addPoint(
                 new Point(
-                    coalescedEvent.clientX - rect.left,
-                    coalescedEvent.clientY - rect.top,
+                    viewport.screenToWorldX(coalescedEvent.clientX - rect.left),
+                    viewport.screenToWorldY(coalescedEvent.clientY - rect.top),
                     this.getPressure(coalescedEvent)
                 )
             );

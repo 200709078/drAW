@@ -1,17 +1,34 @@
 import { ToolManager } from "./ToolManager";
+import { ViewportManager } from "./ViewportManager";
 
 export class PointerManager {
 
+    private static readonly WHEEL_ZOOM_IN_FACTOR = 1.15;
+    private static readonly WHEEL_ZOOM_OUT_FACTOR = 1 / 1.15;
+
     private canvas: HTMLCanvasElement;
     private toolManager: ToolManager;
+    private viewport: ViewportManager;
+    private readonly activePointers: Map<number, { x: number; y: number }>;
+    private pinching: boolean;
+    private pinchDistance: number;
+    private pinchMidX: number;
+    private pinchMidY: number;
 
     constructor(
         canvas: HTMLCanvasElement,
-        toolManager: ToolManager
+        toolManager: ToolManager,
+        viewport: ViewportManager
     ) {
 
         this.canvas = canvas;
         this.toolManager = toolManager;
+        this.viewport = viewport;
+        this.activePointers = new Map();
+        this.pinching = false;
+        this.pinchDistance = 0;
+        this.pinchMidX = 0;
+        this.pinchMidY = 0;
 
         this.attachEvents();
 
@@ -23,6 +40,7 @@ export class PointerManager {
         this.canvas.addEventListener("pointermove", this.onPointerMove);
         this.canvas.addEventListener("pointerup", this.onPointerUp);
         this.canvas.addEventListener("pointercancel", this.onPointerCancel);
+        this.canvas.addEventListener("wheel", this.onWheel, { passive: false });
 
     }
 
@@ -35,29 +53,130 @@ export class PointerManager {
         }
 
         this.canvas.setPointerCapture(event.pointerId);
+        this.activePointers.set(event.pointerId, { x: event.offsetX, y: event.offsetY });
+
+        if (this.activePointers.size === 2) {
+            this.beginPinch(tool);
+            return;
+        }
+
+        if (this.pinching) {
+            return;
+        }
+
         tool.onPointerDown(event);
 
     };
 
     private onPointerMove = (event: PointerEvent): void => {
 
+        if (this.pinching) {
+            this.updatePinch(event);
+            return;
+        }
+
+        if (!this.activePointers.has(event.pointerId)) {
+            return;
+        }
+
+        this.activePointers.set(event.pointerId, { x: event.offsetX, y: event.offsetY });
         this.toolManager.getActiveTool()?.onPointerMove(event);
 
     };
 
     private onPointerUp = (event: PointerEvent): void => {
 
-        this.toolManager.getActiveTool()?.onPointerUp(event);
+        this.activePointers.delete(event.pointerId);
         this.releasePointerCapture(event.pointerId);
+
+        if (this.pinching) {
+            if (this.activePointers.size < 2) {
+                this.pinching = false;
+            }
+
+            return;
+        }
+
+        this.toolManager.getActiveTool()?.onPointerUp(event);
 
     };
 
     private onPointerCancel = (event: PointerEvent): void => {
 
-        this.toolManager.getActiveTool()?.onPointerCancel(event);
+        this.activePointers.delete(event.pointerId);
         this.releasePointerCapture(event.pointerId);
 
+        if (this.pinching) {
+            if (this.activePointers.size < 2) {
+                this.pinching = false;
+            }
+
+            return;
+        }
+
+        this.toolManager.getActiveTool()?.onPointerCancel(event);
+
     };
+
+    private onWheel = (event: WheelEvent): void => {
+
+        if (!event.ctrlKey) {
+            return;
+        }
+
+        event.preventDefault();
+        this.viewport.zoomAt(
+            event.offsetX,
+            event.offsetY,
+            event.deltaY < 0
+                ? PointerManager.WHEEL_ZOOM_IN_FACTOR
+                : PointerManager.WHEEL_ZOOM_OUT_FACTOR
+        );
+
+    };
+
+    private beginPinch(tool: { interruptGesture: () => void }): void {
+
+        tool.interruptGesture();
+
+        const points = [...this.activePointers.values()];
+        this.pinchDistance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+        this.pinchMidX = (points[0].x + points[1].x) / 2;
+        this.pinchMidY = (points[0].y + points[1].y) / 2;
+        this.pinching = true;
+
+    }
+
+    private updatePinch(event: PointerEvent): void {
+
+        if (!this.activePointers.has(event.pointerId)) {
+            return;
+        }
+
+        this.activePointers.set(event.pointerId, { x: event.offsetX, y: event.offsetY });
+
+        if (this.activePointers.size < 2) {
+            this.pinching = false;
+            return;
+        }
+
+        const points = [...this.activePointers.values()];
+        const distance = Math.hypot(points[0].x - points[1].x, points[0].y - points[1].y);
+        const midX = (points[0].x + points[1].x) / 2;
+        const midY = (points[0].y + points[1].y) / 2;
+
+        // Önce parmakların ortak hareketi (kaydırma), sonra açıklık (zoom).
+        this.viewport.panBy(midX - this.pinchMidX, midY - this.pinchMidY);
+
+        if (this.pinchDistance > 0 && distance > 0) {
+            this.viewport.zoomAt(midX, midY, distance / this.pinchDistance);
+        }
+
+        this.pinchDistance = distance;
+        this.pinchMidX = midX;
+        this.pinchMidY = midY;
+
+    }
 
     private releasePointerCapture(pointerId: number): void {
 

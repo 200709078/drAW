@@ -77,8 +77,8 @@ export class TextTool extends Tool {
 
         const textObject = new TextObject(
             "Metin Giriniz",
-            event.offsetX,
-            event.offsetY,
+            this.worldX(event),
+            this.worldY(event),
             this.penTool.getColor(),
             textFontSizeForProfile(this.penTool.getLineWidth(), getLineProfile()),
             1
@@ -88,6 +88,7 @@ export class TextTool extends Tool {
         this.renderer.render();
 
         this.editing = true;
+        const viewport = this.drawingContext.getViewport();
         openTextEditor(textObject, (value) => {
             this.editing = false;
 
@@ -100,7 +101,7 @@ export class TextTool extends Tool {
                     this.selectionTool.selectText(textObject);
                 }
             }
-        });
+        }, viewport);
 
     }
 

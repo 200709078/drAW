@@ -36,6 +36,18 @@ export abstract class Tool {
 
     }
 
+    protected worldX(event: { offsetX: number; offsetY: number }): number {
+
+        return this.drawingContext.getViewport().screenToWorldX(event.offsetX);
+
+    }
+
+    protected worldY(event: { offsetX: number; offsetY: number }): number {
+
+        return this.drawingContext.getViewport().screenToWorldY(event.offsetY);
+
+    }
+
     public activate(): void {
 
     }
@@ -53,6 +65,14 @@ export abstract class Tool {
     public onPointerCancel(event: PointerEvent): void {
 
         void event;
+        this.cancel();
+
+    }
+
+    // Pinch gibi çok parmaklı harekete geçilirken sürmekte olan
+    // hareketi bitirir. Varsayılan davranış cancel ile aynıdır.
+    public interruptGesture(): void {
+
         this.cancel();
 
     }
