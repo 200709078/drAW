@@ -2,6 +2,7 @@ import { ManagerContainer } from "./ManagerContainer";
 import { ToolbarPanel } from "../ui/ToolbarPanel";
 import { ToolbarLeftPanel } from "../ui/ToolbarLeftPanel";
 import { TitleBar } from "../ui/TitleBar";
+import { isSmartBoard } from "../platform/DeviceProfile";
 
 export class Application {
 
@@ -9,6 +10,7 @@ export class Application {
 
     constructor() {
 
+        document.body.classList.toggle("board-mode", isSmartBoard());
         new TitleBar();
         this.managers = new ManagerContainer();
         new ToolbarPanel(

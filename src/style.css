@@ -972,3 +972,111 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     from { opacity: 0; transform: scale(0.96) translateY(4px); }
     to { opacity: 1; transform: scale(1) translateY(0); }
 }
+
+/* Akıllı tahta modu: alt araç çubuğu, uzaktan okunabilir yazılar,
+   parmakla tutulabilir hedefler. */
+body.board-mode .sidebar {
+    top: auto;
+    bottom: 16px;
+}
+
+body.has-custom-titlebar.board-mode .sidebar {
+    top: auto;
+    bottom: 16px;
+}
+
+body.board-mode.sidebar-closed .sidebar {
+    transform: translateY(calc(100% + 16px));
+}
+
+body.board-mode .sidebar__toggle {
+    top: auto;
+    bottom: var(--sidebar-toggle-bottom, 82px);
+    width: 64px;
+    height: 40px;
+}
+
+body.board-mode.sidebar-closed .sidebar__toggle {
+    transform: translate(-50%, calc(var(--sidebar-toggle-bottom, 82px) - 8px));
+}
+
+body.has-custom-titlebar.board-mode.sidebar-closed .sidebar__toggle {
+    transform: translate(-50%, calc(var(--sidebar-toggle-bottom, 82px) - 8px));
+}
+
+body.board-mode .drawings-panel__title {
+    font-size: 20px;
+}
+
+body.board-mode .drawings-card__name {
+    font-size: 17px;
+}
+
+body.board-mode .modal__title {
+    font-size: 16px;
+}
+
+body.board-mode .modal__message {
+    font-size: 16px;
+}
+
+body.board-mode .modal__button {
+    min-width: 110px;
+    height: 48px;
+    font-size: 15px;
+}
+
+body.board-mode .modal__input {
+    font-size: 16px;
+    padding: 12px 10px;
+}
+
+body.board-mode .titlebar__title {
+    font-size: 15px;
+}
+
+body.board-mode .selection-delete-button {
+    width: 44px;
+    height: 44px;
+}
+
+body.board-mode .selection-delete-button svg {
+    width: 22px;
+    height: 22px;
+}
+
+body.board-mode .drawings-card__action {
+    width: 44px;
+    height: 44px;
+}
+
+body.board-mode .drawings-card__action svg {
+    width: 20px;
+    height: 20px;
+}
+
+body.board-mode .sidebar__color,
+body.board-mode .sidebar__width {
+    width: 48px;
+    height: 48px;
+}
+
+body.board-mode .drawings-panel__new .sidebar__history {
+    width: 48px;
+    height: 48px;
+}
+
+body.board-mode .drawings-panel__new .sidebar__history img {
+    width: 26px;
+    height: 26px;
+}
+
+body.board-mode .toolbar-left-panel__toggle {
+    width: 40px;
+    height: 64px;
+}
+
+body.board-mode .drawings-panel__toggle {
+    width: 40px;
+    height: 64px;
+}

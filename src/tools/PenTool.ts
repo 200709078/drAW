@@ -17,6 +17,7 @@ export class PenTool extends Tool {
     private readonly history: HistoryManager;
 
     private currentStroke: Stroke | null;
+    private activePointerId: number | null;
     private color: string;
     private lineWidth: number;
     private readonly opacity: number;
@@ -38,6 +39,7 @@ export class PenTool extends Tool {
         this.history = history;
 
         this.currentStroke = null;
+        this.activePointerId = null;
         this.color = "#111827";
         this.lineWidth = 6;
         this.opacity = opacity;
@@ -54,12 +56,19 @@ export class PenTool extends Tool {
     public override deactivate(): void {
 
         this.currentStroke = null;
+        this.activePointerId = null;
         this.history.discard();
 
     }
 
     public override onPointerDown(event: PointerEvent): void {
 
+        // Çizim sürerken ikinci parmağı yok say.
+        if (this.currentStroke !== null) {
+            return;
+        }
+
+        this.activePointerId = event.pointerId;
         this.history.begin();
 
         this.currentStroke = new Stroke(
@@ -84,14 +93,11 @@ export class PenTool extends Tool {
             return;
         }
 
-        this.currentStroke.addPoint(
-            new Point(
-                event.offsetX,
-                event.offsetY,
-                this.getPressure(event)
-            )
-        );
+        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+            return;
+        }
 
+        this.appendPointerPoint(event);
         this.renderer.render(this.currentStroke);
 
     }
@@ -102,19 +108,18 @@ export class PenTool extends Tool {
             return;
         }
 
-        this.currentStroke.addPoint(
-            new Point(
-                event.offsetX,
-                event.offsetY,
-                this.getPressure(event)
-            )
-        );
+        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+            return;
+        }
+
+        this.appendPointerPoint(event);
 
         this.document
             .getCurrentPage()
             .addStroke(this.currentStroke);
 
         this.currentStroke = null;
+        this.activePointerId = null;
 
         this.history.commit();
 
@@ -125,6 +130,7 @@ export class PenTool extends Tool {
     public override cancel(): void {
 
         this.currentStroke = null;
+        this.activePointerId = null;
         this.history.discard();
         this.renderer.render();
 
@@ -153,6 +159,45 @@ export class PenTool extends Tool {
     public getLineWidth(): number {
 
         return this.lineWidth;
+
+    }
+
+    private appendPointerPoint(event: PointerEvent): void {
+
+        if (this.currentStroke === null) {
+            return;
+        }
+
+        // Dokunmatik/kalem girişinde tarama arası örnekleri de işle,
+        // hızlı hareketlerde çizgi daha düzgün olur.
+        const coalesced = event.pointerType !== "mouse" &&
+            typeof event.getCoalescedEvents === "function"
+            ? event.getCoalescedEvents()
+            : [];
+
+        if (coalesced.length === 0) {
+            this.currentStroke.addPoint(
+                new Point(
+                    event.offsetX,
+                    event.offsetY,
+                    this.getPressure(event)
+                )
+            );
+
+            return;
+        }
+
+        const rect = this.canvas.getBoundingClientRect();
+
+        for (const coalescedEvent of coalesced) {
+            this.currentStroke.addPoint(
+                new Point(
+                    coalescedEvent.clientX - rect.left,
+                    coalescedEvent.clientY - rect.top,
+                    this.getPressure(coalescedEvent)
+                )
+            );
+        }
 
     }
 

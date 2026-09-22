@@ -13,6 +13,7 @@ export class PartialEraserTool extends Tool {
     private readonly renderer: DocumentRenderer;
     private readonly history: HistoryManager;
     private isErasing: boolean;
+    private activePointerId: number | null;
     private radius: number;
 
     constructor(
@@ -28,6 +29,7 @@ export class PartialEraserTool extends Tool {
         this.renderer = renderer;
         this.history = history;
         this.isErasing = false;
+        this.activePointerId = null;
         this.radius = 12;
 
     }
@@ -41,12 +43,19 @@ export class PartialEraserTool extends Tool {
     public override deactivate(): void {
 
         this.isErasing = false;
+        this.activePointerId = null;
         this.history.commit();
 
     }
 
     public override onPointerDown(event: PointerEvent): void {
 
+        // Silme sürerken ikinci parmağı yok say.
+        if (this.isErasing) {
+            return;
+        }
+
+        this.activePointerId = event.pointerId;
         this.history.begin();
         this.isErasing = true;
         this.eraseAt(event.offsetX, event.offsetY);
@@ -54,6 +63,10 @@ export class PartialEraserTool extends Tool {
     }
 
     public override onPointerMove(event: PointerEvent): void {
+
+        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+            return;
+        }
 
         if (this.isErasing) {
             this.eraseAt(event.offsetX, event.offsetY);
@@ -63,6 +76,11 @@ export class PartialEraserTool extends Tool {
 
     public override onPointerUp(event: PointerEvent): void {
 
+        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+            return;
+        }
+
+        this.activePointerId = null;
         this.eraseAt(event.offsetX, event.offsetY);
         this.isErasing = false;
         this.history.commit();
@@ -72,6 +90,7 @@ export class PartialEraserTool extends Tool {
     public override cancel(): void {
 
         this.isErasing = false;
+        this.activePointerId = null;
         this.history.commit();
 
     }

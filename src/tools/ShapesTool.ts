@@ -23,6 +23,7 @@ export class ShapesTool extends Tool {
     private startX: number;
     private startY: number;
     private previewStroke: Stroke | null;
+    private activePointerId: number | null;
 
     constructor(
         drawingContext: DrawingContext,
@@ -47,6 +48,7 @@ export class ShapesTool extends Tool {
         this.startX = 0;
         this.startY = 0;
         this.previewStroke = null;
+        this.activePointerId = null;
 
     }
 
@@ -59,6 +61,7 @@ export class ShapesTool extends Tool {
     public override deactivate(): void {
 
         this.previewStroke = null;
+        this.activePointerId = null;
         this.history.discard();
         this.renderer.render();
 
@@ -66,6 +69,12 @@ export class ShapesTool extends Tool {
 
     public override onPointerDown(event: PointerEvent): void {
 
+        // Önizleme sürerken ikinci parmağı yok say.
+        if (this.previewStroke !== null) {
+            return;
+        }
+
+        this.activePointerId = event.pointerId;
         this.history.begin();
 
         this.startX = event.offsetX;
@@ -80,6 +89,10 @@ export class ShapesTool extends Tool {
             return;
         }
 
+        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+            return;
+        }
+
         this.previewStroke = this.createStroke(event.offsetX, event.offsetY);
         this.renderer.render(this.previewStroke);
 
@@ -91,6 +104,11 @@ export class ShapesTool extends Tool {
             return;
         }
 
+        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+            return;
+        }
+
+        this.activePointerId = null;
         const stroke = this.createStroke(event.offsetX, event.offsetY);
 
         this.previewStroke = null;
@@ -113,6 +131,7 @@ export class ShapesTool extends Tool {
     public override cancel(): void {
 
         this.previewStroke = null;
+        this.activePointerId = null;
         this.history.discard();
         this.renderer.render();
 
