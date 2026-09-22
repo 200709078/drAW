@@ -6,6 +6,8 @@ import type { SelectionTool } from "../tools/SelectionTool";
 import type { Document } from "../document/Document";
 import type { DocumentRenderer } from "../renderers/DocumentRenderer";
 import type { HistoryManager } from "../core/HistoryManager";
+import { ThumbnailGenerator } from "../autosave/ThumbnailGenerator";
+import { DocumentStateSerializer } from "../autosave/DocumentStateSerializer";
 import { renameDialog } from "./RenameDialog";
 
 export type DrawingsPanelOptions = {
@@ -66,6 +68,8 @@ export class DrawingsPanel {
     private readonly drawingDocument: Document;
     private readonly documentRenderer: DocumentRenderer;
     private readonly historyManager: HistoryManager;
+    private readonly thumbnailGenerator: ThumbnailGenerator;
+    private readonly stateSerializer: DocumentStateSerializer;
 
     private readonly listElement: HTMLElement;
     private readonly toggleElement: HTMLButtonElement;
@@ -77,8 +81,14 @@ export class DrawingsPanel {
     // Yeniden eskiye sıralı kayıt id listesi (refresh ile güncellenir).
     private orderedIds: string[];
     private navigating: boolean;
+    // Kaydedilmemiş ama üretilmiş canlı önizleme (yalnızca aktif kart).
+    private liveThumbnail: { id: string; dataUrl: string } | null;
+    private livePreviewTimer: ReturnType<typeof setTimeout> | null;
+    private livePreviewRequest: number;
     private openState: boolean;
     private refreshScheduled: boolean;
+
+    private static readonly LIVE_PREVIEW_DEBOUNCE_MS = 800;
 
     constructor(options: DrawingsPanelOptions) {
 
@@ -89,11 +99,16 @@ export class DrawingsPanel {
         this.drawingDocument = options.drawingDocument;
         this.documentRenderer = options.documentRenderer;
         this.historyManager = options.historyManager;
+        this.thumbnailGenerator = new ThumbnailGenerator();
+        this.stateSerializer = new DocumentStateSerializer();
 
         this.cards = new Map();
         this.recordsById = new Map();
         this.orderedIds = [];
         this.navigating = false;
+        this.liveThumbnail = null;
+        this.livePreviewTimer = null;
+        this.livePreviewRequest = 0;
         this.openState = true;
         this.refreshScheduled = false;
 
@@ -104,7 +119,11 @@ export class DrawingsPanel {
         this.prevButton = built.prev;
         this.nextButton = built.next;
 
-        this.historyManager.addChangeListener(() => this.scheduleRefresh());
+        this.historyManager.addChangeListener(() => {
+            this.scheduleRefresh();
+            this.scheduleLivePreview();
+        });
+        this.autoSaveManager.addSaveListener(() => this.scheduleRefresh());
         // Açılışta açık gelsin; sadece toggle butonu kapatıp açabilsin.
         this.open();
         void this.refresh();
@@ -424,7 +443,12 @@ export class DrawingsPanel {
 
         const image = card.querySelector<HTMLImageElement>(".drawings-card__thumbnail img");
         const thumbnail = documentData.getThumbnail();
-        const dataUrl = thumbnail !== null ? thumbnail.dataUrl : "";
+        const storedUrl = thumbnail !== null ? thumbnail.dataUrl : "";
+        // Aktif kartta depodaki resimden daha taze canlı önizleme varsa onu göster.
+        const liveUrl = this.liveThumbnail !== null && this.liveThumbnail.id === id
+            ? this.liveThumbnail.dataUrl
+            : null;
+        const dataUrl = liveUrl ?? storedUrl;
 
         if (image !== null && image.getAttribute("src") !== dataUrl) {
             image.setAttribute("src", dataUrl);
@@ -542,6 +566,63 @@ export class DrawingsPanel {
             this.refreshScheduled = false;
             void this.refresh();
         }, 0);
+
+    }
+
+    private scheduleLivePreview(): void {
+
+        if (this.livePreviewTimer !== null) {
+            clearTimeout(this.livePreviewTimer);
+        }
+
+        this.livePreviewTimer = setTimeout(() => {
+            this.livePreviewTimer = null;
+            void this.updateLivePreview();
+        }, DrawingsPanel.LIVE_PREVIEW_DEBOUNCE_MS);
+
+    }
+
+    private async updateLivePreview(): Promise<void> {
+
+        const active = this.autoSaveManager.getActiveDocument();
+
+        if (active === null) {
+            return;
+        }
+
+        const request = this.livePreviewRequest + 1;
+        this.livePreviewRequest = request;
+        const id = active.getId();
+
+        let dataUrl: string;
+
+        try {
+            const data = this.stateSerializer.serialize(
+                this.drawingDocument.createSnapshot()
+            );
+            const thumbnail = await this.thumbnailGenerator.generate(data);
+            dataUrl = thumbnail.dataUrl;
+        } catch (error) {
+            console.error("[Drawings] Canlı önizleme üretilemedi:", error);
+
+            return;
+        }
+
+        if (request !== this.livePreviewRequest) {
+            return;
+        }
+
+        this.liveThumbnail = { id, dataUrl };
+
+        const card = this.cards.get(id);
+        const image = card?.querySelector<HTMLImageElement>(
+            ".drawings-card__thumbnail img"
+        ) ?? null;
+
+        if (image !== null) {
+            image.setAttribute("src", dataUrl);
+            image.hidden = false;
+        }
 
     }
 

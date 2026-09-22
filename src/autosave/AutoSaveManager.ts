@@ -9,13 +9,17 @@ import { generateDisplayName } from "./displayName";
 
 export class AutoSaveManager {
 
+    private static readonly AUTOSAVE_INTERVAL_MS = 10000;
+
     private readonly repository: DrawingRepository;
     private readonly document: Document;
     private readonly serializer: DocumentStateSerializer;
+    private readonly saveListeners: Set<() => void>;
 
     private activeDocument: DrawingDocument | null;
     private persisted: boolean;
     private saving: Promise<void> | null;
+    private autosaveTimer: ReturnType<typeof setInterval> | null;
 
     constructor(
         repository: DrawingRepository,
@@ -27,12 +31,15 @@ export class AutoSaveManager {
         this.repository = repository;
         this.document = document;
         this.serializer = serializer ?? new DocumentStateSerializer();
+        this.saveListeners = new Set();
 
         this.activeDocument = null;
         this.persisted = false;
         this.saving = null;
+        this.autosaveTimer = null;
 
         history.addChangeListener(() => this.onDocumentChanged());
+        this.startAutoSave();
 
     }
 
@@ -68,7 +75,20 @@ export class AutoSaveManager {
 
     public async shutdown(): Promise<void> {
 
+        this.stopAutoSave();
         await this.saveIfNeeded();
+
+    }
+
+    public addSaveListener(listener: () => void): void {
+
+        this.saveListeners.add(listener);
+
+    }
+
+    public removeSaveListener(listener: () => void): void {
+
+        this.saveListeners.delete(listener);
 
     }
 
@@ -103,6 +123,27 @@ export class AutoSaveManager {
 
     }
 
+    private startAutoSave(): void {
+
+        if (this.autosaveTimer !== null) {
+            return;
+        }
+
+        this.autosaveTimer = setInterval(() => {
+            void this.saveIfNeeded();
+        }, AutoSaveManager.AUTOSAVE_INTERVAL_MS);
+
+    }
+
+    private stopAutoSave(): void {
+
+        if (this.autosaveTimer !== null) {
+            clearInterval(this.autosaveTimer);
+            this.autosaveTimer = null;
+        }
+
+    }
+
     private onDocumentChanged(): void {
 
         if (this.activeDocument === null) {
@@ -130,6 +171,8 @@ export class AutoSaveManager {
 
     private async persistActiveDocument(): Promise<void> {
 
+        let saved = false;
+
         try {
             if (this.activeDocument === null) {
                 this.activeDocument = this.createDocument();
@@ -152,14 +195,26 @@ export class AutoSaveManager {
                     this.activeDocument.withCanvasState(canvasState)
                 );
                 this.persisted = true;
+                saved = true;
 
                 return;
             }
 
             this.activeDocument = this.activeDocument.withCanvasState(canvasState);
             await this.repository.saveDocument(this.activeDocument);
+            saved = true;
         } catch (error) {
             console.error("[AutoSave] Kayıt sırasında hata oluştu:", error);
+        }
+
+        if (saved) {
+            for (const listener of this.saveListeners) {
+                try {
+                    listener();
+                } catch {
+                    // dinleyici hataları kayıt akışını etkilemesin
+                }
+            }
         }
 
     }
