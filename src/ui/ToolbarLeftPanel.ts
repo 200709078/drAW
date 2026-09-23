@@ -131,6 +131,7 @@ export class ToolbarLeftPanel {
 
             guidePalette.hidden = true;
             guideButton.setAttribute("aria-expanded", "false");
+            syncGuideToggleVisibility();
         };
 
         let guideNoneButton: HTMLButtonElement | null = null;
@@ -155,6 +156,7 @@ export class ToolbarLeftPanel {
         guideButton.addEventListener("click", () => {
             guidePalette.hidden = !guidePalette.hidden;
             guideButton.setAttribute("aria-expanded", String(!guidePalette.hidden));
+            syncGuideToggleVisibility();
         });
 
         document.addEventListener("pointerdown", (event) => {
@@ -170,6 +172,7 @@ export class ToolbarLeftPanel {
 
             guidePalette.hidden = true;
             guideButton.setAttribute("aria-expanded", "false");
+            syncGuideToggleVisibility();
         });
 
         toolManager.addChangeListener(() => {
@@ -206,25 +209,39 @@ export class ToolbarLeftPanel {
         toggle.innerHTML = [
             `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"`,
             ` stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
-            `<path d="m15 18-6-6 6-6"/>`,
+            `<path d="m18 15-6-6-6 6"/>`,
             `</svg>`
         ].join("");
         document.body.appendChild(toggle);
 
-        const updateToggleLeft = (): void => {
+        // Palet açıkken ok gizlenir (diğer seçicilerdeki gibi).
+        const syncGuideToggleVisibility = (): void => {
+            toggle.hidden = !guidePalette.hidden;
+        };
+
+        const updateToggleBottom = (): void => {
             if (document.body.classList.contains("toolbar-left-closed")) {
                 return;
             }
 
             const rect = panel.getBoundingClientRect();
             document.documentElement.style.setProperty(
-                "--toolbar-left-toggle-left",
-                `${rect.right}px`
+                "--toolbar-left-toggle-bottom",
+                `${window.innerHeight - rect.top}px`
+            );
+            document.documentElement.style.setProperty(
+                "--toolbar-left-center",
+                `${rect.left + rect.width / 2}px`
+            );
+            // Kılavuz paleti menüye 16px mesafede açılır.
+            document.documentElement.style.setProperty(
+                "--guide-palette-bottom",
+                `${window.innerHeight - rect.top + 16}px`
             );
         };
 
-        updateToggleLeft();
-        window.addEventListener("resize", updateToggleLeft);
+        updateToggleBottom();
+        window.addEventListener("resize", updateToggleBottom);
 
         const setPanelOpen = (isOpen: boolean): void => {
             document.body.classList.toggle("toolbar-left-closed", !isOpen);
