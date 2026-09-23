@@ -707,6 +707,18 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     position: relative;
 }
 
+.sidebar__prev-color {
+    position: absolute;
+    left: 21px;
+    top: 21px;
+    width: 18px;
+    height: 18px;
+    padding: 0;
+    border: 2px solid white;
+    border-radius: 50%;
+    cursor: pointer;
+}
+
 .sidebar__color-trigger,
 .sidebar__width-trigger {
     display: grid;

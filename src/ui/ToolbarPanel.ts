@@ -217,6 +217,20 @@ export class ToolbarPanel {
         const colorControl = document.createElement("div");
         colorControl.className = "sidebar__control";
 
+        const colors = [
+            { name: "Kırmızı", value: "#ff0000" },
+            { name: "Siyah", value: "#000000" },
+            { name: "Turuncu", value: "#ff8000" },
+            { name: "Sarı", value: "#ffff00" },
+            { name: "Yeşil", value: "#00ff00" },
+            { name: "Mavi", value: "#0000ff" },
+            { name: "Lacivert", value: "#000080" },
+            { name: "Mor", value: "#800080" }
+        ];
+
+        let currentColorIndex = 0;
+        let previousColorIndex = 1;
+
         const colorButton = document.createElement("button");
         colorButton.type = "button";
         colorButton.className = "sidebar__color-trigger";
@@ -237,6 +251,46 @@ export class ToolbarPanel {
         colorPalette.hidden = true;
         colorPalette.setAttribute("role", "group");
         colorPalette.setAttribute("aria-label", "Kalem rengi");
+
+        // Önceki renk rozeti: tek dokunuşla son iki renk arası geçiş.
+        const prevColorButton = document.createElement("button");
+        prevColorButton.type = "button";
+        prevColorButton.className = "sidebar__prev-color";
+
+        const renderColorUi = (): void => {
+            const current = colors[currentColorIndex];
+            const previous = colors[previousColorIndex];
+            colorPreview.style.backgroundColor = current.value;
+            colorButton.setAttribute("aria-label", `Renk: ${current.name}`);
+            prevColorButton.style.backgroundColor = previous.value;
+            prevColorButton.title = `Önceki renk: ${previous.name}`;
+            prevColorButton.setAttribute("aria-label", `Önceki renk: ${previous.name}`);
+
+            for (const [index, button] of colorPalette.querySelectorAll("button").entries()) {
+                const isCurrent = index === currentColorIndex;
+
+                button.classList.toggle("sidebar__color--selected", isCurrent);
+                button.setAttribute("aria-pressed", String(isCurrent));
+            }
+        };
+
+        const applyColorIndex = (index: number): void => {
+            if (index === currentColorIndex) {
+                return;
+            }
+
+            previousColorIndex = currentColorIndex;
+            currentColorIndex = index;
+            penTool.setColor(colors[index].value);
+            highlighterTool.setColor(colors[index].value);
+            renderColorUi();
+        };
+
+        prevColorButton.addEventListener("click", () => {
+            applyColorIndex(previousColorIndex);
+        });
+
+        colorControl.append(colorButton, prevColorButton, colorPalette);
 
         const widthControl = document.createElement("div");
         widthControl.className = "sidebar__control";
@@ -283,24 +337,18 @@ export class ToolbarPanel {
             documentRenderer.setGuideLines("none");
             documentRenderer.render();
 
-            penTool.setColor("#ff0000");
-            highlighterTool.setColor("#ff0000");
+            currentColorIndex = 0;
+            previousColorIndex = 1;
+            penTool.setColor(colors[currentColorIndex].value);
+            highlighterTool.setColor(colors[currentColorIndex].value);
+            renderColorUi();
             const resetWidth = defaultWidthForProfile();
             penTool.setLineWidth(resetWidth);
             highlighterTool.setLineWidth(resetWidth);
             eraserTool.setLineWidth(resetWidth);
             partialEraserTool.setLineWidth(resetWidth);
-            colorPreview.style.backgroundColor = "#ff0000";
-            colorButton.setAttribute("aria-label", "Renk: Kırmızı");
             widthButton.style.setProperty("--line-width", `${resetWidth}px`);
             widthButton.setAttribute("aria-label", `Kalınlık: ${resetWidth} piksel`);
-
-            for (const button of colorPalette.querySelectorAll("button")) {
-                const isSelected = button.getAttribute("aria-label") === "Kırmızı";
-
-                button.classList.toggle("sidebar__color--selected", isSelected);
-                button.setAttribute("aria-pressed", String(isSelected));
-            }
 
             for (const button of widthPalette.querySelectorAll("button[data-width]")) {
                 const isSelected = button.getAttribute("data-width") === String(resetWidth);
@@ -312,7 +360,7 @@ export class ToolbarPanel {
 
 
             selectShape(shapeOptions[0].type, shapeButtons[0]);
-            selectEraser(eraserTool, strokeEraserButton);
+            selectEraser(partialEraserTool, partialEraserButton);
             selectPen(penTool, normalPenButton);
             setToolbarOpen(true);
             window.dispatchEvent(new CustomEvent("newdraw:started"));
@@ -522,7 +570,7 @@ export class ToolbarPanel {
             className: "sidebar__eraser-option",
             isSelected: false,
             onSelect: () => {
-            selectEraser(partialEraserTool, partialEraserButton);
+                selectEraser(eraserTool, strokeEraserButton);
             }
         });
         const partialEraserButton = this.createIconButton("Normal Silgi", eraserNormalIcon, {
@@ -638,20 +686,9 @@ export class ToolbarPanel {
             }
         });
 
-        const colors = [
-            { name: "Kırmızı", value: "#ff0000" },
-            { name: "Siyah", value: "#000000" },
-            { name: "Turuncu", value: "#ff8000" },
-            { name: "Sarı", value: "#ffff00" },
-            { name: "Yeşil", value: "#00ff00" },
-            { name: "Mavi", value: "#0000ff" },
-            { name: "Lacivert", value: "#000080" },
-            { name: "Mor", value: "#800080" }
-        ];
-
-        for (const color of colors) {
+        for (const [index, color] of colors.entries()) {
             const paletteButton = document.createElement("button");
-            const isSelected = color.value === "#ff0000";
+            const isSelected = index === currentColorIndex;
             paletteButton.type = "button";
             paletteButton.className = "sidebar__color";
             paletteButton.style.backgroundColor = color.value;
@@ -660,17 +697,7 @@ export class ToolbarPanel {
             paletteButton.classList.toggle("sidebar__color--selected", isSelected);
 
             paletteButton.addEventListener("click", () => {
-                penTool.setColor(color.value);
-                highlighterTool.setColor(color.value);
-                colorPreview.style.backgroundColor = color.value;
-                colorButton.setAttribute("aria-label", `Renk: ${color.name}`);
-
-                for (const button of colorPalette.querySelectorAll("button")) {
-                    const isCurrentColor = button === paletteButton;
-
-                    button.classList.toggle("sidebar__color--selected", isCurrentColor);
-                    button.setAttribute("aria-pressed", String(isCurrentColor));
-                }
+                applyColorIndex(index);
 
                 colorPalette.hidden = true;
                 colorButton.setAttribute("aria-expanded", "false");
@@ -679,6 +706,8 @@ export class ToolbarPanel {
 
             colorPalette.appendChild(paletteButton);
         }
+
+        renderColorUi();
 
         const applyLineWidth = (lineWidth: number): void => {
             penTool.setLineWidth(lineWidth);
@@ -728,7 +757,6 @@ export class ToolbarPanel {
         buildWidthPalette();
         applyLineWidth(defaultWidthForProfile());
 
-        colorControl.append(colorButton, colorPalette);
         widthControl.append(widthButton, widthPalette);
         toolbar.append(
             undoButton,
