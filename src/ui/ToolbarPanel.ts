@@ -307,10 +307,24 @@ export class ToolbarPanel {
             return defaultWidthForDeviceProfile(lineProfile);
         };
 
+        // Önizleme çubuğu: değer aralığını 3-14px bandına oranlar.
+        // Böylece hem ince-kalın dizilimi korunur hem daireleşme olmaz.
+        const previewWidthForProfile = (lineWidth: number): number => {
+            const widths = widthsForProfile();
+            const min = widths[0];
+            const max = widths[widths.length - 1];
+
+            if (!(max > min)) {
+                return 8;
+            }
+
+            return 3 + ((lineWidth - min) / (max - min)) * 11;
+        };
+
         const widthButton = document.createElement("button");
         widthButton.type = "button";
         widthButton.className = "sidebar__width-trigger";
-        widthButton.style.setProperty("--line-width", `${defaultWidthForProfile()}px`);
+        widthButton.style.setProperty("--line-width", `${previewWidthForProfile(defaultWidthForProfile())}px`);
         widthButton.setAttribute("aria-label", `Kalınlık: ${defaultWidthForProfile()} piksel`);
         widthButton.title = `Kalınlık: ${defaultWidthForProfile()} piksel`;
         widthButton.setAttribute("aria-expanded", "false");
@@ -347,7 +361,7 @@ export class ToolbarPanel {
             highlighterTool.setLineWidth(resetWidth);
             eraserTool.setLineWidth(resetWidth);
             partialEraserTool.setLineWidth(resetWidth);
-            widthButton.style.setProperty("--line-width", `${resetWidth}px`);
+            widthButton.style.setProperty("--line-width", `${previewWidthForProfile(resetWidth)}px`);
             widthButton.setAttribute("aria-label", `Kalınlık: ${resetWidth} piksel`);
 
             for (const button of widthPalette.querySelectorAll("button[data-width]")) {
@@ -395,6 +409,29 @@ export class ToolbarPanel {
             syncToggleVisibility();
         };
 
+        // Zoom'lu atanın içindeki sabit konumlu paletlerde tarayıcı
+        // offset'leri ölçeklenmemiş uzayda yorumlayıp öyle çiziyor.
+        // Oranı hesaplanmış stilden değil, görsel ölçümden alıyoruz
+        // (zoom üst elemanda olduğu için iç elemanın computed değeri 1 döner).
+        const zoomProbe = document.createElement("div");
+        zoomProbe.setAttribute("aria-hidden", "true");
+        zoomProbe.style.cssText = [
+            "position:absolute;",
+            "visibility:hidden;",
+            "pointer-events:none;",
+            "width:100px;",
+            "height:0;",
+            "padding:0;",
+            "border:0;"
+        ].join("");
+        toolbar.appendChild(zoomProbe);
+
+        const toolbarZoom = (): number => {
+            const measured = zoomProbe.getBoundingClientRect().width / 100;
+
+            return Number.isFinite(measured) && measured > 0 ? measured : 1;
+        };
+
         const toggleFlyout = (button: HTMLButtonElement, panel: HTMLDivElement): void => {
             const shouldOpen = panel.hidden;
 
@@ -402,13 +439,17 @@ export class ToolbarPanel {
 
             if (shouldOpen) {
                 const buttonBounds = button.getBoundingClientRect();
+                // Palet, zoom'lu araç çubuğunun içinde sabit konumlu: tarayıcı
+                // offset'leri ölçeklenmemiş uzayda yorumlayıp öyle çiziyor,
+                // o yüzden ölçümler zoom'a bölünerek veriliyor.
+                const zoom = toolbarZoom();
 
                 panel.hidden = false;
                 button.setAttribute("aria-expanded", "true");
 
                 // Araç çubuğu altta dock'lu: palet butonun üstünde açılır.
-                panel.style.left = `${window.innerWidth / 2}px`;
-                panel.style.top = `${Math.max(8, buttonBounds.top - panel.offsetHeight - 16)}px`;
+                panel.style.left = `${window.innerWidth / 2 / zoom}px`;
+                panel.style.top = `${Math.max(8 / zoom, buttonBounds.top / zoom - panel.offsetHeight - 16 / zoom)}px`;
             }
 
             syncToggleVisibility();
@@ -714,7 +755,7 @@ export class ToolbarPanel {
             highlighterTool.setLineWidth(lineWidth);
             eraserTool.setLineWidth(lineWidth);
             partialEraserTool.setLineWidth(lineWidth);
-            widthButton.style.setProperty("--line-width", `${lineWidth}px`);
+            widthButton.style.setProperty("--line-width", `${previewWidthForProfile(lineWidth)}px`);
             widthButton.setAttribute("aria-label", `Kalınlık: ${lineWidth} piksel`);
             widthButton.title = `Kalınlık: ${lineWidth} piksel`;
 
@@ -739,7 +780,7 @@ export class ToolbarPanel {
 
                 paletteButton.type = "button";
                 paletteButton.className = "sidebar__width";
-                paletteButton.style.setProperty("--line-width", `${lineWidth}px`);
+                paletteButton.style.setProperty("--line-width", `${previewWidthForProfile(lineWidth)}px`);
                 paletteButton.setAttribute("data-width", String(lineWidth));
                 paletteButton.setAttribute("aria-label", `${lineWidth} piksel kalınlık`);
                 paletteButton.title = `${lineWidth} piksel`;
@@ -797,7 +838,7 @@ export class ToolbarPanel {
             );
             document.documentElement.style.setProperty(
                 "--sidebar-toggle-bottom",
-                `${window.innerHeight - rect.top}px`
+                `${window.innerHeight - rect.top + 8}px`
             );
         };
 

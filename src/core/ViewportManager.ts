@@ -23,6 +23,18 @@ export class ViewportManager {
 
     }
 
+    public isAtMinScale(): boolean {
+
+        return this.scale <= ViewportManager.MIN_SCALE;
+
+    }
+
+    public isAtMaxScale(): boolean {
+
+        return this.scale >= ViewportManager.MAX_SCALE;
+
+    }
+
     public getOffsetX(): number {
 
         return this.offsetX;
