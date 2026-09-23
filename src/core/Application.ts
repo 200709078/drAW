@@ -23,7 +23,7 @@ export class Application {
 
         new TitleBar();
         this.managers = new ManagerContainer();
-        new ToolbarPanel(
+        const toolbarPanel = new ToolbarPanel(
             this.managers.getToolManager(),
             this.managers.getPenTool(),
             this.managers.getEraserTool(),
@@ -41,12 +41,14 @@ export class Application {
 
         new ToolbarLeftPanel(
             this.managers.getToolManager(),
-            this.managers.getHistoryManager(),
             this.managers.getDocumentRenderer(),
             this.managers.getTextTool(),
             this.managers.getScreenCaptureTool(),
             this.managers.getDesktopAvailable(),
-            this.managers.getCanvasManager().getCanvas()
+            this.managers.getCanvasManager().getCanvas(),
+            toolbarPanel.getNewDrawButton(),
+            toolbarPanel.getDrawingsPanel().getPrevButton(),
+            toolbarPanel.getDrawingsPanel().getNextButton()
         );
 
         new ZoomControls(this.managers.getDrawingContext().getViewport());

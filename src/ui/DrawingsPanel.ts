@@ -18,7 +18,6 @@ export type DrawingsPanelOptions = {
     drawingDocument: Document;
     documentRenderer: DocumentRenderer;
     historyManager: HistoryManager;
-    newDrawButton: HTMLButtonElement;
     canvas: HTMLCanvasElement;
 };
 
@@ -112,7 +111,7 @@ export class DrawingsPanel {
         this.openState = true;
         this.refreshScheduled = false;
 
-        const built = this.buildDom(options.newDrawButton, options.canvas);
+        const built = this.buildDom(options.canvas);
 
         this.listElement = built.list;
         this.toggleElement = built.toggle;
@@ -133,6 +132,18 @@ export class DrawingsPanel {
     public isOpen(): boolean {
 
         return this.openState;
+
+    }
+
+    public getPrevButton(): HTMLButtonElement {
+
+        return this.prevButton;
+
+    }
+
+    public getNextButton(): HTMLButtonElement {
+
+        return this.nextButton;
 
     }
 
@@ -284,8 +295,7 @@ export class DrawingsPanel {
     }
 
     private buildDom(
-        newDrawButton: HTMLButtonElement,
-        _canvas: HTMLCanvasElement
+        canvas: HTMLCanvasElement
     ): { panel: HTMLElement; list: HTMLElement; toggle: HTMLButtonElement; prev: HTMLButtonElement; next: HTMLButtonElement } {
 
         const panel = document.createElement("aside");
@@ -323,11 +333,7 @@ export class DrawingsPanel {
             void this.stepDrawing(-1);
         });
 
-        const newDrawingArea = document.createElement("div");
-        newDrawingArea.className = "drawings-panel__new";
-        newDrawingArea.append(prev, newDrawButton, next);
-
-        header.append(title, newDrawingArea);
+        header.append(title);
         panel.appendChild(header);
 
         const list = document.createElement("div");
@@ -345,7 +351,12 @@ export class DrawingsPanel {
         toggle.addEventListener("click", () => this.toggle());
         document.body.appendChild(toggle);
 
-        void _canvas;
+        // Tuvale tıklayınca çizimler paneli otomatik kapanır.
+        canvas.addEventListener("pointerdown", () => {
+            if (this.isOpen()) {
+                this.close();
+            }
+        });
 
         return { panel, list, toggle, prev, next };
 
