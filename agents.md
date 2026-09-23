@@ -22,3 +22,14 @@ Tahta (`board-mode` CSS, tahta kalem seti, metin sınırı, coalesced, pointerId
 - [x] YAPILDI — iOS çift-dokunma zoom'u: butonlara `touch-action: manipulation`
 - [x] YAPILDI — Pile duyarlı kayıt: şarjda 10sn, pilde 30sn (`src/autosave/AutoSaveManager.ts`)
 - [x] YAPILDI (ara çözüm) — PC trackpad pinch: sayfa zoom'u kilitlendi, gerçek yakınlaştırma pinch-zoom aracını bekliyor (`src/core/Application.ts`)
+
+## Çizim gecikmesi (tahta) — incelenecek
+
+- Belirti: Tahtadaki kurulu programda (Electron) yazı/çizgi parmağın gerisinden geliyor. PC'de hissedilmiyor.
+- Olası sebepler (öncelik sırasıyla):
+  1. Her `pointermove`'da tüm sahne baştan çiziliyor (`DocumentRenderer.render`); çizgi arttıkça kare maliyeti büyüyor.
+  2. `StrokeRenderer` opak çizgilerde kesit başına ayrı `beginPath()+stroke()` + kare başına `new Point` üretiyor.
+  3. `getCoalescedEvents` ile stoğa eklenen nokta sayısı katlanıyor.
+  4. Tahtada GPU hızlandırma kapalı olabilir (Linux/Electron) → 4K tuval yazılımla çiziliyor. Kontrol: GPU-process/swiftshader izleri, Electron bayrakları.
+- Aday çözüm: artımlı çizim (bitmiş sahne önbelleği + üstüne yalnız yeni kesit) + toplu path + nokta seyreltme + rAF birleştirme. PC'yi olumsuz etkilemez (hızlanır); kritik nokta önbellek geçersiz kılma (undo, seçim, zoom/pan, boyut, kılavuz, resim yükleme).
+- Durum: Kullanıcı mevcut haliyle tahtada tekrar deneyip dönecek, ondan sonra bakılacak.

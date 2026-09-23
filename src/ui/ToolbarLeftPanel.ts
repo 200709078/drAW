@@ -227,7 +227,7 @@ export class ToolbarLeftPanel {
             const rect = panel.getBoundingClientRect();
             document.documentElement.style.setProperty(
                 "--toolbar-left-toggle-bottom",
-                `${window.innerHeight - rect.top}px`
+                `${window.innerHeight - rect.top + 8}px`
             );
             document.documentElement.style.setProperty(
                 "--toolbar-left-center",
