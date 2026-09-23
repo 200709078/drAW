@@ -27,8 +27,25 @@ import circleIcon from "../assets/icons/circle.svg";
 import triangleIcon from "../assets/icons/triangle.svg";
 import lineIcon from "../assets/icons/line.svg";
 import newDrawIcon from "../assets/icons/newdraw.svg";
+import undoIcon from "../assets/icons/undo.svg";
+import redoIcon from "../assets/icons/redo.svg";
 
 export class ToolbarPanel {
+
+    private readonly newDrawButton: HTMLButtonElement;
+    private readonly drawingsPanel: DrawingsPanel;
+
+    public getNewDrawButton(): HTMLButtonElement {
+
+        return this.newDrawButton;
+
+    }
+
+    public getDrawingsPanel(): DrawingsPanel {
+
+        return this.drawingsPanel;
+
+    }
 
     constructor(
         toolManager: ToolManager,
@@ -66,13 +83,59 @@ export class ToolbarPanel {
 
         toolbar.appendChild(handle);
 
+        const undoButton = this.createIconButton("Çizimi Geri Al", undoIcon, {
+            className: "sidebar__history"
+        });
+
+        const redoButton = this.createIconButton("Çizimi Yinele", redoIcon, {
+            className: "sidebar__history"
+        });
+
+        const refreshHistoryButtons = (): void => {
+            undoButton.disabled = !historyManager.canUndo();
+            redoButton.disabled = !historyManager.canRedo();
+        };
+
+        const restoreHistory = (action: () => boolean): void => {
+            toolManager.getActiveTool()?.cancel();
+
+            if (!action()) {
+                return;
+            }
+
+            documentRenderer.clearSelection();
+            documentRenderer.render();
+        };
+
+        undoButton.addEventListener("click", () => restoreHistory(() => historyManager.undo()));
+        redoButton.addEventListener("click", () => restoreHistory(() => historyManager.redo()));
+        historyManager.addChangeListener(refreshHistoryButtons);
+        refreshHistoryButtons();
+
+        document.addEventListener("keydown", (event) => {
+            if (!event.ctrlKey && !event.metaKey) {
+                return;
+            }
+
+            const key = event.key.toLowerCase();
+            const isRedo = key === "y" || (key === "z" && event.shiftKey);
+            const isUndo = key === "z" && !event.shiftKey;
+
+            if (!isUndo && !isRedo) {
+                return;
+            }
+
+            event.preventDefault();
+            restoreHistory(isRedo ? () => historyManager.redo() : () => historyManager.undo());
+        });
+
 
         const penButton = this.createIconButton("Kalem", pencilIcon, {
             className: "sidebar__tool",
             isSelected: true,
             selectedClass: "sidebar__tool--selected"
         });
-        const eraserButton = this.createIconButton("Stroke Silgi", eraserStrokeIcon, {
+        const eraserButton = this.createIconButton("Normal Silgi", eraserNormalIcon, {
             className: "sidebar__tool",
             isSelected: false,
             selectedClass: "sidebar__tool--selected"
@@ -161,12 +224,12 @@ export class ToolbarPanel {
 
         const colorPreview = document.createElement("span");
         colorPreview.className = "sidebar__color-preview";
-        colorPreview.style.backgroundColor = "#111827";
+        colorPreview.style.backgroundColor = "#ff0000";
 
         colorButton.appendChild(colorPreview);
 
 
-        colorButton.setAttribute("aria-label", "Renk: Siyah");
+        colorButton.setAttribute("aria-label", "Renk: Kırmızı");
         colorButton.setAttribute("aria-expanded", "false");
 
         const colorPalette = document.createElement("div");
@@ -195,6 +258,7 @@ export class ToolbarPanel {
         widthButton.className = "sidebar__width-trigger";
         widthButton.style.setProperty("--line-width", `${defaultWidthForProfile()}px`);
         widthButton.setAttribute("aria-label", `Kalınlık: ${defaultWidthForProfile()} piksel`);
+        widthButton.title = `Kalınlık: ${defaultWidthForProfile()} piksel`;
         widthButton.setAttribute("aria-expanded", "false");
 
         const widthPalette = document.createElement("div");
@@ -206,6 +270,7 @@ export class ToolbarPanel {
         const newDrawButton = this.createIconButton("Yeni Çizim", newDrawIcon, {
             className: "sidebar__history"
         });
+        this.newDrawButton = newDrawButton;
         newDrawButton.addEventListener("click", async () => {
             await autoSaveManager.newDrawing();
 
@@ -218,20 +283,20 @@ export class ToolbarPanel {
             documentRenderer.setGuideLines("none");
             documentRenderer.render();
 
-            penTool.setColor("#111827");
-            highlighterTool.setColor("#111827");
+            penTool.setColor("#ff0000");
+            highlighterTool.setColor("#ff0000");
             const resetWidth = defaultWidthForProfile();
             penTool.setLineWidth(resetWidth);
             highlighterTool.setLineWidth(resetWidth);
             eraserTool.setLineWidth(resetWidth);
             partialEraserTool.setLineWidth(resetWidth);
-            colorPreview.style.backgroundColor = "#111827";
-            colorButton.setAttribute("aria-label", "Renk: Siyah");
+            colorPreview.style.backgroundColor = "#ff0000";
+            colorButton.setAttribute("aria-label", "Renk: Kırmızı");
             widthButton.style.setProperty("--line-width", `${resetWidth}px`);
             widthButton.setAttribute("aria-label", `Kalınlık: ${resetWidth} piksel`);
 
-            for (const [index, button] of colorPalette.querySelectorAll("button").entries()) {
-                const isSelected = index === 0;
+            for (const button of colorPalette.querySelectorAll("button")) {
+                const isSelected = button.getAttribute("aria-label") === "Kırmızı";
 
                 button.classList.toggle("sidebar__color--selected", isSelected);
                 button.setAttribute("aria-pressed", String(isSelected));
@@ -304,7 +369,7 @@ export class ToolbarPanel {
         colorButton.addEventListener("click", () => toggleFlyout(colorButton, colorPalette));
         widthButton.addEventListener("click", () => toggleFlyout(widthButton, widthPalette));
 
-        let lastSelectedEraserTool: EraserTool | PartialEraserTool = eraserTool;
+        let lastSelectedEraserTool: EraserTool | PartialEraserTool = partialEraserTool;
         let lastSelectedEraserButton: HTMLButtonElement | null = null;
 
         const selectEraser = (
@@ -457,18 +522,22 @@ export class ToolbarPanel {
             className: "sidebar__eraser-option",
             isSelected: false,
             onSelect: () => {
-                selectEraser(eraserTool, strokeEraserButton);
+            selectEraser(partialEraserTool, partialEraserButton);
             }
         });
         const partialEraserButton = this.createIconButton("Normal Silgi", eraserNormalIcon, {
             className: "sidebar__eraser-option",
-            isSelected: false,
+            isSelected: true,
+            selectedClass: "sidebar__eraser-option--selected",
             onSelect: () => {
                 selectEraser(partialEraserTool, partialEraserButton);
             }
         });
-        lastSelectedEraserButton = strokeEraserButton;
-        eraserPalette.append(strokeEraserButton, partialEraserButton);
+        lastSelectedEraserButton = partialEraserButton;
+        this.copyButtonIcon(eraserButton, partialEraserButton);
+        eraserButton.title = `${partialEraserButton.title}`;
+        eraserButton.setAttribute("aria-label", `Silgi: ${partialEraserButton.title}`);
+        eraserPalette.append(partialEraserButton, strokeEraserButton);
 
         eraserButton.addEventListener("click", () => {
             const activeTool = toolManager.getActiveTool();
@@ -570,19 +639,19 @@ export class ToolbarPanel {
         });
 
         const colors = [
-            { name: "Siyah", value: "#111827" },
-            { name: "Kırmızı", value: "#ef4444" },
-            { name: "Turuncu", value: "#f97316" },
-            { name: "Sarı", value: "#eab308" },
-            { name: "Yeşil", value: "#22c55e" },
-            { name: "Mavi", value: "#3b82f6" },
-            { name: "Lacivert", value: "#4f46e5" },
-            { name: "Mor", value: "#a855f7" }
+            { name: "Kırmızı", value: "#ff0000" },
+            { name: "Siyah", value: "#000000" },
+            { name: "Turuncu", value: "#ff8000" },
+            { name: "Sarı", value: "#ffff00" },
+            { name: "Yeşil", value: "#00ff00" },
+            { name: "Mavi", value: "#0000ff" },
+            { name: "Lacivert", value: "#000080" },
+            { name: "Mor", value: "#800080" }
         ];
 
-        for (const [index, color] of colors.entries()) {
+        for (const color of colors) {
             const paletteButton = document.createElement("button");
-            const isSelected = index === 0;
+            const isSelected = color.value === "#ff0000";
             paletteButton.type = "button";
             paletteButton.className = "sidebar__color";
             paletteButton.style.backgroundColor = color.value;
@@ -618,6 +687,7 @@ export class ToolbarPanel {
             partialEraserTool.setLineWidth(lineWidth);
             widthButton.style.setProperty("--line-width", `${lineWidth}px`);
             widthButton.setAttribute("aria-label", `Kalınlık: ${lineWidth} piksel`);
+            widthButton.title = `Kalınlık: ${lineWidth} piksel`;
 
             for (const button of widthPalette.querySelectorAll("button[data-width]")) {
                 const isCurrentWidth = button.getAttribute("data-width") === String(lineWidth);
@@ -643,6 +713,7 @@ export class ToolbarPanel {
                 paletteButton.style.setProperty("--line-width", `${lineWidth}px`);
                 paletteButton.setAttribute("data-width", String(lineWidth));
                 paletteButton.setAttribute("aria-label", `${lineWidth} piksel kalınlık`);
+                paletteButton.title = `${lineWidth} piksel`;
                 paletteButton.setAttribute("aria-pressed", String(isSelected));
                 paletteButton.classList.toggle("sidebar__width--selected", isSelected);
 
@@ -660,7 +731,9 @@ export class ToolbarPanel {
         colorControl.append(colorButton, colorPalette);
         widthControl.append(widthButton, widthPalette);
         toolbar.append(
+            undoButton,
             penControl,
+            redoButton,
             eraserControl,
             shapesControl,
             selectionButton,
@@ -723,7 +796,7 @@ export class ToolbarPanel {
             setToolbarOpen(true);
         });
 
-        new DrawingsPanel({
+        this.drawingsPanel = new DrawingsPanel({
             repository,
             autoSaveManager,
             toolManager,
@@ -731,7 +804,6 @@ export class ToolbarPanel {
             drawingDocument,
             documentRenderer,
             historyManager,
-            newDrawButton,
             canvas: _canvas
         });
 

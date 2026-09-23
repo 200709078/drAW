@@ -1,10 +1,7 @@
 import { ToolManager } from "../core/ToolManager";
-import { HistoryManager } from "../core/HistoryManager";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { TextTool } from "../tools/TextTool";
-import undoIcon from "../assets/icons/undo.svg";
-import redoIcon from "../assets/icons/redo.svg";
 import captureIcon from "../assets/icons/capture.svg";
 import textIcon from "../assets/icons/text.svg";
 import squareIcon from "../assets/icons/square.svg";
@@ -17,12 +14,14 @@ export class ToolbarLeftPanel {
 
     constructor(
         toolManager: ToolManager,
-        historyManager: HistoryManager,
         documentRenderer: DocumentRenderer,
         textTool: TextTool,
         screenCaptureTool: ScreenCaptureTool,
         desktopAvailable: boolean,
-        _canvas: HTMLCanvasElement
+        _canvas: HTMLCanvasElement,
+        newDrawButton: HTMLButtonElement,
+        prevDrawingButton: HTMLButtonElement,
+        nextDrawingButton: HTMLButtonElement
     ) {
 
         void _canvas;
@@ -33,35 +32,6 @@ export class ToolbarLeftPanel {
 
         const list = document.createElement("div");
         list.className = "toolbar-left-panel__list";
-
-        const undoButton = this.createIconButton("Çizimi Geri Al", undoIcon, {
-            className: "sidebar__history"
-        });
-
-        const redoButton = this.createIconButton("Çizimi Yinele", redoIcon, {
-            className: "sidebar__history"
-        });
-
-        const refreshHistoryButtons = (): void => {
-            undoButton.disabled = !historyManager.canUndo();
-            redoButton.disabled = !historyManager.canRedo();
-        };
-
-        const restoreHistory = (action: () => boolean): void => {
-            toolManager.getActiveTool()?.cancel();
-
-            if (!action()) {
-                return;
-            }
-
-            documentRenderer.clearSelection();
-            documentRenderer.render();
-        };
-
-        undoButton.addEventListener("click", () => restoreHistory(() => historyManager.undo()));
-        redoButton.addEventListener("click", () => restoreHistory(() => historyManager.redo()));
-        historyManager.addChangeListener(refreshHistoryButtons);
-        refreshHistoryButtons();
 
         const textButton = this.createIconButton("Metin", textIcon, {
             className: "sidebar__tool",
@@ -217,26 +187,10 @@ export class ToolbarLeftPanel {
             }
         });
 
-        document.addEventListener("keydown", (event) => {
-            if (!event.ctrlKey && !event.metaKey) {
-                return;
-            }
-
-            const key = event.key.toLowerCase();
-            const isRedo = key === "y" || (key === "z" && event.shiftKey);
-            const isUndo = key === "z" && !event.shiftKey;
-
-            if (!isUndo && !isRedo) {
-                return;
-            }
-
-            event.preventDefault();
-            restoreHistory(isRedo ? () => historyManager.redo() : () => historyManager.undo());
-        });
-
         list.append(
-            undoButton,
-            redoButton,
+            prevDrawingButton,
+            newDrawButton,
+            nextDrawingButton,
             textButton,
             ...(screenCaptureButton !== null ? [screenCaptureButton] : []),
             guideControl
