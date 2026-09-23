@@ -14,6 +14,10 @@ export class PointerManager {
     private pinchDistance: number;
     private pinchMidX: number;
     private pinchMidY: number;
+    private panPointerId: number | null;
+    private panLastX: number;
+    private panLastY: number;
+    private panCursor: string;
 
     constructor(
         canvas: HTMLCanvasElement,
@@ -29,6 +33,10 @@ export class PointerManager {
         this.pinchDistance = 0;
         this.pinchMidX = 0;
         this.pinchMidY = 0;
+        this.panPointerId = null;
+        this.panLastX = 0;
+        this.panLastY = 0;
+        this.panCursor = "";
 
         this.attachEvents();
 
@@ -41,8 +49,18 @@ export class PointerManager {
         this.canvas.addEventListener("pointerup", this.onPointerUp);
         this.canvas.addEventListener("pointercancel", this.onPointerCancel);
         this.canvas.addEventListener("wheel", this.onWheel, { passive: false });
+        // Orta tuş otomatik kaydırmayı engelle.
+        this.canvas.addEventListener("mousedown", this.onMouseDown);
 
     }
+
+    private onMouseDown = (event: MouseEvent): void => {
+
+        if (event.button === 1) {
+            event.preventDefault();
+        }
+
+    };
 
     private onPointerDown = (event: PointerEvent): void => {
 
@@ -50,6 +68,26 @@ export class PointerManager {
 
         if (!tool) {
             return;
+        }
+
+        // Orta tuşla sürükleyerek kaydırma.
+        if (event.button === 1 && event.pointerType === "mouse") {
+            event.preventDefault();
+            this.stopPan();
+
+            if (!this.pinching) {
+                this.panPointerId = event.pointerId;
+                this.panLastX = event.offsetX;
+                this.panLastY = event.offsetY;
+                this.panCursor = this.canvas.style.cursor;
+                this.canvas.style.cursor = "grabbing";
+            }
+
+            return;
+        }
+
+        if (this.panPointerId !== null) {
+            this.stopPan();
         }
 
         this.canvas.setPointerCapture(event.pointerId);
@@ -70,6 +108,16 @@ export class PointerManager {
 
     private onPointerMove = (event: PointerEvent): void => {
 
+        if (this.panPointerId !== null) {
+            if (event.pointerId === this.panPointerId) {
+                this.viewport.panBy(event.offsetX - this.panLastX, event.offsetY - this.panLastY);
+                this.panLastX = event.offsetX;
+                this.panLastY = event.offsetY;
+            }
+
+            return;
+        }
+
         if (this.pinching) {
             this.updatePinch(event);
             return;
@@ -85,6 +133,12 @@ export class PointerManager {
     };
 
     private onPointerUp = (event: PointerEvent): void => {
+
+        if (event.pointerId === this.panPointerId) {
+            this.stopPan();
+            this.releasePointerCapture(event.pointerId);
+            return;
+        }
 
         this.activePointers.delete(event.pointerId);
         this.releasePointerCapture(event.pointerId);
@@ -102,6 +156,12 @@ export class PointerManager {
     };
 
     private onPointerCancel = (event: PointerEvent): void => {
+
+        if (event.pointerId === this.panPointerId) {
+            this.stopPan();
+            this.releasePointerCapture(event.pointerId);
+            return;
+        }
 
         this.activePointers.delete(event.pointerId);
         this.releasePointerCapture(event.pointerId);
@@ -175,6 +235,17 @@ export class PointerManager {
         this.pinchDistance = distance;
         this.pinchMidX = midX;
         this.pinchMidY = midY;
+
+    }
+
+    private stopPan(): void {
+
+        if (this.panPointerId === null) {
+            return;
+        }
+
+        this.panPointerId = null;
+        this.canvas.style.cursor = this.panCursor;
 
     }
 
