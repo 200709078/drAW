@@ -607,7 +607,7 @@ export class ToolbarPanel {
             }
         });
 
-        const strokeEraserButton = this.createIconButton("Stroke Silgi", eraserStrokeIcon, {
+        const strokeEraserButton = this.createIconButton("Çizgi Silgi", eraserStrokeIcon, {
             className: "sidebar__eraser-option",
             isSelected: false,
             onSelect: () => {

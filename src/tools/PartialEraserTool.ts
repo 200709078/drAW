@@ -148,6 +148,17 @@ export class PartialEraserTool extends Tool {
         let hasChanged = false;
 
         for (const stroke of [...page.getStrokes()]) {
+            // Geometrik şekiller parçalanmaz; değince bütün silinir.
+            // Parçalamak hem geometriyi bozar hem şekil bayrağını düşürür.
+            if (stroke.isShape()) {
+                if (this.isStrokeHit(stroke, x, y)) {
+                    page.removeStroke(stroke);
+                    hasChanged = true;
+                }
+
+                continue;
+            }
+
             const fragments = this.createFragments(stroke, x, y);
 
             if (fragments === null) {
@@ -233,6 +244,28 @@ export class PartialEraserTool extends Tool {
             stroke.getLineWidth(),
             stroke.getOpacity()
         );
+
+    }
+
+    private isStrokeHit(stroke: Stroke, x: number, y: number): boolean {
+
+        const points = stroke.getPoints();
+
+        for (let index = 0; index < points.length; index++) {
+            if (this.isPointHit(stroke, points[index], x, y)) {
+                return true;
+            }
+
+            if (index === 0) {
+                continue;
+            }
+
+            if (this.isSegmentHit(stroke, points[index - 1], points[index], x, y)) {
+                return true;
+            }
+        }
+
+        return false;
 
     }
 
