@@ -713,6 +713,10 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     color: #1d4ed8;
 }
 
+.sidebar__tool[hidden] {
+    display: none;
+}
+
 .sidebar__control {
     position: relative;
 }
@@ -746,8 +750,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     align-items: center;
     justify-content: center;
 
-    width: 47px;
-    height: 47px;
+    width: 56px;
+    height: 56px;
     padding: 0;
 
     border: 1px solid #d1d5db;
@@ -757,8 +761,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 }
 
 .sidebar__color-preview {
-    width: 27px;
-    height: 27px;
+    width: 32px;
+    height: 32px;
     border-radius: 50%;
     border: 1px solid rgb(0 0 0 / 12%);
     background: #111827;

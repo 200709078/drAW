@@ -1,6 +1,7 @@
 import path from "node:path";
 import { createRequire } from "node:module";
 import { ScreenCaptureService } from "./screen-capture.ts";
+import { registerPhotoFolderHandlers } from "./photo-folder.ts";
 import { ElectronStorageService } from "./storage/ElectronStorageService.ts";
 import { StorageError } from "./storage/StorageError.ts";
 
@@ -228,6 +229,7 @@ app.whenReady().then(() => {
 
     registerStorageHandlers();
     registerWindowControls();
+    registerPhotoFolderHandlers();
 
     ipcMain.on("app:shutdown-complete", (event) => {
         if (shutdownTimer !== null) {

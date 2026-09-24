@@ -29,6 +29,7 @@ import lineIcon from "../assets/icons/line.svg";
 import newDrawIcon from "../assets/icons/newdraw.svg";
 import undoIcon from "../assets/icons/undo.svg";
 import redoIcon from "../assets/icons/redo.svg";
+import type { LinkedPhotoManager } from "../photos/LinkedPhotoManager";
 
 export class ToolbarPanel {
 
@@ -60,7 +61,8 @@ export class ToolbarPanel {
         shapesTool: ShapesTool,
         autoSaveManager: AutoSaveManager,
         repository: DrawingRepository,
-        _canvas: HTMLCanvasElement
+        _canvas: HTMLCanvasElement,
+        photoLinkManager: LinkedPhotoManager | null = null
     ) {
 
         const sidebar = document.createElement("aside");
@@ -340,6 +342,10 @@ export class ToolbarPanel {
         });
         this.newDrawButton = newDrawButton;
         newDrawButton.addEventListener("click", async () => {
+            const nextPhoto = photoLinkManager !== null
+                ? await photoLinkManager.prepareNewDrawing()
+                : null;
+
             await autoSaveManager.newDrawing();
 
             toolManager.getActiveTool()?.cancel();
@@ -377,6 +383,11 @@ export class ToolbarPanel {
             selectEraser(partialEraserTool, partialEraserButton);
             selectPen(penTool, normalPenButton);
             setToolbarOpen(true);
+
+            if (nextPhoto !== null && photoLinkManager !== null) {
+                photoLinkManager.placePreparedPhoto(nextPhoto);
+            }
+
             window.dispatchEvent(new CustomEvent("newdraw:started"));
         });
 

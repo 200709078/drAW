@@ -36,7 +36,8 @@ export class Application {
             this.managers.getShapesTool(),
             this.managers.getAutoSaveManager(),
             this.managers.getDrawingRepository(),
-            this.managers.getCanvasManager().getCanvas()
+            this.managers.getCanvasManager().getCanvas(),
+            this.managers.getPhotoLinkManager()
         );
 
         new ToolbarLeftPanel(
@@ -48,8 +49,11 @@ export class Application {
             this.managers.getCanvasManager().getCanvas(),
             toolbarPanel.getNewDrawButton(),
             toolbarPanel.getDrawingsPanel().getPrevButton(),
-            toolbarPanel.getDrawingsPanel().getNextButton()
+            toolbarPanel.getDrawingsPanel().getNextButton(),
+            this.managers.getPhotoLinkManager()
         );
+
+        void this.managers.getPhotoLinkManager().restore();
 
         new ZoomControls(this.managers.getDrawingContext().getViewport());
 

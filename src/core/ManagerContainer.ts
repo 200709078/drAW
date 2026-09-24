@@ -23,6 +23,7 @@ import { ThumbnailGenerator } from "../autosave/ThumbnailGenerator";
 import { DrawingRepository } from "../storage/DrawingRepository";
 import { createStorageProvider } from "../storage/createStorageProvider";
 import { ThumbnailStorageDecorator } from "../storage/ThumbnailStorageDecorator";
+import { LinkedPhotoManager } from "../photos/LinkedPhotoManager";
 
 export class ManagerContainer {
 
@@ -41,6 +42,7 @@ export class ManagerContainer {
     private readonly desktopAvailable: boolean;
     private readonly autoSaveManager: AutoSaveManager;
     private readonly drawingRepository: DrawingRepository;
+    private readonly linkedPhotoManager: LinkedPhotoManager;
 
     private readonly drawingContext: DrawingContext;
 
@@ -159,6 +161,12 @@ export class ManagerContainer {
             this.penTool,
             this.selectionTool
         );
+        this.linkedPhotoManager = new LinkedPhotoManager(
+            this.document,
+            this.documentRenderer
+        );
+        this.linkedPhotoManager.setSelectionTool(this.selectionTool);
+        this.selectionTool.setPhotoNavigator(this.linkedPhotoManager);
         this.toolManager.setTool(this.penTool);
 
     }
@@ -268,6 +276,12 @@ export class ManagerContainer {
     public getDrawingRepository(): DrawingRepository {
 
         return this.drawingRepository;
+
+    }
+
+    public getPhotoLinkManager(): LinkedPhotoManager {
+
+        return this.linkedPhotoManager;
 
     }
 

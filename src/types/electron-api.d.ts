@@ -35,6 +35,23 @@ export type ElectronWindowControls = {
     onFullscreenChanged: (callback: (fullscreen: boolean) => void) => void;
 };
 
+export type LinkedPhotoSelection = {
+    folderPath: string;
+    fileName: string;
+};
+
+export type LinkedPhotoData = {
+    dataUrl: string;
+    width: number;
+    height: number;
+};
+
+export type ElectronPhotoFolder = {
+    selectPhoto: () => Promise<LinkedPhotoSelection | null>;
+    listPhotos: (folderPath: string) => Promise<string[]>;
+    readPhoto: (folderPath: string, fileName: string) => Promise<LinkedPhotoData | null>;
+};
+
 declare global {
     interface Window {
         drAWDesktop?: {
@@ -44,6 +61,7 @@ declare global {
             onShutdownRequest: (callback: () => void) => void;
             shutdownComplete: () => void;
             windowControls?: ElectronWindowControls;
+            photoFolder?: ElectronPhotoFolder;
         };
     }
 }

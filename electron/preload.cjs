@@ -41,5 +41,10 @@ contextBridge.exposeInMainWorld("drAWDesktop", {
         onFullscreenChanged: (callback) => {
             ipcRenderer.on("window:fullscreen-changed", (_event, fullscreen) => callback(fullscreen));
         }
+    },
+    photoFolder: {
+        selectPhoto: () => ipcRenderer.invoke("photo:select"),
+        listPhotos: (folderPath) => ipcRenderer.invoke("photo:list", folderPath),
+        readPhoto: (folderPath, fileName) => ipcRenderer.invoke("photo:read", folderPath, fileName)
     }
 });

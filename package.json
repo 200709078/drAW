@@ -9,11 +9,7 @@
   "main": "electron/main.ts",
   "description": "drAW - Interactive whiteboard and drawing application",
   "license": "MIT",
-  "author": {
-    "name": "mADEMatik",
-    "email": "madematik@madematik.com",
-    "url": "https://www.madematik.com"
-  },
+  "author": "mADEMatik <madematik@madematik.com> (https://www.madematik.com)",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
@@ -75,5 +71,13 @@
     "@capacitor/android": "^8.5.0",
     "@capacitor/cli": "^8.5.0",
     "@capacitor/core": "^8.5.0"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/200709078/drAW.git"
+  },
+  "keywords": [],
+  "bugs": {
+    "url": "https://github.com/200709078/drAW/issues"
   }
 }
