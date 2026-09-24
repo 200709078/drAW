@@ -314,6 +314,10 @@ body.drawings-closed .link-status {
     right: 12px;
 }
 
+body.has-custom-titlebar .link-status {
+    top: 48px;
+}
+
 .link-status[hidden] {
     display: none;
 }
