@@ -2,6 +2,7 @@ import { ToolManager } from "../core/ToolManager";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { TextTool } from "../tools/TextTool";
+import type { LinkedPhotoManager } from "../photos/LinkedPhotoManager";
 import captureIcon from "../assets/icons/capture.svg";
 import textIcon from "../assets/icons/text.svg";
 import squareIcon from "../assets/icons/square.svg";
@@ -21,7 +22,8 @@ export class ToolbarLeftPanel {
         _canvas: HTMLCanvasElement,
         newDrawButton: HTMLButtonElement,
         prevDrawingButton: HTMLButtonElement,
-        nextDrawingButton: HTMLButtonElement
+        nextDrawingButton: HTMLButtonElement,
+        photoLinkManager: LinkedPhotoManager | null
     ) {
 
         void _canvas;
@@ -32,6 +34,16 @@ export class ToolbarLeftPanel {
 
         const list = document.createElement("div");
         list.className = "toolbar-left-panel__list";
+
+        const linkButton = document.createElement("button");
+        linkButton.type = "button";
+        linkButton.className = "sidebar__tool";
+
+        if (photoLinkManager !== null) {
+            photoLinkManager.attachButton(linkButton);
+        } else {
+            linkButton.hidden = true;
+        }
 
         const textButton = this.createIconButton("Metin", textIcon, {
             className: "sidebar__tool",
@@ -194,6 +206,7 @@ export class ToolbarLeftPanel {
             prevDrawingButton,
             newDrawButton,
             nextDrawingButton,
+            linkButton,
             textButton,
             ...(screenCaptureButton !== null ? [screenCaptureButton] : []),
             guideControl

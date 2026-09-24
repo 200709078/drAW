@@ -56,6 +56,8 @@ Tahta (`board-mode` CSS, tahta kalem seti, metin sınırı, coalesced, pointerId
 
 ### Onay gereken açık sorular (kodlamadan önce)
 
+**KAPSAM KARARI:** Klasör Bağlama yalnız tahta + PC'de (Electron) çalışır; web ve mobilde çalışmaz (buton görünmez).
+
 1. ~~Önceki/Sonraki ile fotoğraf değişince mevcut çizgiler ne olacak?~~ **KARAR:** Çizgiler aynen kalacak, yalnız fotoğraf değişecek.
 2. ~~Tutucu elle silinirse Önceki/Sonraki ne yapacak?~~ **KARAR:** Bağ otomatik kopar; foto+çizimler ekranda kalır, yeniden bağlamak kullanıcıya kalır. Kopuş her silme yoluna kanca takılarak değil, bağ kullanılacağı anda (Önceki/Sonraki, Yeni Çizim) tutucunun sayfada olup olmadığına bakılarak yakalanır (tembel doğrulama). Kopunca küçük bilgi notu gösterilir, onay kutusu yok.
 3. ~~Klasörde fotoğraf yoksa / tek fotoğrafsa davranış?~~ **KARAR:** Boş klasörde fotoğraf seçilemediği için bağ kurulamaz (iptal edilir). Tek fotoğrafta o seçilir, Önceki/Sonraki pasif olur.

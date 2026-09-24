@@ -21,6 +21,12 @@ type SelectableObject = Stroke | DocumentImage | TextObject;
 type CornerHandle = "topLeft" | "bottomRight" | "bottomLeft";
 type EdgeHandle = "top" | "right" | "bottom" | "left";
 
+export type PhotoNavigator = {
+    isLinkedHolder: (candidate: unknown) => boolean;
+    canStepPhoto: (direction: 1 | -1) => boolean;
+    requestStepPhoto: (direction: 1 | -1) => void;
+};
+
 type ResizeOriginals = {
     strokes: Point[][];
     images: Array<{ x: number; y: number; width: number; height: number }>;
@@ -35,6 +41,22 @@ const TOUCH_DRAG_THRESHOLD = 4;
 const TOUCH_SMOOTHING_FACTOR = 0.6;
 
 export class SelectionTool extends Tool {
+
+    private static readonly ICON_PHOTO_PREV = [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"`,
+        ` stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+        `<polygon points="19 20 9 12 19 4 19 20"/>`,
+        `<line x1="5" x2="5" y1="19" y2="5"/>`,
+        `</svg>`
+    ].join("");
+
+    private static readonly ICON_PHOTO_NEXT = [
+        `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" viewBox="0 0 24 24" fill="none"`,
+        ` stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
+        `<polygon points="5 4 15 12 5 20 5 4"/>`,
+        `<line x1="19" x2="19" y1="5" y2="19"/>`,
+        `</svg>`
+    ].join("");
 
     private readonly document: Document;
     private readonly renderer: DocumentRenderer;
@@ -54,6 +76,9 @@ export class SelectionTool extends Tool {
     private lastX: number;
     private lastY: number;
     private deleteButton: HTMLButtonElement | null;
+    private prevPhotoButton: HTMLButtonElement | null;
+    private nextPhotoButton: HTMLButtonElement | null;
+    private photoNavigator: PhotoNavigator | null;
     private lastTextClick: TextObject | null;
     private lastTextClickTime: number;
     private activePointerId: number | null;
@@ -89,6 +114,9 @@ export class SelectionTool extends Tool {
         this.lastX = 0;
         this.lastY = 0;
         this.deleteButton = null;
+        this.prevPhotoButton = null;
+        this.nextPhotoButton = null;
+        this.photoNavigator = null;
         this.lastTextClick = null;
         this.lastTextClickTime = 0;
         this.activePointerId = null;
@@ -1053,6 +1081,28 @@ export class SelectionTool extends Tool {
 
     }
 
+    public selectImage(image: DocumentImage): void {
+
+        this.clearSelectedObjects();
+        this.addObject(image);
+        this.updateRendererSelection();
+        this.renderer.render();
+
+    }
+
+    public setPhotoNavigator(navigator: PhotoNavigator | null): void {
+
+        this.photoNavigator = navigator;
+        this.updateDeleteButton();
+
+    }
+
+    public refreshOverlays(): void {
+
+        this.updateDeleteButton();
+
+    }
+
     private editText(textObject: TextObject): void {
 
         this.renderer.setSelectedTexts([]);
@@ -1088,6 +1138,8 @@ export class SelectionTool extends Tool {
                 this.deleteButton.hidden = true;
             }
 
+            this.updatePhotoNavButtons(null);
+
             return;
         }
 
@@ -1115,6 +1167,83 @@ export class SelectionTool extends Tool {
         this.deleteButton.style.left = `${this.drawingContext.getViewport().worldToScreenX(bounds.maxX)}px`;
         this.deleteButton.style.top = `${this.drawingContext.getViewport().worldToScreenY(bounds.minY) + getTitlebarOffset()}px`;
         this.deleteButton.hidden = false;
+        this.updatePhotoNavButtons(bounds);
+
+    }
+
+    private updatePhotoNavButtons(bounds: SelectionBounds | null): void {
+
+        const singleImage = this.selectedImages.size === 1 &&
+            this.selectedStrokes.size === 0 &&
+            this.selectedTexts.size === 0
+            ? [...this.selectedImages][0]
+            : null;
+        const show = bounds !== null &&
+            singleImage !== null &&
+            this.photoNavigator?.isLinkedHolder(singleImage) === true;
+
+        if (!show) {
+            if (this.prevPhotoButton !== null) {
+                this.prevPhotoButton.hidden = true;
+            }
+
+            if (this.nextPhotoButton !== null) {
+                this.nextPhotoButton.hidden = true;
+            }
+
+            return;
+        }
+
+        const viewport = this.drawingContext.getViewport();
+
+        if (this.prevPhotoButton === null) {
+            this.prevPhotoButton = this.createPhotoNavButton(
+                "Önceki Fotoğraf",
+                SelectionTool.ICON_PHOTO_PREV,
+                -1
+            );
+        }
+
+        if (this.nextPhotoButton === null) {
+            this.nextPhotoButton = this.createPhotoNavButton(
+                "Sonraki Fotoğraf",
+                SelectionTool.ICON_PHOTO_NEXT,
+                1
+            );
+        }
+
+        this.prevPhotoButton.style.left = `${viewport.worldToScreenX(bounds.minX)}px`;
+        this.prevPhotoButton.style.top = `${viewport.worldToScreenY(bounds.minY) + getTitlebarOffset()}px`;
+        this.prevPhotoButton.hidden = false;
+        this.prevPhotoButton.disabled = this.photoNavigator?.canStepPhoto(-1) !== true;
+
+        this.nextPhotoButton.style.left = `${viewport.worldToScreenX(bounds.maxX - 52)}px`;
+        this.nextPhotoButton.style.top = `${viewport.worldToScreenY(bounds.minY) + getTitlebarOffset()}px`;
+        this.nextPhotoButton.hidden = false;
+        this.nextPhotoButton.disabled = this.photoNavigator?.canStepPhoto(1) !== true;
+
+    }
+
+    private createPhotoNavButton(
+        label: string,
+        icon: string,
+        direction: 1 | -1
+    ): HTMLButtonElement {
+
+        const button = document.createElement("button");
+        button.type = "button";
+        button.className = "selection-delete-button";
+        button.title = label;
+        button.setAttribute("aria-label", label);
+        button.innerHTML = icon;
+        button.addEventListener("click", (event) => {
+            event.preventDefault();
+            event.stopPropagation();
+            this.photoNavigator?.requestStepPhoto(direction);
+        });
+        document.body.appendChild(button);
+
+        return button;
 
     }
 
@@ -1123,6 +1252,8 @@ export class SelectionTool extends Tool {
         if (this.deleteButton !== null) {
             this.deleteButton.remove();
             this.deleteButton = null;
+            this.prevPhotoButton = null;
+            this.nextPhotoButton = null;
         }
 
     }
