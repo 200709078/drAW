@@ -166,6 +166,8 @@ export class ManagerContainer {
             this.documentRenderer
         );
         this.linkedPhotoManager.setSelectionTool(this.selectionTool);
+        this.linkedPhotoManager.setToolManager(this.toolManager);
+        this.linkedPhotoManager.setHistoryManager(this.historyManager);
         this.selectionTool.setPhotoNavigator(this.linkedPhotoManager);
         this.toolManager.setTool(this.penTool);
 

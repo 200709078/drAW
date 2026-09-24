@@ -1,7 +1,9 @@
 import { Document } from "../document/Document";
 import { DocumentImage } from "../document/DocumentImage";
 import { DocumentRenderer } from "../renderers/DocumentRenderer";
+import type { HistoryManager } from "../core/HistoryManager";
 import type { SelectionTool } from "../tools/SelectionTool";
+import type { ToolManager } from "../core/ToolManager";
 import type { LinkedPhotoData } from "../types/electron-api";
 import { confirmDialog } from "../ui/ConfirmDialog";
 
@@ -39,12 +41,17 @@ export class LinkedPhotoManager {
     private readonly documentRenderer: DocumentRenderer;
 
     private selectionTool: SelectionTool | null;
+    private toolManager: ToolManager | null;
     private linkButton: HTMLButtonElement | null;
+    private readonly statusElement: HTMLDivElement;
 
     private folderPath: string | null;
     private fileName: string | null;
     private holder: DocumentImage | null;
+    // Tutucu bu oturumda hiç eklendiyse true; geri yüklenen bağda false başlar.
+    private holderEverAdded: boolean;
     private busy: boolean;
+    private suppressValidation: boolean;
     private navState: { prev: boolean; next: boolean };
 
     constructor(
@@ -55,11 +62,18 @@ export class LinkedPhotoManager {
         this.drawingDocument = drawingDocument;
         this.documentRenderer = documentRenderer;
         this.selectionTool = null;
+        this.toolManager = null;
         this.linkButton = null;
+        this.statusElement = document.createElement("div");
+        this.statusElement.className = "link-status";
+        this.statusElement.hidden = true;
+        document.body.appendChild(this.statusElement);
         this.folderPath = null;
         this.fileName = null;
         this.holder = null;
+        this.holderEverAdded = false;
         this.busy = false;
+        this.suppressValidation = false;
         this.navState = { prev: false, next: false };
 
     }
@@ -67,6 +81,29 @@ export class LinkedPhotoManager {
     public setSelectionTool(selectionTool: SelectionTool): void {
 
         this.selectionTool = selectionTool;
+
+    }
+
+    public setToolManager(toolManager: ToolManager): void {
+
+        this.toolManager = toolManager;
+
+    }
+
+    public setHistoryManager(historyManager: HistoryManager): void {
+
+        // Tutucu silinince bağı sessizce kopar (buton eski haline döner).
+        // Geri yüklenmiş ama bu oturumda hiç tutucu eklenmemiş bağa dokunulmaz.
+        historyManager.addChangeListener(() => {
+            if (this.suppressValidation ||
+                !this.isLinked() ||
+                !this.holderEverAdded ||
+                this.holderOnPage()) {
+                return;
+            }
+
+            this.unlink();
+        });
 
     }
 
@@ -94,7 +131,8 @@ export class LinkedPhotoManager {
 
     public isLinkedHolder(candidate: unknown): boolean {
 
-        return candidate instanceof DocumentImage &&
+        return this.isLinked() &&
+            candidate instanceof DocumentImage &&
             this.holder !== null &&
             candidate === this.holder &&
             this.holderOnPage();
@@ -123,16 +161,34 @@ export class LinkedPhotoManager {
         }
 
         const files = await this.listPhotos(stored.folderPath);
+        const index = files.indexOf(stored.fileName);
 
-        if (!files.includes(stored.fileName)) {
+        // Son fotoğraftaysak veya dosya yoksa sessizce normal açılış.
+        if (index === -1 || index + 1 >= files.length) {
+            this.clearStoredLink();
+
+            return;
+        }
+
+        // Açılışta bağlı kalınmışsa son fotoğraftan sonrakini otomatik ekle.
+        const nextName = files[index + 1];
+        const photo = await this.readPhoto(stored.folderPath, nextName);
+
+        if (photo === null) {
             this.clearStoredLink();
 
             return;
         }
 
         this.folderPath = stored.folderPath;
-        this.fileName = stored.fileName;
-        this.holder = null;
+        this.fileName = nextName;
+        this.writeStoredLink();
+        this.addHolder(photo, true);
+
+        if (this.toolManager !== null && this.selectionTool !== null) {
+            this.toolManager.setTool(this.selectionTool);
+        }
+
         await this.refreshNavState();
         this.refreshButton();
 
@@ -162,11 +218,15 @@ export class LinkedPhotoManager {
             return null;
         }
 
-        if (!this.holderOnPage()) {
+        // Bu oturumda tutucu eklendiyse yokluğu silinme sayılır.
+        if (this.holderEverAdded && !this.holderOnPage()) {
             this.unlink();
 
             return null;
         }
+
+        // Yeni çizim sayfayı temizleyeceği için doğrulamayı beklet.
+        this.suppressValidation = true;
 
         const files = await this.listPhotos(this.folderPath);
         const currentIndex = files.indexOf(this.fileName);
@@ -205,6 +265,7 @@ export class LinkedPhotoManager {
         this.fileName = nextName;
         this.writeStoredLink();
         await this.refreshNavState();
+        this.refreshButton();
 
         return photo;
 
@@ -212,6 +273,7 @@ export class LinkedPhotoManager {
 
     public placePreparedPhoto(photo: LinkedPhotoData): void {
 
+        this.suppressValidation = false;
         this.addHolder(photo, true);
 
     }
@@ -248,6 +310,11 @@ export class LinkedPhotoManager {
             this.fileName = selection.fileName;
             this.writeStoredLink();
             this.addHolder(photo, true);
+
+            if (this.toolManager !== null && this.selectionTool !== null) {
+                this.toolManager.setTool(this.selectionTool);
+            }
+
             await this.refreshNavState();
             this.selectionTool?.refreshOverlays();
             this.refreshButton();
@@ -261,9 +328,12 @@ export class LinkedPhotoManager {
 
         this.folderPath = null;
         this.fileName = null;
+        this.holderEverAdded = false;
+        this.suppressValidation = false;
         this.clearStoredLink();
         this.navState = { prev: false, next: false };
         this.refreshButton();
+        this.selectionTool?.refreshOverlays();
 
     }
 
@@ -273,7 +343,7 @@ export class LinkedPhotoManager {
             return;
         }
 
-        if (!this.holderOnPage() || this.holder === null) {
+        if (this.holderEverAdded && !this.holderOnPage()) {
             this.unlink();
 
             return;
@@ -318,6 +388,7 @@ export class LinkedPhotoManager {
             this.replaceHolder(photo);
             await this.refreshNavState();
             this.selectionTool?.refreshOverlays();
+            this.refreshButton();
         } finally {
             this.busy = false;
         }
@@ -341,6 +412,7 @@ export class LinkedPhotoManager {
         // Fotoğraf değişimi geçmişe yazılmaz (karar B).
         this.drawingDocument.getCurrentPage().addImage(image);
         this.holder = image;
+        this.holderEverAdded = true;
         this.documentRenderer.render();
 
         if (selectAfterAdd && this.selectionTool !== null) {
@@ -375,6 +447,7 @@ export class LinkedPhotoManager {
         page.removeImage(previous);
         page.addImage(image);
         this.holder = image;
+        this.holderEverAdded = true;
         this.documentRenderer.render();
 
         if (this.selectionTool !== null) {
@@ -443,6 +516,14 @@ export class LinkedPhotoManager {
     }
 
     private refreshButton(): void {
+
+        if (this.isLinked() && this.folderPath !== null && this.fileName !== null) {
+            const folderName = this.folderPath.split(/[/\\]/).filter((part) => part !== "").pop() ?? this.folderPath;
+            this.statusElement.textContent = `\\${folderName}\\${this.fileName}`;
+            this.statusElement.hidden = false;
+        } else {
+            this.statusElement.hidden = true;
+        }
 
         if (this.linkButton === null) {
             return;

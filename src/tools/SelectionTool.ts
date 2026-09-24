@@ -1212,13 +1212,13 @@ export class SelectionTool extends Tool {
             );
         }
 
-        this.prevPhotoButton.style.left = `${viewport.worldToScreenX(bounds.minX)}px`;
-        this.prevPhotoButton.style.top = `${viewport.worldToScreenY(bounds.minY) + getTitlebarOffset()}px`;
+        this.prevPhotoButton.style.left = `${viewport.worldToScreenX(bounds.minX + 40)}px`;
+        this.prevPhotoButton.style.top = `${viewport.worldToScreenY((bounds.minY + bounds.maxY) / 2) + getTitlebarOffset()}px`;
         this.prevPhotoButton.hidden = false;
         this.prevPhotoButton.disabled = this.photoNavigator?.canStepPhoto(-1) !== true;
 
-        this.nextPhotoButton.style.left = `${viewport.worldToScreenX(bounds.maxX - 52)}px`;
-        this.nextPhotoButton.style.top = `${viewport.worldToScreenY(bounds.minY) + getTitlebarOffset()}px`;
+        this.nextPhotoButton.style.left = `${viewport.worldToScreenX(bounds.maxX - 40)}px`;
+        this.nextPhotoButton.style.top = `${viewport.worldToScreenY((bounds.minY + bounds.maxY) / 2) + getTitlebarOffset()}px`;
         this.nextPhotoButton.hidden = false;
         this.nextPhotoButton.disabled = this.photoNavigator?.canStepPhoto(1) !== true;
 

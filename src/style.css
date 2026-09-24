@@ -64,6 +64,12 @@ button {
     height: 20px;
 }
 
+.selection-delete-button:disabled {
+    opacity: 0.4;
+    cursor: default;
+    pointer-events: none;
+}
+
 .eraser-indicator {
     position: fixed;
     z-index: 5;
@@ -284,6 +290,32 @@ body.drawings-closed .zoom-controls {
 
 .zoom-controls button:disabled:hover {
     background: white;
+}
+
+.link-status {
+    position: fixed;
+    top: 12px;
+    right: calc(var(--drawings-panel-width) + 12px);
+    z-index: 5;
+    max-width: 40vw;
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    padding: 4px 10px;
+    border-radius: 6px;
+    background: rgb(255 255 255 / 70%);
+    color: #9ca3af;
+    font: 500 12px system-ui, sans-serif;
+    pointer-events: none;
+    transition: right 0.36s ease;
+}
+
+body.drawings-closed .link-status {
+    right: 12px;
+}
+
+.link-status[hidden] {
+    display: none;
 }
 
 .zoom-controls__label {
@@ -723,10 +755,10 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 
 .sidebar__prev-color {
     position: absolute;
-    left: 25px;
-    top: 25px;
-    width: 14px;
-    height: 14px;
+    left: 22px;
+    top: 22px;
+    width: 17px;
+    height: 17px;
     padding: 0;
     border: 2px solid white;
     border-radius: 50%;
@@ -750,8 +782,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     align-items: center;
     justify-content: center;
 
-    width: 56px;
-    height: 56px;
+    width: 47px;
+    height: 47px;
     padding: 0;
 
     border: 1px solid #d1d5db;
@@ -761,8 +793,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 }
 
 .sidebar__color-preview {
-    width: 32px;
-    height: 32px;
+    width: 38px;
+    height: 38px;
     border-radius: 50%;
     border: 1px solid rgb(0 0 0 / 12%);
     background: #111827;
@@ -1150,10 +1182,10 @@ body.board-mode .sidebar__guideline-option {
 
 /* Tahtada rozet parmakla tutulabilir olsun (içten teğet). */
 body.board-mode .sidebar__prev-color {
-    left: 20px;
-    top: 20px;
-    width: 19px;
-    height: 19px;
+    left: 18px;
+    top: 18px;
+    width: 22px;
+    height: 22px;
 }
 
 body.board-mode .toolbar-left-panel .sidebar__tool,
