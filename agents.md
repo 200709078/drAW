@@ -33,3 +33,38 @@ Tahta (`board-mode` CSS, tahta kalem seti, metin sınırı, coalesced, pointerId
   4. Tahtada GPU hızlandırma kapalı olabilir (Linux/Electron) → 4K tuval yazılımla çiziliyor. Kontrol: GPU-process/swiftshader izleri, Electron bayrakları.
 - Aday çözüm: artımlı çizim (bitmiş sahne önbelleği + üstüne yalnız yeni kesit) + toplu path + nokta seyreltme + rAF birleştirme. PC'yi olumsuz etkilemez (hızlanır); kritik nokta önbellek geçersiz kılma (undo, seçim, zoom/pan, boyut, kılavuz, resim yükleme).
 - Durum: Kullanıcı mevcut haliyle tahtada tekrar deneyip dönecek, ondan sonra bakılacak.
+
+## Klasör Bağlama özelliği — durum notu (KODLANMADI)
+
+### Netleşen konular
+
+- Klasör Bağla butonu klasör değil, klasör içinden **bir fotoğraf** seçtirir; seçilen fotoğraf canvasa tutucu olarak eklenir, üstüne çizim yapılır.
+- Klasör + fotoğraf bilgisi ve bağ durumu (bağlı/değil) yerelde saklanır; kapatıp açınca buton aynı klasör+fotoğrafa bağlanabilir; tekrar basınca bağ kopar.
+- Fotoğraf seçim aracıyla seçilince sil/taşı/boyutlandırma aynen olur; ek olarak sil butonu yanı veya sağ/sol kenarlarda **Önceki/Sonraki fotoğraf** butonları olur (klasörde gezinme).
+- Bağlıyken Yeni Çizim → yeni çizim + otomatik tutucu ile **gösterilmekte olandan sonraki** fotoğraf (ayrı sayaç yok, klasör sırasındaki konum baz alınır).
+- Bağ kopunca açık olan fotoğraf ekranda kalır (normal resim gibi), Önceki/Sonraki butonları görünmez. Çizim yapılıp yapılmaması fark etmez.
+
+### Sorunlu yerler + öneriler
+
+1. Büyük fotoğraflar: dataURL kayda gömülürse depo şişer, 50 kayıt limiti gerçek çizimleri silebilir. Öneri: eklerken uzun kenarı ~1920px'e indir.
+2. Fotoğraf sırası tanımsız: isme göre doğal sıralama önerilir (`1.jpg, 2.jpg, 10.jpg`); tek fotoğrafta butonlar pasif.
+3. Tutucuyu ayırt etme: ekran alıntısı gibi başka resimlerle karışmamalı; bağlı tutucu id/işaretle takip edilmeli, Önceki/Sonraki yalnız o seçiliyken görünmeli.
+4. Yerine koyma vs yeniden ekleme: tutucunun içeriğini değiştir (konum/seçim korunur), silip yeniden ekleme.
+5. Dosya kaybolursa (silinme/taşıma): bilgi ver + bağı kopar.
+6. Buton yeri önerisi: sol panel, Yeni Çizim yakını; bağlıyken klasör adını göstermeli.
+7. Platform: Electron'da dosya erişimi kolay; webde File System Access API (yalnızca Chromium + her açılışta izin); Android kapsam dışı önerilir.
+
+### Onay gereken açık sorular (kodlamadan önce)
+
+1. ~~Önceki/Sonraki ile fotoğraf değişince mevcut çizgiler ne olacak?~~ **KARAR:** Çizgiler aynen kalacak, yalnız fotoğraf değişecek.
+2. ~~Tutucu elle silinirse Önceki/Sonraki ne yapacak?~~ **KARAR:** Bağ otomatik kopar; foto+çizimler ekranda kalır, yeniden bağlamak kullanıcıya kalır. Kopuş her silme yoluna kanca takılarak değil, bağ kullanılacağı anda (Önceki/Sonraki, Yeni Çizim) tutucunun sayfada olup olmadığına bakılarak yakalanır (tembel doğrulama). Kopunca küçük bilgi notu gösterilir, onay kutusu yok.
+3. ~~Klasörde fotoğraf yoksa / tek fotoğrafsa davranış?~~ **KARAR:** Boş klasörde fotoğraf seçilemediği için bağ kurulamaz (iptal edilir). Tek fotoğrafta o seçilir, Önceki/Sonraki pasif olur.
+7. Yeni Çizim + son fotoğraf: Tek fotoğraf varsa veya klasördeki son fotoğraftayken Yeni Çizim'e basılırsa bağ kopar, her şey normal haline döner. İlk fotoğrafta Önceki, son fotoğrafta Sonraki pasif olur.
+4. ~~Alt klasörler taransın mı, yalnız üst düzey mi?~~ **KARAR:** Yalnız seçilen klasör taranacak, alt klasör yok.
+5. Dosya filtresi: yalnız resim uzantıları; `Thumbs.db`, `.DS_Store`, `desktop.ini` elenecek. Tembel yükleme (yalnız gösterilen fotoğraf okunur).
+6. Boyut kuralı: uzun kenar 1920px'ten büyükse indir, küçükse aynen al. Yerleşim: tuvale içine sığdır (contain).
+7. **KARAR:** Klasör Bağla butonu sol panelde metin aracının solunda durur. Üstünde yazı yazmaz, yalnız ikon gösterir: bağlı değilken zincir (link) ikonu, bağlıyken kırık zincir ikonu. Açıklama `title`/ipucunda çıkar (örn. bağlıyken klasör adı + koparma bilgisi).
+8. **KARAR:** Sıralama isme göre doğal sıralamadır.
+9. **KARAR:** Tutucu ilk eklenişte sol üst köşeye konur, yüksekliği ekran yüksekliğinin yarısı olur, en-boy oranı korunur.
+10. **KARAR:** Önceki/Sonraki aynı tutucunun içeriğini değiştirir, konumu korur. Tutucunun sol üst köşesi sabit kalır, başka fotoğrafa geçince en-boy oranı yeniden hesaplanır.
+11. **KARAR (undo):** Fotoğraf ekleme/değiştirme geçmişe yazılmaz (B). Gerekçe: dataURL kopyalarıyla bellek şişmesi, undo'nun fotoğraf gezgini gibi davranıp kafa karıştırması; çizim değiştirmede geçmişin sıfırlanması emsali. Undo yalnız çizgileri etkiler.

@@ -65,8 +65,18 @@ export class ScreenCaptureService {
         this.pendingOwner = ownerContents;
 
         try {
-            owner.minimize();
-            await new Promise<void>((resolve) => setTimeout(resolve, 120));
+            // Tahtada fullscreen pencere minimize tutmayabiliyor (compositor
+            // animasyonu / fullscreen bayrağı). hide() anında kaldırır.
+            owner.hide();
+
+            if (!(await this.waitUntilHidden(owner))) {
+                this.restoreOwner(owner);
+
+                return null;
+            }
+
+            // Compositor'ın kareyi boşaltması için kısa bekleme.
+            await new Promise<void>((resolve) => setTimeout(resolve, 250));
 
             if (this.pendingOwner !== ownerContents) {
                 this.restoreOwner(owner);
@@ -99,6 +109,18 @@ export class ScreenCaptureService {
 
             return null;
         }
+
+    }
+
+    private async waitUntilHidden(owner: ElectronBrowserWindow): Promise<boolean> {
+
+        const deadline = Date.now() + 2000;
+
+        while (!owner.isDestroyed() && owner.isVisible() && Date.now() < deadline) {
+            await new Promise<void>((resolve) => setTimeout(resolve, 100));
+        }
+
+        return !owner.isDestroyed() && !owner.isVisible();
 
     }
 
@@ -216,6 +238,10 @@ export class ScreenCaptureService {
         overlay.webContents.setZoomFactor(1);
         overlay.show();
         overlay.focus();
+        // Görev çubuğunun üstünde kalsın (bazı WM'ler option bayrağını yoksayar).
+        overlay.setFullScreen(true);
+        overlay.setAlwaysOnTop(true, "screen-saver");
+        overlay.moveTop();
 
         return new Promise<ScreenCaptureResult | null>((resolve) => {
             const session: CaptureSession = {
