@@ -95,7 +95,7 @@ function resolvePhotoPath(folderPath: string, fileName: string): string | null {
 
 export function registerPhotoFolderHandlers(ipc: IpcMain = ipcMain): void {
 
-    ipc.handle("photo:select", async (event) => {
+    ipc.handle("photo:select", async (event, defaultPath: unknown) => {
         const owner: ElectronBrowserWindow | null = BrowserWindow.fromWebContents(event.sender);
 
         const options = {
@@ -103,7 +103,8 @@ export function registerPhotoFolderHandlers(ipc: IpcMain = ipcMain): void {
             properties: ["openFile"] as Array<"openFile">,
             filters: [
                 { name: "Fotoğraflar", extensions: ["jpg", "jpeg", "png", "webp", "gif", "bmp"] }
-            ]
+            ],
+            ...(typeof defaultPath === "string" && defaultPath !== "" ? { defaultPath } : {})
         };
         const result = owner === null
             ? await dialog.showOpenDialog(options)
