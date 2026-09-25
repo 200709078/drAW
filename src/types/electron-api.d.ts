@@ -47,7 +47,7 @@ export type LinkedPhotoData = {
 };
 
 export type ElectronPhotoFolder = {
-    selectPhoto: () => Promise<LinkedPhotoSelection | null>;
+    selectPhoto: (defaultPath?: string) => Promise<LinkedPhotoSelection | null>;
     listPhotos: (folderPath: string) => Promise<string[]>;
     readPhoto: (folderPath: string, fileName: string) => Promise<LinkedPhotoData | null>;
 };

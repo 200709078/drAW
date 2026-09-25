@@ -8,6 +8,7 @@ import type { LinkedPhotoData } from "../types/electron-api";
 import { confirmDialog } from "../ui/ConfirmDialog";
 
 const STORAGE_KEY = "draw:photo-link";
+const LAST_FOLDER_KEY = "draw:photo-last-folder";
 const HOLDER_MARGIN = 16;
 
 type StoredLink = {
@@ -289,7 +290,7 @@ export class LinkedPhotoManager {
         this.busy = true;
 
         try {
-            const selection = await bridge.selectPhoto();
+            const selection = await bridge.selectPhoto(this.readLastFolder());
 
             if (selection === null) {
                 return;
@@ -309,6 +310,7 @@ export class LinkedPhotoManager {
             this.folderPath = selection.folderPath;
             this.fileName = selection.fileName;
             this.writeStoredLink();
+            this.writeLastFolder(selection.folderPath);
             this.addHolder(photo, true);
 
             if (this.toolManager !== null && this.selectionTool !== null) {
@@ -601,6 +603,26 @@ export class LinkedPhotoManager {
 
         try {
             window.localStorage.removeItem(STORAGE_KEY);
+        } catch {
+            // yok say
+        }
+
+    }
+
+    private readLastFolder(): string | undefined {
+
+        try {
+            return window.localStorage.getItem(LAST_FOLDER_KEY) ?? undefined;
+        } catch {
+            return undefined;
+        }
+
+    }
+
+    private writeLastFolder(folderPath: string): void {
+
+        try {
+            window.localStorage.setItem(LAST_FOLDER_KEY, folderPath);
         } catch {
             // yok say
         }

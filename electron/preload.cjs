@@ -43,7 +43,7 @@ contextBridge.exposeInMainWorld("drAWDesktop", {
         }
     },
     photoFolder: {
-        selectPhoto: () => ipcRenderer.invoke("photo:select"),
+        selectPhoto: (defaultPath) => ipcRenderer.invoke("photo:select", defaultPath),
         listPhotos: (folderPath) => ipcRenderer.invoke("photo:list", folderPath),
         readPhoto: (folderPath, fileName) => ipcRenderer.invoke("photo:read", folderPath, fileName)
     }

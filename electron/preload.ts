@@ -45,7 +45,7 @@ contextBridge.exposeInMainWorld("drAWDesktop", {
         }
     },
     photoFolder: {
-        selectPhoto: (): Promise<unknown> => ipcRenderer.invoke("photo:select"),
+        selectPhoto: (defaultPath?: string): Promise<unknown> => ipcRenderer.invoke("photo:select", defaultPath),
         listPhotos: (folderPath: string): Promise<unknown> => ipcRenderer.invoke("photo:list", folderPath),
         readPhoto: (folderPath: string, fileName: string): Promise<unknown> => {
             return ipcRenderer.invoke("photo:read", folderPath, fileName);
