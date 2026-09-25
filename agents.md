@@ -38,6 +38,8 @@ Tahta (`board-mode` CSS, tahta kalem seti, metin sınırı, coalesced, pointerId
 
 ### Netleşen konular
 
+- Son bağlanılan klasör ayrıca hatırlanır (`draw:photo-last-folder`, bağ kopunca silinmez); yeniden bağlanırken dosya seçici o klasörde açılır.
+
 - Klasör Bağla butonu klasör değil, klasör içinden **bir fotoğraf** seçtirir; seçilen fotoğraf canvasa tutucu olarak eklenir, üstüne çizim yapılır.
 - Klasör + fotoğraf bilgisi ve bağ durumu (bağlı/değil) yerelde saklanır; kapatıp açınca buton aynı klasör+fotoğrafa bağlanabilir; tekrar basınca bağ kopar.
 - Fotoğraf seçim aracıyla seçilince sil/taşı/boyutlandırma aynen olur; ek olarak sil butonu yanı veya sağ/sol kenarlarda **Önceki/Sonraki fotoğraf** butonları olur (klasörde gezinme).
