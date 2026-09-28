@@ -60,6 +60,7 @@ declare global {
             storage: ElectronStorageBridge;
             onShutdownRequest: (callback: () => void) => void;
             shutdownComplete: () => void;
+            shutdownCancelled: () => void;
             windowControls?: ElectronWindowControls;
             photoFolder?: ElectronPhotoFolder;
         };

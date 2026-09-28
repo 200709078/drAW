@@ -9,6 +9,7 @@ import type { HistoryManager } from "../core/HistoryManager";
 import { ThumbnailGenerator } from "../autosave/ThumbnailGenerator";
 import { DocumentStateSerializer } from "../autosave/DocumentStateSerializer";
 import { renameDialog } from "./RenameDialog";
+import { showStorageError } from "./StorageErrorDialog";
 
 export type DrawingsPanelOptions = {
     repository: DrawingRepository;
@@ -422,7 +423,7 @@ export class DrawingsPanel {
             const documentData = this.documentFor(card);
 
             if (documentData !== null) {
-                void this.renameDrawing(documentData);
+                void this.renameDrawing(documentData).catch(showStorageError);
             }
         });
 
@@ -431,7 +432,7 @@ export class DrawingsPanel {
             const documentData = this.documentFor(card);
 
             if (documentData !== null) {
-                void this.deleteDrawing(documentData);
+                void this.deleteDrawing(documentData).catch(showStorageError);
             }
         });
 
@@ -497,9 +498,13 @@ export class DrawingsPanel {
 
         if (!alreadyOpen) {
             this.toolManager.getActiveTool()?.cancel();
+            try {
+                await this.autoSaveManager.openDrawing(stored);
+            } catch (error) {
+                await showStorageError(error);
+                return;
+            }
             this.documentRenderer.clearSelection();
-            this.historyManager.reset();
-            await this.autoSaveManager.openDrawing(stored);
             this.documentRenderer.render();
         }
 

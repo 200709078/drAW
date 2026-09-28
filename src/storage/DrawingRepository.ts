@@ -49,6 +49,7 @@ export class DrawingRepository {
 
     public async saveNewDocument(document: DrawingDocument): Promise<DrawingDocument> {
 
+        const revision = this.dirtyFlag.getRevision();
         const existing = await this.storage.list();
         const evictions = this.limiter.getEvictionCandidates(existing, 1);
 
@@ -57,7 +58,7 @@ export class DrawingRepository {
         }
 
         await this.storage.save(document);
-        this.dirtyFlag.markClean();
+        this.dirtyFlag.markClean(revision);
 
         return document;
 
@@ -65,8 +66,9 @@ export class DrawingRepository {
 
     public async saveDocument(document: DrawingDocument): Promise<void> {
 
+        const revision = this.dirtyFlag.getRevision();
         await this.storage.save(document);
-        this.dirtyFlag.markClean();
+        this.dirtyFlag.markClean(revision);
 
     }
 

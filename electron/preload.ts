@@ -18,6 +18,9 @@ contextBridge.exposeInMainWorld("drAWDesktop", {
     shutdownComplete: (): void => {
         ipcRenderer.send("app:shutdown-complete");
     },
+    shutdownCancelled: (): void => {
+        ipcRenderer.send("app:shutdown-cancelled");
+    },
     windowControls: {
         minimize: (): void => {
             ipcRenderer.send("window:minimize");

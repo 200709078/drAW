@@ -144,7 +144,7 @@ export class PointerManager {
         this.releasePointerCapture(event.pointerId);
 
         if (this.pinching) {
-            if (this.activePointers.size < 2) {
+            if (this.activePointers.size === 0) {
                 this.pinching = false;
             }
 
@@ -167,7 +167,7 @@ export class PointerManager {
         this.releasePointerCapture(event.pointerId);
 
         if (this.pinching) {
-            if (this.activePointers.size < 2) {
+            if (this.activePointers.size === 0) {
                 this.pinching = false;
             }
 
@@ -216,7 +216,7 @@ export class PointerManager {
         this.activePointers.set(event.pointerId, { x: event.offsetX, y: event.offsetY });
 
         if (this.activePointers.size < 2) {
-            this.pinching = false;
+            // Son temas da bitene kadar kalan parmağı çizim aracına aktarma.
             return;
         }
 

@@ -4,6 +4,7 @@ import { ToolbarLeftPanel } from "../ui/ToolbarLeftPanel";
 import { TitleBar } from "../ui/TitleBar";
 import { ZoomControls } from "../ui/ZoomControls";
 import { isSmartBoard } from "../platform/DeviceProfile";
+import { registerShutdownHandlers } from "./ShutdownHandlers";
 
 export class Application {
 
@@ -57,37 +58,13 @@ export class Application {
 
         new ZoomControls(this.managers.getDrawingContext().getViewport());
 
-        this.registerShutdownHandlers();
+        registerShutdownHandlers(this.managers.getAutoSaveManager());
 
     }
 
     public getManagers(): ManagerContainer {
 
         return this.managers;
-
-    }
-
-    private registerShutdownHandlers(): void {
-
-        const autoSaveManager = this.managers.getAutoSaveManager();
-
-        window.addEventListener("pagehide", () => {
-            void autoSaveManager.shutdown();
-        });
-
-        window.addEventListener("beforeunload", () => {
-            void autoSaveManager.shutdown();
-        });
-
-        const desktop = window.drAWDesktop;
-
-        if (desktop !== undefined && desktop.onShutdownRequest !== undefined) {
-            desktop.onShutdownRequest(() => {
-                void autoSaveManager.shutdown().finally(() => {
-                    desktop.shutdownComplete();
-                });
-            });
-        }
 
     }
 

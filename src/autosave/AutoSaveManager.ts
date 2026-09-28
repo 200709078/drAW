@@ -14,6 +14,7 @@ export class AutoSaveManager {
 
     private readonly repository: DrawingRepository;
     private readonly document: Document;
+    private readonly history: HistoryManager;
     private readonly serializer: DocumentStateSerializer;
     private readonly saveListeners: Set<() => void>;
 
@@ -31,6 +32,7 @@ export class AutoSaveManager {
 
         this.repository = repository;
         this.document = document;
+        this.history = history;
         this.serializer = serializer ?? new DocumentStateSerializer();
         this.saveListeners = new Set();
 
@@ -39,7 +41,7 @@ export class AutoSaveManager {
         this.saving = null;
         this.autosaveTimer = null;
 
-        history.addChangeListener(() => this.onDocumentChanged());
+        history.addChangeListener(() => this.markDirty());
         this.startAutoSave();
 
     }
@@ -66,7 +68,7 @@ export class AutoSaveManager {
             return Promise.resolve();
         }
 
-        this.saving = this.persistActiveDocument().finally(() => {
+        this.saving = this.persistPendingChanges().finally(() => {
             this.saving = null;
         });
 
@@ -76,8 +78,8 @@ export class AutoSaveManager {
 
     public async shutdown(): Promise<void> {
 
-        this.stopAutoSave();
         await this.saveIfNeeded();
+        this.stopAutoSave();
 
     }
 
@@ -117,6 +119,7 @@ export class AutoSaveManager {
 
         const snapshot = this.serializer.deserialize(stored.getCanvasState().getData());
 
+        this.history.reset();
         this.document.restoreSnapshot(snapshot);
         this.activeDocument = stored;
         this.persisted = true;
@@ -133,7 +136,8 @@ export class AutoSaveManager {
         const start = (intervalMs: number): void => {
             this.stopAutoSave();
             this.autosaveTimer = setInterval(() => {
-                void this.saveIfNeeded();
+                // Hata kaydedilir; sonraki aralıkta tekrar denenecek.
+                void this.saveIfNeeded().catch(() => undefined);
             }, intervalMs);
         };
 
@@ -175,7 +179,7 @@ export class AutoSaveManager {
 
     }
 
-    private onDocumentChanged(): void {
+    public markDirty(): void {
 
         if (this.activeDocument === null) {
             this.activeDocument = this.createDocument();
@@ -200,7 +204,20 @@ export class AutoSaveManager {
 
     }
 
-    private async persistActiveDocument(): Promise<void> {
+    private async persistPendingChanges(): Promise<void> {
+
+        // Kapanış ve çizim değiştirme işlemleri, kayıt sırasında eklenen değişiklikleri de bekler.
+        while (this.isDirty()) {
+            const saved = await this.persistActiveDocument();
+
+            if (!saved) {
+                return;
+            }
+        }
+
+    }
+
+    private async persistActiveDocument(): Promise<boolean> {
 
         let saved = false;
 
@@ -213,7 +230,7 @@ export class AutoSaveManager {
             const snapshot = this.document.createSnapshot();
 
             if (!this.persisted && this.serializer.isEmpty(snapshot)) {
-                return;
+                return false;
             }
 
             const canvasState = new CanvasState(
@@ -226,9 +243,8 @@ export class AutoSaveManager {
                     this.activeDocument.withCanvasState(canvasState)
                 );
                 this.persisted = true;
-                saved = true;
 
-                return;
+                return true;
             }
 
             this.activeDocument = this.activeDocument.withCanvasState(canvasState);
@@ -236,6 +252,7 @@ export class AutoSaveManager {
             saved = true;
         } catch (error) {
             console.error("[AutoSave] Kayıt sırasında hata oluştu:", error);
+            throw error;
         }
 
         if (saved) {
@@ -247,6 +264,8 @@ export class AutoSaveManager {
                 }
             }
         }
+
+        return saved;
 
     }
 
