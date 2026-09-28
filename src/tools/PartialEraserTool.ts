@@ -108,7 +108,7 @@ export class PartialEraserTool extends Tool {
 
     public override onPointerUp(event: PointerEvent): void {
 
-        if (this.activePointerId !== null && event.pointerId !== this.activePointerId) {
+        if (!this.isErasing || event.pointerId !== this.activePointerId) {
             return;
         }
 

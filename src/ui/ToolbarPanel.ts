@@ -11,6 +11,7 @@ import { ShapesTool } from "../tools/ShapesTool";
 import { AutoSaveManager } from "../autosave/AutoSaveManager";
 import type { DrawingRepository } from "../storage/DrawingRepository";
 import { DrawingsPanel } from "./DrawingsPanel";
+import { showStorageError } from "./StorageErrorDialog";
 import type { ShapeType } from "../shapes/ShapeFactory";
 import {
     defaultWidthForDeviceProfile,
@@ -346,7 +347,13 @@ export class ToolbarPanel {
                 ? await photoLinkManager.prepareNewDrawing()
                 : null;
 
-            await autoSaveManager.newDrawing();
+            try {
+                await autoSaveManager.newDrawing();
+            } catch (error) {
+                photoLinkManager?.cancelPreparedNewDrawing();
+                await showStorageError(error);
+                return;
+            }
 
             toolManager.getActiveTool()?.cancel();
             drawingDocument.clearCurrentPage();
@@ -384,9 +391,7 @@ export class ToolbarPanel {
             selectPen(penTool, normalPenButton);
             setToolbarOpen(true);
 
-            if (nextPhoto !== null && photoLinkManager !== null) {
-                photoLinkManager.placePreparedPhoto(nextPhoto);
-            }
+            photoLinkManager?.placePreparedPhoto(nextPhoto);
 
             window.dispatchEvent(new CustomEvent("newdraw:started"));
         });

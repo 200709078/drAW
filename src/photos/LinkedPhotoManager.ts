@@ -16,6 +16,11 @@ type StoredLink = {
     fileName: string;
 };
 
+export type PreparedLinkedPhoto = {
+    photo: LinkedPhotoData;
+    fileName: string;
+};
+
 const ICON_LINK = [
     `<svg xmlns="http://www.w3.org/2000/svg" width="23" height="23" viewBox="0 0 24 24" fill="none"`,
     ` stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
@@ -40,6 +45,7 @@ export class LinkedPhotoManager {
 
     private readonly drawingDocument: Document;
     private readonly documentRenderer: DocumentRenderer;
+    private readonly onDocumentChanged: () => void;
 
     private selectionTool: SelectionTool | null;
     private toolManager: ToolManager | null;
@@ -57,11 +63,13 @@ export class LinkedPhotoManager {
 
     constructor(
         drawingDocument: Document,
-        documentRenderer: DocumentRenderer
+        documentRenderer: DocumentRenderer,
+        onDocumentChanged: () => void
     ) {
 
         this.drawingDocument = drawingDocument;
         this.documentRenderer = documentRenderer;
+        this.onDocumentChanged = onDocumentChanged;
         this.selectionTool = null;
         this.toolManager = null;
         this.linkButton = null;
@@ -213,7 +221,7 @@ export class LinkedPhotoManager {
 
     // Yeni çizim öncesi çağrılır: bağı doğrular, sıradaki fotoğrafı
     // yükleyip döndürür. Bağ koptuysa null döner.
-    public async prepareNewDrawing(): Promise<LinkedPhotoData | null> {
+    public async prepareNewDrawing(): Promise<PreparedLinkedPhoto | null> {
 
         if (!this.isLinked() || this.folderPath === null || this.fileName === null) {
             return null;
@@ -245,8 +253,6 @@ export class LinkedPhotoManager {
         const nextIndex = currentIndex + 1;
 
         if (nextIndex >= files.length) {
-            this.unlink();
-
             return null;
         }
 
@@ -263,19 +269,31 @@ export class LinkedPhotoManager {
             return null;
         }
 
-        this.fileName = nextName;
-        this.writeStoredLink();
-        await this.refreshNavState();
-        this.refreshButton();
-
-        return photo;
+        // Bağı ancak mevcut çizim başarıyla kaydedilip yeni çizime geçilince ilerlet.
+        return { photo, fileName: nextName };
 
     }
 
-    public placePreparedPhoto(photo: LinkedPhotoData): void {
+    public cancelPreparedNewDrawing(): void {
 
         this.suppressValidation = false;
-        this.addHolder(photo, true);
+
+    }
+
+    public placePreparedPhoto(prepared: PreparedLinkedPhoto | null): void {
+
+        this.suppressValidation = false;
+
+        if (prepared === null) {
+            this.unlink();
+            return;
+        }
+
+        this.fileName = prepared.fileName;
+        this.writeStoredLink();
+        this.addHolder(prepared.photo, true);
+        void this.refreshNavState().then(() => this.selectionTool?.refreshOverlays());
+        this.refreshButton();
 
     }
 
@@ -415,6 +433,7 @@ export class LinkedPhotoManager {
         this.drawingDocument.getCurrentPage().addImage(image);
         this.holder = image;
         this.holderEverAdded = true;
+        this.onDocumentChanged();
         this.documentRenderer.render();
 
         if (selectAfterAdd && this.selectionTool !== null) {
@@ -450,6 +469,7 @@ export class LinkedPhotoManager {
         page.addImage(image);
         this.holder = image;
         this.holderEverAdded = true;
+        this.onDocumentChanged();
         this.documentRenderer.render();
 
         if (this.selectionTool !== null) {

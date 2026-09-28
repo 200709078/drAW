@@ -1,0 +1,149 @@
+<!doctype html>
+<html lang="tr">
+<head><meta charset="UTF-8"><title>Storage UI regression checks</title></head>
+<body>
+<div id="app"></div><pre id="result">RUNNING</pre>
+<script type="module">
+import { Application } from "/src/core/Application.ts";
+import { Point } from "/src/document/Point.ts";
+import { Stroke } from "/src/document/Stroke.ts";
+
+const result = document.getElementById("result");
+const records = new Map();
+const errors = [];
+let failSave = false;
+let shutdownRequest;
+let completed = 0;
+let cancelled = 0;
+window.addEventListener("unhandledrejection", (event) => errors.push(String(event.reason)));
+window.drAWDesktop = {
+    storage: {
+        async save(record) {
+            if (failSave) return { ok: false, error: { kind: "disk-full", message: "Disk dolu" } };
+            records.set(record.id, structuredClone(record));
+            return { ok: true };
+        },
+        async load(id) { return { ok: true, value: records.get(id) ?? null }; },
+        async list() { return { ok: true, value: [...records.values()] }; },
+        async delete(id) { records.delete(id); return { ok: true }; },
+        async rename(id, name) { records.get(id).displayName = name; return { ok: true }; }
+    },
+    onShutdownRequest(callback) { shutdownRequest = callback; },
+    shutdownComplete() { completed++; },
+    shutdownCancelled() { cancelled++; }
+};
+
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function assert(value, message) { if (!value) throw new Error(message); }
+async function until(check) {
+    for (let attempt = 0; attempt < 100; attempt++) {
+        if (check()) return;
+        await delay(20);
+    }
+    throw new Error("Timed out waiting for UI operation");
+}
+async function dismissError() {
+    await until(() => document.querySelector(".modal"));
+    document.querySelector(".modal__button--confirm").click();
+    await delay(0);
+}
+
+try {
+    const app = new Application();
+    const managers = app.getManagers();
+    const auto = managers.getAutoSaveManager();
+    const drawing = managers.getDocument();
+    const history = managers.getHistoryManager();
+    const newButton = document.querySelector('button[aria-label="Yeni Çizim"]');
+    function draw(x) {
+        history.begin();
+        const stroke = new Stroke();
+        stroke.addPoint(new Point(x, 100, 1));
+        drawing.getCurrentPage().addStroke(stroke);
+        history.commit();
+    }
+
+    draw(10);
+    await auto.saveIfNeeded();
+    const otherId = auto.getActiveDocument().getId();
+    newButton.click();
+    await until(() => drawing.getCurrentPage().getStrokes().length === 0);
+    draw(20);
+    const activeId = auto.getActiveDocument().getId();
+    const preserve = () => {
+        assert(drawing.getCurrentPage().getStrokes()[0]?.getPoints()[0].getX() === 20, "drawing was lost");
+        assert(auto.getActiveDocument().getId() === activeId, "active record changed");
+        assert(history.canUndo(), "undo history was lost");
+        assert(auto.isDirty(), "unsaved drawing was marked clean");
+    };
+    failSave = true;
+
+    newButton.click();
+    await dismissError();
+    preserve();
+
+    await until(() => document.querySelector(`[data-id="${otherId}"] .drawings-card__open`));
+    document.querySelector(`[data-id="${otherId}"] .drawings-card__open`).click();
+    await dismissError();
+    preserve();
+
+    shutdownRequest();
+    await dismissError();
+    preserve();
+    assert(cancelled === 1 && completed === 0, "failed shutdown was approved");
+
+    failSave = false;
+    newButton.click();
+    await until(() => drawing.getCurrentPage().getStrokes().length === 0);
+    assert(records.get(activeId).canvasState.data.strokes[0].points[0][0] === 20, "retry did not save the drawing");
+    assert(!history.canUndo(), "successful new drawing retained old undo history");
+
+    // Exercise the production wiring between linked photos, the toolbar, and autosave.
+    const photoCanvas = document.createElement("canvas");
+    photoCanvas.width = photoCanvas.height = 2;
+    const context = photoCanvas.getContext("2d");
+    const photoData = ["red", "blue", "green"].map((color) => {
+        context.fillStyle = color;
+        context.fillRect(0, 0, 2, 2);
+        return photoCanvas.toDataURL();
+    });
+    window.drAWDesktop.photoFolder = {
+        async selectPhoto() { return { folderPath: "/photos", fileName: "1.png" }; },
+        async listPhotos() { return ["1.png", "2.png", "3.png"]; },
+        async readPhoto(_folder, name) { return { dataUrl: photoData[Number(name[0]) - 1], width: 2, height: 2 }; }
+    };
+    const photos = managers.getPhotoLinkManager();
+    await photos.toggle();
+    assert(auto.isDirty(), "photo-only drawing was not marked dirty");
+    assert(!history.canUndo(), "photo was added to undo history");
+    await auto.saveIfNeeded();
+    const photoId = auto.getActiveDocument().getId();
+    assert(records.get(photoId).canvasState.data.images[0].dataUrl === photoData[0], "photo-only drawing was not saved");
+
+    photos.requestStepPhoto(1);
+    await until(() => drawing.getCurrentPage().getImages()[0].getDataUrl() === photoData[1]);
+    assert(auto.isDirty(), "photo change was not marked dirty");
+    failSave = true;
+    newButton.click();
+    await dismissError();
+    assert(JSON.parse(localStorage.getItem("draw:photo-link")).fileName === "2.png", "failed new drawing advanced the photo");
+    assert(drawing.getCurrentPage().getImages()[0].getDataUrl() === photoData[1], "failed new drawing replaced the photo");
+
+    failSave = false;
+    newButton.click();
+    await until(() => drawing.getCurrentPage().getImages()[0]?.getDataUrl() === photoData[2]);
+    assert(auto.isDirty(), "new drawing's prepared photo was not marked dirty");
+    assert(records.get(photoId).canvasState.data.images[0].dataUrl === photoData[1], "previous photo drawing was not saved before transition");
+    await auto.saveIfNeeded();
+    assert(records.get(auto.getActiveDocument().getId()).canvasState.data.images[0].dataUrl === photoData[2], "prepared photo was not saved");
+    assert(!history.canUndo(), "photo transition added an undo entry");
+
+    assert(errors.length === 0, `unhandled rejection: ${errors.join(", ")}`);
+    await auto.shutdown();
+    result.textContent = "PASS: failed new/open/close preserve drawing and undo; error dialog, retry, photo-only saves, photo changes and new-drawing photo transitions work";
+} catch (error) {
+    result.textContent = `FAIL: ${error.stack ?? error}`;
+}
+</script>
+</body>
+</html>

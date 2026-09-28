@@ -163,7 +163,8 @@ export class ManagerContainer {
         );
         this.linkedPhotoManager = new LinkedPhotoManager(
             this.document,
-            this.documentRenderer
+            this.documentRenderer,
+            () => this.autoSaveManager.markDirty()
         );
         this.linkedPhotoManager.setSelectionTool(this.selectionTool);
         this.linkedPhotoManager.setToolManager(this.toolManager);

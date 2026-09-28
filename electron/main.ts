@@ -4,6 +4,7 @@ import { ScreenCaptureService } from "./screen-capture.ts";
 import { registerPhotoFolderHandlers } from "./photo-folder.ts";
 import { ElectronStorageService } from "./storage/ElectronStorageService.ts";
 import { StorageError } from "./storage/StorageError.ts";
+import { registerWindowShutdown } from "./window-shutdown.ts";
 
 const electron = createRequire(import.meta.url)("electron") as typeof import("electron");
 const { app, BrowserWindow, ipcMain } = electron;
@@ -165,8 +166,6 @@ function createWindow(): void {
         }
     });
 
-    allowWindowClose = false;
-
     window.on("maximize", () => {
         window.webContents.send("window:maximize-changed", true);
     });
@@ -191,19 +190,7 @@ function createWindow(): void {
         }
     });
 
-    window.on("close", (event) => {
-        if (allowWindowClose) {
-            return;
-        }
-
-        event.preventDefault();
-        window.webContents.send("app:shutdown-request");
-
-        shutdownTimer = setTimeout(() => {
-            allowWindowClose = true;
-            window.close();
-        }, 3000);
-    });
+    registerWindowShutdown(window, ipcMain);
 
     const indexPath = getAppPath(
         "dist",
@@ -212,9 +199,6 @@ function createWindow(): void {
 
     window.loadFile(indexPath);
 }
-
-let allowWindowClose = false;
-let shutdownTimer: ReturnType<typeof setTimeout> | null = null;
 
 app.whenReady().then(() => {
     ipcMain.handle("screen-capture:start", (event) => {
@@ -230,18 +214,6 @@ app.whenReady().then(() => {
     registerStorageHandlers();
     registerWindowControls();
     registerPhotoFolderHandlers();
-
-    ipcMain.on("app:shutdown-complete", (event) => {
-        if (shutdownTimer !== null) {
-            clearTimeout(shutdownTimer);
-            shutdownTimer = null;
-        }
-
-        const window = BrowserWindow.fromWebContents(event.sender);
-
-        allowWindowClose = true;
-        window?.close();
-    });
 
     createWindow();
 
