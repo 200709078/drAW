@@ -6,6 +6,8 @@ import { HighlighterTool } from "../tools/HighlighterTool";
 import { SelectionTool } from "../tools/SelectionTool";
 import { PenTool } from "../tools/PenTool";
 import { PartialEraserTool } from "../tools/PartialEraserTool";
+import { TextTool } from "../tools/TextTool";
+import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { HistoryManager } from "../core/HistoryManager";
 import { ShapesTool } from "../tools/ShapesTool";
 import { AutoSaveManager } from "../autosave/AutoSaveManager";
@@ -30,7 +32,14 @@ import lineIcon from "../assets/icons/line.svg";
 import newDrawIcon from "../assets/icons/newdraw.svg";
 import undoIcon from "../assets/icons/undo.svg";
 import redoIcon from "../assets/icons/redo.svg";
+import captureIcon from "../assets/icons/capture.svg";
+import textIcon from "../assets/icons/text.svg";
+import squareIcon from "../assets/icons/square.svg";
+import gridIcon from "../assets/icons/grid.svg";
+import rowsIcon from "../assets/icons/rows.svg";
+import columnsIcon from "../assets/icons/columns.svg";
 import type { LinkedPhotoManager } from "../photos/LinkedPhotoManager";
+import type { GuideLineType } from "../renderers/DocumentRenderer";
 
 export class ToolbarPanel {
 
@@ -63,7 +72,10 @@ export class ToolbarPanel {
         autoSaveManager: AutoSaveManager,
         repository: DrawingRepository,
         _canvas: HTMLCanvasElement,
-        photoLinkManager: LinkedPhotoManager | null = null
+        photoLinkManager: LinkedPhotoManager | null = null,
+        textTool: TextTool,
+        screenCaptureTool: ScreenCaptureTool,
+        desktopAvailable: boolean
     ) {
 
         const sidebar = document.createElement("aside");
@@ -85,6 +97,164 @@ export class ToolbarPanel {
         handle.appendChild(brandAccent);
 
         toolbar.appendChild(handle);
+
+        this.drawingsPanel = new DrawingsPanel({
+            repository,
+            autoSaveManager,
+            toolManager,
+            selectionTool,
+            drawingDocument,
+            documentRenderer,
+            historyManager,
+            canvas: _canvas
+        });
+
+        const prevDrawingButton = this.drawingsPanel.getPrevButton();
+        const nextDrawingButton = this.drawingsPanel.getNextButton();
+
+        const linkButton = document.createElement("button");
+        linkButton.type = "button";
+        linkButton.className = "sidebar__tool";
+
+        if (photoLinkManager !== null) {
+            photoLinkManager.attachButton(linkButton);
+        } else {
+            linkButton.hidden = true;
+        }
+
+        const textButton = this.createIconButton("Metin", textIcon, {
+            className: "sidebar__tool",
+            isSelected: false,
+            selectedClass: "sidebar__tool--selected",
+            onSelect: () => {
+                toolManager.setTool(textTool);
+            }
+        });
+
+        const screenCaptureButton = desktopAvailable
+            ? this.createIconButton("Ekran Alıntısı", captureIcon, {
+                className: "sidebar__tool",
+                isSelected: false,
+                selectedClass: "sidebar__tool--selected",
+                onSelect: () => {
+                    toolManager.setTool(screenCaptureTool);
+                }
+            })
+            : null;
+
+        const leftToolButtons: HTMLButtonElement[] = [textButton];
+
+        if (screenCaptureButton !== null) {
+            leftToolButtons.push(screenCaptureButton);
+        }
+
+        const selectLeftTool = (selectedButton: HTMLButtonElement): void => {
+            for (const button of leftToolButtons) {
+                const isSelected = button === selectedButton;
+
+                button.classList.toggle("sidebar__tool--selected", isSelected);
+                button.setAttribute("aria-pressed", String(isSelected));
+            }
+        };
+
+        textButton.addEventListener("click", () => selectLeftTool(textButton));
+
+        if (screenCaptureButton !== null) {
+            const captureButton = screenCaptureButton;
+            captureButton.addEventListener("click", () => selectLeftTool(captureButton));
+        }
+
+        const guideControl = document.createElement("div");
+        guideControl.className = "sidebar__control";
+
+        const guideButton = this.createIconButton("Kılavuz Çizgileri", squareIcon, {
+            className: "sidebar__tool"
+        });
+        guideButton.setAttribute("aria-expanded", "false");
+        guideControl.appendChild(guideButton);
+
+        const guidePalette = document.createElement("div");
+        guidePalette.className = "sidebar__flyout sidebar__guideline-palette";
+        guidePalette.hidden = true;
+        guidePalette.setAttribute("role", "group");
+        guidePalette.setAttribute("aria-label", "Kılavuz çizgileri");
+        document.body.appendChild(guidePalette);
+
+        const guideOptions: Array<{ type: GuideLineType; label: string; icon: string }> = [
+            { type: "none", label: "Çizgi Yok", icon: squareIcon },
+            { type: "grid", label: "Kareli", icon: gridIcon },
+            { type: "rows", label: "Yatay Çizgili", icon: rowsIcon },
+            { type: "columns", label: "Dikey Çizgili", icon: columnsIcon }
+        ];
+
+        const selectGuideLines = (
+            type: GuideLineType,
+            selectedButton: HTMLButtonElement
+        ): void => {
+            documentRenderer.setGuideLines(type);
+            documentRenderer.render();
+
+            guideButton.replaceChildren();
+
+            const icon = selectedButton.querySelector("img");
+
+            if (icon) {
+                const img = document.createElement("img");
+                img.src = (icon as HTMLImageElement).src;
+                img.alt = "";
+                img.draggable = false;
+
+                guideButton.appendChild(img);
+            } else {
+                guideButton.textContent = selectedButton.textContent ?? "";
+            }
+
+            guideButton.title = selectedButton.title;
+            guideButton.setAttribute("aria-label", `Kılavuz Çizgileri: ${selectedButton.title}`);
+
+            for (const button of guidePalette.querySelectorAll("button")) {
+                const isSelected = button === selectedButton;
+
+                button.classList.toggle("sidebar__guideline-option--selected", isSelected);
+                button.setAttribute("aria-pressed", String(isSelected));
+            }
+
+            guidePalette.hidden = true;
+            guideButton.setAttribute("aria-expanded", "false");
+        };
+
+        for (const option of guideOptions) {
+            const guideOptionButton = this.createIconButton(option.label, option.icon, {
+                className: "sidebar__guideline-option",
+                isSelected: option.type === "none",
+                selectedClass: "sidebar__guideline-option--selected",
+                onSelect: () => {
+                    selectGuideLines(option.type, guideOptionButton);
+                }
+            });
+
+            guidePalette.appendChild(guideOptionButton);
+        }
+
+        guideButton.addEventListener("click", () => {
+            guidePalette.hidden = !guidePalette.hidden;
+            guideButton.setAttribute("aria-expanded", String(!guidePalette.hidden));
+        });
+
+        document.addEventListener("pointerdown", (event) => {
+            const target = event.target;
+
+            if (!(target instanceof Node)) {
+                return;
+            }
+
+            if (guideControl.contains(target) || guidePalette.contains(target)) {
+                return;
+            }
+
+            guidePalette.hidden = true;
+            guideButton.setAttribute("aria-expanded", "false");
+        });
 
         const undoButton = this.createIconButton("Çizimi Geri Al", undoIcon, {
             className: "sidebar__history"
@@ -218,15 +388,15 @@ export class ToolbarPanel {
         shapesControl.append(shapesButton, shapesPalette);
 
         const colorControl = document.createElement("div");
-        colorControl.className = "sidebar__control";
+        colorControl.className = "sidebar__control sidebar__control--colors";
 
         const colors = [
             { name: "Kırmızı", value: "#ff0000" },
+            { name: "Mavi", value: "#0000ff" },
             { name: "Siyah", value: "#000000" },
             { name: "Turuncu", value: "#ff8000" },
             { name: "Sarı", value: "#ffff00" },
             { name: "Yeşil", value: "#00ff00" },
-            { name: "Mavi", value: "#0000ff" },
             { name: "Lacivert", value: "#000080" },
             { name: "Mor", value: "#800080" }
         ];
@@ -389,7 +559,6 @@ export class ToolbarPanel {
             selectShape(shapeOptions[0].type, shapeButtons[0]);
             selectEraser(partialEraserTool, partialEraserButton);
             selectPen(penTool, normalPenButton);
-            setToolbarOpen(true);
 
             photoLinkManager?.placePreparedPhoto(nextPhoto);
 
@@ -404,25 +573,11 @@ export class ToolbarPanel {
             { button: widthButton, panel: widthPalette }
         ];
 
-        let toggle: HTMLButtonElement | null = null;
-
-        const syncToggleVisibility = (): void => {
-            if (toggle === null) {
-                return;
-            }
-
-            const anyFlyoutOpen = flyouts.some((flyout) => !flyout.panel.hidden);
-
-            toggle.hidden = anyFlyoutOpen;
-        };
-
         const closeFlyouts = (): void => {
             for (const flyout of flyouts) {
                 flyout.panel.hidden = true;
                 flyout.button.setAttribute("aria-expanded", "false");
             }
-
-            syncToggleVisibility();
         };
 
         // Zoom'lu atanın içindeki sabit konumlu paletlerde tarayıcı
@@ -448,7 +603,11 @@ export class ToolbarPanel {
             return Number.isFinite(measured) && measured > 0 ? measured : 1;
         };
 
-        const toggleFlyout = (button: HTMLButtonElement, panel: HTMLDivElement): void => {
+        const toggleFlyout = (
+            button: HTMLButtonElement,
+            panel: HTMLDivElement,
+            align: "center" | "button" = "center"
+        ): void => {
             const shouldOpen = panel.hidden;
 
             closeFlyouts();
@@ -464,15 +623,20 @@ export class ToolbarPanel {
                 button.setAttribute("aria-expanded", "true");
 
                 // Araç çubuğu altta dock'lu: palet butonun üstünde açılır.
-                panel.style.left = `${window.innerWidth / 2 / zoom}px`;
+                if (align === "button") {
+                    panel.style.transform = "none";
+                    const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
+                    panel.style.left = `${Math.min(Math.max(8, buttonBounds.left / zoom), maxLeft)}px`;
+                } else {
+                    panel.style.left = `${window.innerWidth / 2 / zoom}px`;
+                }
+
                 panel.style.top = `${Math.max(8 / zoom, buttonBounds.top / zoom - panel.offsetHeight - 16 / zoom)}px`;
             }
-
-            syncToggleVisibility();
         };
 
-        colorButton.addEventListener("click", () => toggleFlyout(colorButton, colorPalette));
-        widthButton.addEventListener("click", () => toggleFlyout(widthButton, widthPalette));
+        colorButton.addEventListener("click", () => toggleFlyout(colorButton, colorPalette, "button"));
+        widthButton.addEventListener("click", () => toggleFlyout(widthButton, widthPalette, "button"));
 
         let lastSelectedEraserTool: EraserTool | PartialEraserTool = partialEraserTool;
         let lastSelectedEraserButton: HTMLButtonElement | null = null;
@@ -600,7 +764,7 @@ export class ToolbarPanel {
             const activeTool = toolManager.getActiveTool();
 
             if (activeTool === penTool || activeTool === highlighterTool) {
-                toggleFlyout(penButton, penPalette);
+                toggleFlyout(penButton, penPalette, "button");
                 return;
             }
 
@@ -620,6 +784,10 @@ export class ToolbarPanel {
                 selectTool(selectionButton);
             } else if (activeTool === shapesTool) {
                 selectTool(shapesButton);
+            } else if (activeTool === textTool) {
+                selectLeftTool(textButton);
+            } else if (screenCaptureButton !== null && activeTool === screenCaptureTool) {
+                selectLeftTool(screenCaptureButton);
             }
         });
 
@@ -648,7 +816,7 @@ export class ToolbarPanel {
             const activeTool = toolManager.getActiveTool();
 
             if (activeTool === eraserTool || activeTool === partialEraserTool) {
-                toggleFlyout(eraserButton, eraserPalette);
+                toggleFlyout(eraserButton, eraserPalette, "button");
                 return;
             }
 
@@ -718,7 +886,7 @@ export class ToolbarPanel {
             const activeTool = toolManager.getActiveTool();
 
             if (activeTool === shapesTool) {
-                toggleFlyout(shapesButton, shapesPalette);
+                toggleFlyout(shapesButton, shapesPalette, "button");
                 return;
             }
 
@@ -758,7 +926,6 @@ export class ToolbarPanel {
 
                 colorPalette.hidden = true;
                 colorButton.setAttribute("aria-expanded", "false");
-                syncToggleVisibility();
             });
 
             colorPalette.appendChild(paletteButton);
@@ -784,7 +951,6 @@ export class ToolbarPanel {
 
             widthPalette.hidden = true;
             widthButton.setAttribute("aria-expanded", "false");
-            syncToggleVisibility();
         };
 
         const buildWidthPalette = (): void => {
@@ -816,81 +982,46 @@ export class ToolbarPanel {
 
         widthControl.append(widthButton, widthPalette);
         toolbar.append(
+            colorControl,
+            widthControl,
             undoButton,
-            penControl,
             redoButton,
+            penControl,
             eraserControl,
+            selectionButton,
+            newDrawButton,
+            prevDrawingButton,
+            nextDrawingButton,
+            linkButton,
             shapesControl,
             selectionButton,
-            colorControl,
-            widthControl
+            textButton,
+            ...(screenCaptureButton !== null ? [screenCaptureButton] : []),
+            guideControl
         );
         sidebar.appendChild(toolbar);
         document.body.appendChild(sidebar);
 
-        const toggleButton = document.createElement("button");
-        toggleButton.type = "button";
-        toggleButton.className = "sidebar__toggle";
-        toggleButton.setAttribute("aria-label", "Araç çubuğunu kapat");
-        toggleButton.setAttribute("aria-expanded", "true");
-        toggleButton.innerHTML = [
-            `<svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none"`,
-            ` stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">`,
-            `<path d="m18 15-6-6-6 6"/>`,
-            `</svg>`
-        ].join("");
-        document.body.appendChild(toggleButton);
-        toggle = toggleButton;
-
-        const updateToggleTop = (): void => {
-            if (document.body.classList.contains("sidebar-closed")) {
-                return;
-            }
-
+        const updateToolbarVars = (): void => {
             const rect = sidebar.getBoundingClientRect();
             document.documentElement.style.setProperty(
-                "--sidebar-toggle-top",
-                `${rect.bottom}px`
+                "--toolbar-center",
+                `${rect.left + rect.width / 2}px`
             );
+            const guideRect = guideButton.getBoundingClientRect();
             document.documentElement.style.setProperty(
-                "--sidebar-toggle-bottom",
-                `${window.innerHeight - rect.top + 8}px`
+                "--guide-button-left",
+                `${guideRect.left}px`
+            );
+            // Kılavuz paletinin alt kenarı renk paletiyle aynı hizada olur.
+            document.documentElement.style.setProperty(
+                "--guide-palette-bottom",
+                `${window.innerHeight - guideRect.top + 16}px`
             );
         };
 
-        updateToggleTop();
-        window.addEventListener("resize", updateToggleTop);
-
-        const setToolbarOpen = (isOpen: boolean): void => {
-            document.body.classList.toggle("sidebar-closed", !isOpen);
-            toggle.setAttribute("aria-expanded", String(isOpen));
-            toggle.setAttribute(
-                "aria-label",
-                isOpen ? "Araç çubuğunu kapat" : "Araç çubuğunu aç"
-            );
-        };
-
-        // Açılışta açık gelsin; sadece toggle butonu kapatıp açabilsin.
-        setToolbarOpen(true);
-
-        toggle.addEventListener("click", () => {
-            setToolbarOpen(document.body.classList.contains("sidebar-closed"));
-        });
-
-        window.addEventListener("drawing:opened", () => {
-            setToolbarOpen(true);
-        });
-
-        this.drawingsPanel = new DrawingsPanel({
-            repository,
-            autoSaveManager,
-            toolManager,
-            selectionTool,
-            drawingDocument,
-            documentRenderer,
-            historyManager,
-            canvas: _canvas
-        });
+        updateToolbarVars();
+        window.addEventListener("resize", updateToolbarVars);
 
     }
 

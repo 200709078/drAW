@@ -111,7 +111,7 @@ export class DrawingsPanel {
         this.liveThumbnail = null;
         this.livePreviewTimer = null;
         this.livePreviewRequest = 0;
-        this.openState = true;
+        this.openState = false;
         this.refreshScheduled = false;
 
         const built = this.buildDom(options.canvas);
@@ -126,8 +126,8 @@ export class DrawingsPanel {
             this.scheduleLivePreview();
         });
         this.autoSaveManager.addSaveListener(() => this.scheduleRefresh());
-        // Açılışta açık gelsin; sadece toggle butonu kapatıp açabilsin.
-        this.open();
+        // Açılışta kapalı gelsin; yalnızca ok ile açılıp kapatılsın.
+        this.close();
         void this.refresh();
 
     }
@@ -354,7 +354,7 @@ export class DrawingsPanel {
         toggle.addEventListener("click", () => this.toggle());
         document.body.appendChild(toggle);
 
-        // Tuvale tıklayınca çizimler paneli otomatik kapanır.
+        // Tuvale dokunulunca panel açıksa otomatik kapanır.
         canvas.addEventListener("pointerdown", () => {
             if (this.isOpen()) {
                 this.close();
