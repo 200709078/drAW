@@ -88,7 +88,8 @@ export class ToolbarPanel {
         const handle = document.createElement("button");
         handle.type = "button";
         handle.className = "sidebar__handle";
-        handle.setAttribute("aria-label", "Toolbar'ı taşı");
+        handle.setAttribute("aria-label", "Araç çubuğu konumu (değiştirmek için çift tıkla)");
+        handle.title = "Çift tıkla: konumu değiştir (alt / sol / üst)";
         handle.append("dr");
 
         const brandAccent = document.createElement("span");
@@ -97,6 +98,22 @@ export class ToolbarPanel {
         handle.appendChild(brandAccent);
 
         toolbar.appendChild(handle);
+
+        handle.addEventListener("dblclick", () => {
+            closeAllFlyouts();
+            const body = document.body;
+
+            if (body.classList.contains("dock-left")) {
+                body.classList.remove("dock-left");
+                body.classList.add("dock-top");
+            } else if (body.classList.contains("dock-top")) {
+                body.classList.remove("dock-top");
+            } else {
+                body.classList.add("dock-left");
+            }
+
+            updateToolbarVars();
+        });
 
         this.drawingsPanel = new DrawingsPanel({
             repository,
@@ -237,8 +254,13 @@ export class ToolbarPanel {
         }
 
         guideButton.addEventListener("click", () => {
-            guidePalette.hidden = !guidePalette.hidden;
-            guideButton.setAttribute("aria-expanded", String(!guidePalette.hidden));
+            if (guidePalette.hidden) {
+                closeFlyouts();
+                placeFlyout(guideButton, guidePalette);
+            } else {
+                guidePalette.hidden = true;
+                guideButton.setAttribute("aria-expanded", "false");
+            }
         });
 
         document.addEventListener("pointerdown", (event) => {
@@ -603,40 +625,75 @@ export class ToolbarPanel {
             return Number.isFinite(measured) && measured > 0 ? measured : 1;
         };
 
+        const currentDock = (): "bottom" | "left" | "top" => {
+            if (document.body.classList.contains("dock-left")) {
+                return "left";
+            }
+
+            if (document.body.classList.contains("dock-top")) {
+                return "top";
+            }
+
+            return "bottom";
+        };
+
+        const closeAllFlyouts = (): void => {
+            closeFlyouts();
+            guidePalette.hidden = true;
+            guideButton.setAttribute("aria-expanded", "false");
+        };
+
+        const placeFlyout = (button: HTMLButtonElement, panel: HTMLDivElement): void => {
+            const buttonBounds = button.getBoundingClientRect();
+            // Palet, zoom'lu araç çubuğunun içinde sabit konumlu: tarayıcı
+            // offset'leri ölçeklenmemiş uzayda yorumlayıp öyle çiziyor,
+            // o yüzden ölçümler zoom'a bölünerek veriliyor.
+            const zoom = toolbarZoom();
+            const dock = currentDock();
+
+            panel.hidden = false;
+            button.setAttribute("aria-expanded", "true");
+            panel.classList.toggle("sidebar__flyout--vertical", dock === "left");
+
+            if (dock === "left") {
+                // Solda çubuğun kendisi dönüşümlü (translateY) olduğu için
+                // palet ona göre konumlanır.
+                const sidebarBounds = sidebar.getBoundingClientRect();
+                panel.style.transform = "none";
+                panel.style.left = `${(buttonBounds.right - sidebarBounds.left) / zoom + 16 / zoom}px`;
+                const maxTop = Math.max(8, sidebarBounds.height / zoom - panel.offsetHeight - 8);
+                panel.style.top = `${Math.min(
+                    Math.max(8 / zoom, (buttonBounds.top - sidebarBounds.top) / zoom),
+                    maxTop
+                )}px`;
+            } else {
+                panel.style.transform = "none";
+                const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
+                panel.style.left = `${Math.min(Math.max(8, buttonBounds.left / zoom), maxLeft)}px`;
+
+                if (dock === "top") {
+                    panel.style.top = `${buttonBounds.bottom / zoom + 16 / zoom}px`;
+                } else {
+                    panel.style.top = `${Math.max(8 / zoom, buttonBounds.top / zoom - panel.offsetHeight - 16 / zoom)}px`;
+                }
+            }
+        };
+
         const toggleFlyout = (
             button: HTMLButtonElement,
-            panel: HTMLDivElement,
-            align: "center" | "button" = "center"
+            panel: HTMLDivElement
         ): void => {
             const shouldOpen = panel.hidden;
 
             closeFlyouts();
 
             if (shouldOpen) {
-                const buttonBounds = button.getBoundingClientRect();
-                // Palet, zoom'lu araç çubuğunun içinde sabit konumlu: tarayıcı
-                // offset'leri ölçeklenmemiş uzayda yorumlayıp öyle çiziyor,
-                // o yüzden ölçümler zoom'a bölünerek veriliyor.
-                const zoom = toolbarZoom();
-
-                panel.hidden = false;
-                button.setAttribute("aria-expanded", "true");
-
-                // Araç çubuğu altta dock'lu: palet butonun üstünde açılır.
-                if (align === "button") {
-                    panel.style.transform = "none";
-                    const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
-                    panel.style.left = `${Math.min(Math.max(8, buttonBounds.left / zoom), maxLeft)}px`;
-                } else {
-                    panel.style.left = `${window.innerWidth / 2 / zoom}px`;
-                }
-
-                panel.style.top = `${Math.max(8 / zoom, buttonBounds.top / zoom - panel.offsetHeight - 16 / zoom)}px`;
+                placeFlyout(button, panel);
             }
         };
 
-        colorButton.addEventListener("click", () => toggleFlyout(colorButton, colorPalette, "button"));
-        widthButton.addEventListener("click", () => toggleFlyout(widthButton, widthPalette, "button"));
+        colorButton.addEventListener("click", () => toggleFlyout(colorButton, colorPalette));
+        widthButton.addEventListener("click", () => toggleFlyout(widthButton, widthPalette));
 
         let lastSelectedEraserTool: EraserTool | PartialEraserTool = partialEraserTool;
         let lastSelectedEraserButton: HTMLButtonElement | null = null;
@@ -764,7 +821,7 @@ export class ToolbarPanel {
             const activeTool = toolManager.getActiveTool();
 
             if (activeTool === penTool || activeTool === highlighterTool) {
-                toggleFlyout(penButton, penPalette, "button");
+                toggleFlyout(penButton, penPalette);
                 return;
             }
 
@@ -816,7 +873,7 @@ export class ToolbarPanel {
             const activeTool = toolManager.getActiveTool();
 
             if (activeTool === eraserTool || activeTool === partialEraserTool) {
-                toggleFlyout(eraserButton, eraserPalette, "button");
+                toggleFlyout(eraserButton, eraserPalette);
                 return;
             }
 
@@ -886,7 +943,7 @@ export class ToolbarPanel {
             const activeTool = toolManager.getActiveTool();
 
             if (activeTool === shapesTool) {
-                toggleFlyout(shapesButton, shapesPalette, "button");
+                toggleFlyout(shapesButton, shapesPalette);
                 return;
             }
 
@@ -994,7 +1051,6 @@ export class ToolbarPanel {
             nextDrawingButton,
             linkButton,
             shapesControl,
-            selectionButton,
             textButton,
             ...(screenCaptureButton !== null ? [screenCaptureButton] : []),
             guideControl
@@ -1003,21 +1059,15 @@ export class ToolbarPanel {
         document.body.appendChild(sidebar);
 
         const updateToolbarVars = (): void => {
-            const rect = sidebar.getBoundingClientRect();
-            document.documentElement.style.setProperty(
-                "--toolbar-center",
-                `${rect.left + rect.width / 2}px`
-            );
-            const guideRect = guideButton.getBoundingClientRect();
-            document.documentElement.style.setProperty(
-                "--guide-button-left",
-                `${guideRect.left}px`
-            );
-            // Kılavuz paletinin alt kenarı renk paletiyle aynı hizada olur.
-            document.documentElement.style.setProperty(
-                "--guide-palette-bottom",
-                `${window.innerHeight - guideRect.top + 16}px`
-            );
+            for (const flyout of flyouts) {
+                if (!flyout.panel.hidden) {
+                    placeFlyout(flyout.button, flyout.panel);
+                }
+            }
+
+            if (!guidePalette.hidden) {
+                placeFlyout(guideButton, guidePalette);
+            }
         };
 
         updateToolbarVars();
