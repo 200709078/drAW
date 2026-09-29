@@ -78,7 +78,7 @@ export class TitleBar {
 
         const drag = document.createElement("div");
         drag.className = "titlebar__drag";
-        drag.title = "mADEMatik | drAW";
+        drag.title = "drAW | mADEMatik";
 
         const icon = document.createElement("img");
         icon.className = "titlebar__icon";
@@ -88,7 +88,7 @@ export class TitleBar {
 
         const title = document.createElement("span");
         title.className = "titlebar__title";
-        title.textContent = "mADEMatik | drAW";
+        title.textContent = "drAW | mADEMatik";
 
         drag.appendChild(icon);
         drag.appendChild(title);

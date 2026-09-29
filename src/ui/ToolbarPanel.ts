@@ -102,16 +102,22 @@ export class ToolbarPanel {
         handle.addEventListener("dblclick", () => {
             closeAllFlyouts();
             const body = document.body;
+            let dock: "bottom" | "left" | "top" = "bottom";
 
             if (body.classList.contains("dock-left")) {
                 body.classList.remove("dock-left");
                 body.classList.add("dock-top");
+                dock = "top";
             } else if (body.classList.contains("dock-top")) {
                 body.classList.remove("dock-top");
             } else {
                 body.classList.add("dock-left");
+                dock = "left";
             }
 
+            sidebar.classList.remove("dock-in-bottom", "dock-in-left", "dock-in-top");
+            void sidebar.offsetWidth;
+            sidebar.classList.add(`dock-in-${dock}`);
             updateToolbarVars();
         });
 
@@ -184,21 +190,20 @@ export class ToolbarPanel {
         const guideControl = document.createElement("div");
         guideControl.className = "sidebar__control";
 
-        const guideButton = this.createIconButton("Kılavuz Çizgileri", squareIcon, {
+        const guideButton = this.createIconButton("Çizgisiz", squareIcon, {
             className: "sidebar__tool"
         });
         guideButton.setAttribute("aria-expanded", "false");
-        guideControl.appendChild(guideButton);
 
         const guidePalette = document.createElement("div");
         guidePalette.className = "sidebar__flyout sidebar__guideline-palette";
         guidePalette.hidden = true;
         guidePalette.setAttribute("role", "group");
         guidePalette.setAttribute("aria-label", "Kılavuz çizgileri");
-        document.body.appendChild(guidePalette);
+        guideControl.append(guideButton, guidePalette);
 
         const guideOptions: Array<{ type: GuideLineType; label: string; icon: string }> = [
-            { type: "none", label: "Çizgi Yok", icon: squareIcon },
+            { type: "none", label: "Çizgisiz", icon: squareIcon },
             { type: "grid", label: "Kareli", icon: gridIcon },
             { type: "rows", label: "Yatay Çizgili", icon: rowsIcon },
             { type: "columns", label: "Dikey Çizgili", icon: columnsIcon }
@@ -256,7 +261,7 @@ export class ToolbarPanel {
         guideButton.addEventListener("click", () => {
             if (guidePalette.hidden) {
                 closeFlyouts();
-                placeFlyout(guideButton, guidePalette);
+                placeFlyout(guideButton, guidePalette, true, true);
             } else {
                 guidePalette.hidden = true;
                 guideButton.setAttribute("aria-expanded", "false");
@@ -457,9 +462,10 @@ export class ToolbarPanel {
             const previous = colors[previousColorIndex];
             colorPreview.style.backgroundColor = current.value;
             colorButton.setAttribute("aria-label", `Renk: ${current.name}`);
+            colorButton.title = current.name;
             prevColorButton.style.backgroundColor = previous.value;
-            prevColorButton.title = `Önceki renk: ${previous.name}`;
-            prevColorButton.setAttribute("aria-label", `Önceki renk: ${previous.name}`);
+            prevColorButton.title = previous.name;
+            prevColorButton.setAttribute("aria-label", previous.name);
 
             for (const [index, button] of colorPalette.querySelectorAll("button").entries()) {
                 const isCurrent = index === currentColorIndex;
@@ -520,8 +526,8 @@ export class ToolbarPanel {
         widthButton.type = "button";
         widthButton.className = "sidebar__width-trigger";
         widthButton.style.setProperty("--line-width", `${previewWidthForProfile(defaultWidthForProfile())}px`);
-        widthButton.setAttribute("aria-label", `Kalınlık: ${defaultWidthForProfile()} piksel`);
-        widthButton.title = `Kalınlık: ${defaultWidthForProfile()} piksel`;
+        widthButton.setAttribute("aria-label", `${defaultWidthForProfile()}`);
+        widthButton.title = `${defaultWidthForProfile()}`;
         widthButton.setAttribute("aria-expanded", "false");
 
         const widthPalette = document.createElement("div");
@@ -567,7 +573,7 @@ export class ToolbarPanel {
             eraserTool.setLineWidth(resetWidth);
             partialEraserTool.setLineWidth(resetWidth);
             widthButton.style.setProperty("--line-width", `${previewWidthForProfile(resetWidth)}px`);
-            widthButton.setAttribute("aria-label", `Kalınlık: ${resetWidth} piksel`);
+            widthButton.setAttribute("aria-label", `${resetWidth}`);
 
             for (const button of widthPalette.querySelectorAll("button[data-width]")) {
                 const isSelected = button.getAttribute("data-width") === String(resetWidth);
@@ -588,11 +594,11 @@ export class ToolbarPanel {
         });
 
         const flyouts = [
-            { button: penButton, panel: penPalette },
-            { button: eraserButton, panel: eraserPalette },
-            { button: shapesButton, panel: shapesPalette },
-            { button: colorButton, panel: colorPalette },
-            { button: widthButton, panel: widthPalette }
+            { button: penButton, panel: penPalette, bottomAlign: false },
+            { button: eraserButton, panel: eraserPalette, bottomAlign: false },
+            { button: shapesButton, panel: shapesPalette, bottomAlign: true },
+            { button: colorButton, panel: colorPalette, bottomAlign: false },
+            { button: widthButton, panel: widthPalette, bottomAlign: false }
         ];
 
         const closeFlyouts = (): void => {
@@ -643,7 +649,12 @@ export class ToolbarPanel {
             guideButton.setAttribute("aria-expanded", "false");
         };
 
-        const placeFlyout = (button: HTMLButtonElement, panel: HTMLDivElement): void => {
+        const placeFlyout = (
+            button: HTMLButtonElement,
+            panel: HTMLDivElement,
+            bottomAlign: boolean = false,
+            lastItemAlign: boolean = false
+        ): void => {
             const buttonBounds = button.getBoundingClientRect();
             // Palet, zoom'lu araç çubuğunun içinde sabit konumlu: tarayıcı
             // offset'leri ölçeklenmemiş uzayda yorumlayıp öyle çiziyor,
@@ -661,11 +672,21 @@ export class ToolbarPanel {
                 const sidebarBounds = sidebar.getBoundingClientRect();
                 panel.style.transform = "none";
                 panel.style.left = `${(buttonBounds.right - sidebarBounds.left) / zoom + 16 / zoom}px`;
-                const maxTop = Math.max(8, sidebarBounds.height / zoom - panel.offsetHeight - 8);
-                panel.style.top = `${Math.min(
-                    Math.max(8 / zoom, (buttonBounds.top - sidebarBounds.top) / zoom),
-                    maxTop
-                )}px`;
+
+                if (bottomAlign) {
+                    // Kılavuzda son öğenin altı buton altıyla hizalanır (+8 iç boşluk payı).
+                    const shift = lastItemAlign ? 8 / zoom : 0;
+                    panel.style.top = `${Math.min(
+                        Math.max(8 / zoom, (buttonBounds.bottom - sidebarBounds.top) / zoom - panel.offsetHeight + shift),
+                        window.innerHeight - panel.offsetHeight - 8
+                    )}px`;
+                } else {
+                    const maxTop = Math.max(8, sidebarBounds.height / zoom - panel.offsetHeight - 8);
+                    panel.style.top = `${Math.min(
+                        Math.max(8 / zoom, (buttonBounds.top - sidebarBounds.top) / zoom),
+                        maxTop
+                    )}px`;
+                }
             } else {
                 panel.style.transform = "none";
                 const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
@@ -688,7 +709,8 @@ export class ToolbarPanel {
             closeFlyouts();
 
             if (shouldOpen) {
-                placeFlyout(button, panel);
+                const entry = flyouts.find((flyout) => flyout.panel === panel);
+                placeFlyout(button, panel, entry?.bottomAlign ?? false);
             }
         };
 
@@ -975,6 +997,7 @@ export class ToolbarPanel {
             paletteButton.className = "sidebar__color";
             paletteButton.style.backgroundColor = color.value;
             paletteButton.setAttribute("aria-label", color.name);
+            paletteButton.title = color.name;
             paletteButton.setAttribute("aria-pressed", String(isSelected));
             paletteButton.classList.toggle("sidebar__color--selected", isSelected);
 
@@ -996,8 +1019,8 @@ export class ToolbarPanel {
             eraserTool.setLineWidth(lineWidth);
             partialEraserTool.setLineWidth(lineWidth);
             widthButton.style.setProperty("--line-width", `${previewWidthForProfile(lineWidth)}px`);
-            widthButton.setAttribute("aria-label", `Kalınlık: ${lineWidth} piksel`);
-            widthButton.title = `Kalınlık: ${lineWidth} piksel`;
+            widthButton.setAttribute("aria-label", `${lineWidth}`);
+            widthButton.title = `${lineWidth}`;
 
             for (const button of widthPalette.querySelectorAll("button[data-width]")) {
                 const isCurrentWidth = button.getAttribute("data-width") === String(lineWidth);
@@ -1021,8 +1044,8 @@ export class ToolbarPanel {
                 paletteButton.className = "sidebar__width";
                 paletteButton.style.setProperty("--line-width", `${previewWidthForProfile(lineWidth)}px`);
                 paletteButton.setAttribute("data-width", String(lineWidth));
-                paletteButton.setAttribute("aria-label", `${lineWidth} piksel kalınlık`);
-                paletteButton.title = `${lineWidth} piksel`;
+                paletteButton.setAttribute("aria-label", `${lineWidth}`);
+                paletteButton.title = `${lineWidth}`;
                 paletteButton.setAttribute("aria-pressed", String(isSelected));
                 paletteButton.classList.toggle("sidebar__width--selected", isSelected);
 
@@ -1061,12 +1084,12 @@ export class ToolbarPanel {
         const updateToolbarVars = (): void => {
             for (const flyout of flyouts) {
                 if (!flyout.panel.hidden) {
-                    placeFlyout(flyout.button, flyout.panel);
+                    placeFlyout(flyout.button, flyout.panel, flyout.bottomAlign);
                 }
             }
 
             if (!guidePalette.hidden) {
-                placeFlyout(guideButton, guidePalette);
+                placeFlyout(guideButton, guidePalette, true, true);
             }
         };
 
