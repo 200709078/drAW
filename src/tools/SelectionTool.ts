@@ -145,9 +145,7 @@ export class SelectionTool extends Tool {
         this.drawingContext.getViewport().removeChangeListener(this.handleViewportChange);
         this.canvas.style.cursor = "";
         this.canvas.title = "";
-        closeTextEditor();
-        this.history.commit();
-        this.clearSelection();
+        this.cancel();
         this.removeDeleteButton();
 
     }
