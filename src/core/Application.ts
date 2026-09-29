@@ -1,6 +1,5 @@
 import { ManagerContainer } from "./ManagerContainer";
 import { ToolbarPanel } from "../ui/ToolbarPanel";
-import { ToolbarLeftPanel } from "../ui/ToolbarLeftPanel";
 import { TitleBar } from "../ui/TitleBar";
 import { ZoomControls } from "../ui/ZoomControls";
 import { isSmartBoard } from "../platform/DeviceProfile";
@@ -24,7 +23,7 @@ export class Application {
 
         new TitleBar();
         this.managers = new ManagerContainer();
-        const toolbarPanel = new ToolbarPanel(
+        new ToolbarPanel(
             this.managers.getToolManager(),
             this.managers.getPenTool(),
             this.managers.getEraserTool(),
@@ -38,23 +37,11 @@ export class Application {
             this.managers.getAutoSaveManager(),
             this.managers.getDrawingRepository(),
             this.managers.getCanvasManager().getCanvas(),
-            this.managers.getPhotoLinkManager()
-        );
-
-        new ToolbarLeftPanel(
-            this.managers.getToolManager(),
-            this.managers.getDocumentRenderer(),
+            this.managers.getPhotoLinkManager(),
             this.managers.getTextTool(),
             this.managers.getScreenCaptureTool(),
-            this.managers.getDesktopAvailable(),
-            this.managers.getCanvasManager().getCanvas(),
-            toolbarPanel.getNewDrawButton(),
-            toolbarPanel.getDrawingsPanel().getPrevButton(),
-            toolbarPanel.getDrawingsPanel().getNextButton(),
-            this.managers.getPhotoLinkManager()
+            this.managers.getDesktopAvailable()
         );
-
-        void this.managers.getPhotoLinkManager().restore();
 
         new ZoomControls(this.managers.getDrawingContext().getViewport());
 

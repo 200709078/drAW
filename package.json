@@ -79,5 +79,8 @@
   "keywords": [],
   "bugs": {
     "url": "https://github.com/200709078/drAW/issues"
+  },
+  "directories": {
+    "test": "tests"
   }
 }

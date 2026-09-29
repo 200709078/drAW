@@ -462,10 +462,6 @@ body.has-custom-titlebar #app {
     height: auto;
 }
 
-body.has-custom-titlebar .sidebar {
-    top: auto;
-}
-
 body.has-custom-titlebar .drawings-panel {
     top: 36px;
 }
@@ -512,126 +508,6 @@ body.has-custom-titlebar .modal-backdrop {
     z-index: 1;
     font-family: system-ui, sans-serif;
     transition: transform 0.36s ease;
-}
-
-body.sidebar-closed .sidebar {
-    transform: translateY(calc(100% + 16px));
-}
-
-.sidebar__toggle {
-    position: fixed;
-    top: auto;
-    bottom: var(--sidebar-toggle-bottom, 82px);
-    left: 50%;
-    transform: translate(-50%, 0);
-    z-index: 15;
-    display: grid;
-    place-items: center;
-    width: 48px;
-    height: 40px;
-    padding: 0;
-    border: 1px solid #93c5fd;
-    border-radius: 8px;
-    background: #dbeafe;
-    color: #1e40af;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
-    transition: transform 0.36s ease;
-}
-
-.sidebar__toggle[hidden] {
-    display: none;
-}
-
-.sidebar__toggle svg {
-    display: block;
-    width: 18px;
-    height: 18px;
-    transform: rotate(180deg);
-    transition: transform 0.36s ease;
-}
-
-body.sidebar-closed .sidebar__toggle {
-    transform: translate(-50%, calc(var(--sidebar-toggle-bottom, 82px) - 8px));
-}
-
-body.sidebar-closed .sidebar__toggle svg {
-    transform: none;
-}
-
-.toolbar-left-panel {
-    position: fixed;
-    top: auto;
-    bottom: 16px;
-    left: 16px;
-    transform: none;
-    z-index: 10;
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-    max-width: calc(100vw - 32px);
-    overflow-x: auto;
-    overscroll-behavior: contain;
-    padding: 8px;
-    border: 1px solid #d1d5db;
-    border-radius: 12px;
-    background: rgb(255 255 255 / 92%);
-    box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
-    font-family: system-ui, sans-serif;
-    transition: transform 0.36s ease;
-}
-
-body.toolbar-left-closed .toolbar-left-panel {
-    transform: translateY(calc(100% + 16px));
-}
-
-.toolbar-left-panel__list {
-    display: flex;
-    flex-direction: row;
-    align-items: center;
-    gap: 8px;
-}
-
-.toolbar-left-panel__toggle {
-    position: fixed;
-    top: auto;
-    bottom: var(--toolbar-left-toggle-bottom, 96px);
-    left: var(--toolbar-left-center, 200px);
-    transform: translateX(-50%);
-    z-index: 30;
-    display: grid;
-    place-items: center;
-    width: 48px;
-    height: 40px;
-    padding: 0;
-    border: 1px solid #93c5fd;
-    border-radius: 8px;
-    background: #dbeafe;
-    color: #1e40af;
-    cursor: pointer;
-    box-shadow: 0 2px 8px rgb(15 23 42 / 12%);
-    transition: transform 0.36s ease;
-}
-
-.toolbar-left-panel__toggle svg {
-    display: block;
-    width: 18px;
-    height: 18px;
-    transform: rotate(180deg);
-    transition: transform 0.36s ease;
-}
-
-.toolbar-left-panel__toggle[hidden] {
-    display: none;
-}
-
-body.toolbar-left-closed .toolbar-left-panel__toggle {
-    transform: translate(-50%, calc(var(--toolbar-left-toggle-bottom, 96px) - 8px));
-}
-
-body.toolbar-left-closed .toolbar-left-panel__toggle svg {
-    transform: none;
 }
 
 .sidebar__toolbar {
@@ -732,7 +608,7 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     background: white;
     color: #111827;
     cursor: default;
-    font-size: 14.1px;
+    font-size: 18px;
     font-weight: 700;
     letter-spacing: 0.01em;
     touch-action: none;
@@ -757,15 +633,21 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     position: relative;
 }
 
+.sidebar__control--colors {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
 .sidebar__prev-color {
     position: absolute;
-    left: 22px;
-    top: 22px;
-    width: 17px;
-    height: 17px;
+    left: 3.5px;
+    top: 3.5px;
+    width: 25px;
+    height: 25px;
     padding: 0;
-    border: 2px solid white;
-    border-radius: 50%;
+    border: 1px solid #d1d5db;
+    border-radius: 6px;
     cursor: pointer;
 }
 
@@ -799,10 +681,11 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 .sidebar__color-preview {
     width: 38px;
     height: 38px;
-    border-radius: 50%;
+    border-radius: 6px;
     border: 1px solid rgb(0 0 0 / 12%);
     background: #111827;
     pointer-events: none;
+    clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 
 .sidebar__width-trigger {
@@ -854,7 +737,7 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     height: 35px;
     padding: 0;
     border: 2px solid transparent;
-    border-radius: 50%;
+    border-radius: 6px;
     cursor: pointer;
 }
 
@@ -976,8 +859,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
     position: fixed;
     top: auto;
     bottom: var(--guide-palette-bottom, 95px);
-    left: var(--toolbar-left-center, 200px);
-    transform: translateX(-50%);
+    left: var(--guide-button-left, 200px);
+    transform: none;
     flex-direction: row;
     z-index: 20;
 }
@@ -1102,13 +985,8 @@ body.toolbar-left-closed .toolbar-left-panel__toggle svg {
 
 /* Akıllı tahta modu: uzaktan okunabilir yazılar,
    parmakla tutulabilir hedefler. (Araç çubuğu tüm modlarda altta.) */
-body.board-mode .sidebar,
-body.board-mode .toolbar-left-panel {
+body.board-mode .sidebar {
     zoom: 1.2;
-}
-body.board-mode .sidebar__toggle {
-    width: 64px;
-    height: 40px;
 }
 
 body.board-mode .drawings-panel__title {
@@ -1182,25 +1060,6 @@ body.board-mode .sidebar__shape-option {
 body.board-mode .sidebar__guideline-option {
     width: 45px;
     height: 45px;
-}
-
-/* Tahtada rozet parmakla tutulabilir olsun (içten teğet). */
-body.board-mode .sidebar__prev-color {
-    left: 18px;
-    top: 18px;
-    width: 22px;
-    height: 22px;
-}
-
-body.board-mode .toolbar-left-panel .sidebar__tool,
-body.board-mode .toolbar-left-panel .sidebar__history {
-    width: 48px;
-    height: 48px;
-}
-
-body.board-mode .toolbar-left-panel__toggle {
-    width: 64px;
-    height: 40px;
 }
 
 body.board-mode .drawings-panel__toggle {
