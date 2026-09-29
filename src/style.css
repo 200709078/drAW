@@ -534,6 +534,33 @@ body.dock-left .sidebar__toolbar {
     overflow-y: auto;
 }
 
+@keyframes dock-in-bottom {
+    from { transform: translateY(40px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes dock-in-top {
+    from { transform: translateY(-40px); opacity: 0; }
+    to { transform: none; opacity: 1; }
+}
+
+@keyframes dock-in-left {
+    from { transform: translate(-40px, -50%); opacity: 0; }
+    to { transform: translateY(-50%); opacity: 1; }
+}
+
+.sidebar.dock-in-bottom {
+    animation: dock-in-bottom 0.36s ease;
+}
+
+.sidebar.dock-in-top {
+    animation: dock-in-top 0.36s ease;
+}
+
+.sidebar.dock-in-left {
+    animation: dock-in-left 0.36s ease;
+}
+
 .sidebar__toolbar {
     display: flex;
     flex-direction: row;
@@ -733,9 +760,12 @@ body.dock-left .sidebar__toolbar {
     display: flex;
     flex-wrap: wrap;
     justify-content: center;
+    align-items: center;
     gap: 8px;
+    height: 60px;
+    min-height: 0;
     max-width: min(480px, calc(100vw - 24px));
-    padding: 8px;
+    padding: 3px 8px;
     border: 1px solid #d1d5db;
     border-radius: 12px;
     background: rgb(255 255 255 / 96%);
@@ -758,8 +788,8 @@ body.dock-left .sidebar__toolbar {
 }
 
 .sidebar__color {
-    width: 35px;
-    height: 35px;
+    width: 50px;
+    height: 50px;
     padding: 0;
     border: 2px solid transparent;
     border-radius: 6px;
@@ -788,8 +818,8 @@ body.dock-left .sidebar__toolbar {
 .sidebar__width {
     display: grid;
     place-items: center;
-    width: 44px;
-    height: 44px;
+    width: 50px;
+    height: 50px;
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -815,8 +845,8 @@ body.dock-left .sidebar__toolbar {
 .sidebar__eraser-option,
 .sidebar__pen-option,
 .sidebar__shape-option {
-    width: 47px;
-    height: 47px;
+    width: 50px;
+    height: 50px;
     padding: 0;
 
     display: flex;
@@ -841,23 +871,13 @@ body.dock-left .sidebar__toolbar {
     color: #1d4ed8;
 }
 
-.sidebar__pen-option {
-    width: 38px;
-    height: 38px;
-}
-
-.sidebar__pen-option img {
-    width: 19px;
-    height: 19px;
-}
-
 .sidebar__eraser-palette {
     margin-top: 0;
 }
 
 .sidebar__guideline-option {
-    width: 47px;
-    height: 47px;
+    width: 50px;
+    height: 50px;
     padding: 0;
 
     display: flex;
@@ -888,6 +908,11 @@ body.dock-left .sidebar__toolbar {
 
 .sidebar__flyout--vertical {
     flex-direction: column;
+    width: 60px;
+    min-width: 0;
+    height: auto;
+    padding: 8px 3px;
+    align-items: center;
 }
 
 .modal-backdrop {
@@ -1063,28 +1088,6 @@ body.board-mode .drawings-card__action {
 body.board-mode .drawings-card__action svg {
     width: 20px;
     height: 20px;
-}
-
-body.board-mode .sidebar__color {
-    width: 37.5px;
-    height: 37.5px;
-}
-
-body.board-mode .sidebar__width {
-    width: 37.5px;
-    height: 37.5px;
-}
-
-body.board-mode .sidebar__pen-option,
-body.board-mode .sidebar__eraser-option,
-body.board-mode .sidebar__shape-option {
-    width: 37.5px;
-    height: 37.5px;
-}
-
-body.board-mode .sidebar__guideline-option {
-    width: 45px;
-    height: 45px;
 }
 
 body.board-mode .drawings-panel__toggle {
