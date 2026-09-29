@@ -20,7 +20,7 @@ export function renameDialog(currentName: string): Promise<string | null> {
         const title = document.createElement("h2");
         title.className = "modal__title";
         title.id = titleId;
-        title.textContent = "Yeniden adlandır";
+        title.textContent = "Yeniden Adlandır";
 
         const closeButton = document.createElement("button");
         closeButton.type = "button";
