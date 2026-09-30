@@ -65,6 +65,9 @@ export class TitleBar {
     private isFullscreen = false;
 
     constructor() {
+        const appTitle = `drAW v_${__APP_VERSION__} | mADEMatik`;
+        document.title = appTitle;
+
         const controls = window.drAWDesktop?.windowControls;
 
         if (controls === undefined) {
@@ -78,7 +81,7 @@ export class TitleBar {
 
         const drag = document.createElement("div");
         drag.className = "titlebar__drag";
-        drag.title = "drAW | mADEMatik";
+        drag.title = appTitle;
 
         const icon = document.createElement("img");
         icon.className = "titlebar__icon";
@@ -88,7 +91,7 @@ export class TitleBar {
 
         const title = document.createElement("span");
         title.className = "titlebar__title";
-        title.textContent = "drAW | mADEMatik";
+        title.textContent = appTitle;
 
         drag.appendChild(icon);
         drag.appendChild(title);
