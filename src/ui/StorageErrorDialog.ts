@@ -8,7 +8,7 @@ export function showStorageError(error: unknown): Promise<void> {
 
     if (activeDialog === null) {
         activeDialog = confirmDialog({
-            title: "Kayıt işlemi tamamlanamadı",
+            title: "Kayıt İşlemi Tamamlanamadı",
             message: "Depolama alanını ve erişim izinlerini kontrol edip işlemi yeniden deneyin. Kaydedilmemiş çalışmanız varsa bu pencereyi açık tutun.",
             confirmLabel: "Tamam",
             cancelLabel: "Kapat"

@@ -243,7 +243,7 @@ export class LinkedPhotoManager {
         if (currentIndex === -1) {
             this.unlink();
             await this.showInfo(
-                "Fotoğraf bulunamadı",
+                "Fotoğraf Bulunamadı",
                 "Bağlı fotoğraf klasörde bulunamadığı için klasör bağı koparıldı."
             );
 
@@ -262,7 +262,7 @@ export class LinkedPhotoManager {
         if (photo === null) {
             this.unlink();
             await this.showInfo(
-                "Fotoğraf okunamadı",
+                "Fotoğraf Okunamadı",
                 `"${nextName}" açılamadığı için klasör bağı koparıldı.`
             );
 
@@ -318,7 +318,7 @@ export class LinkedPhotoManager {
 
             if (photo === null) {
                 await this.showInfo(
-                    "Fotoğraf okunamadı",
+                    "Fotoğraf Okunamadı",
                     `"${selection.fileName}" açılamadı.`
                 );
 
@@ -378,7 +378,7 @@ export class LinkedPhotoManager {
             if (currentIndex === -1) {
                 this.unlink();
                 await this.showInfo(
-                    "Fotoğraf bulunamadı",
+                    "Fotoğraf Bulunamadı",
                     "Bağlı fotoğraf klasörde bulunamadığı için klasör bağı koparıldı."
                 );
 
@@ -396,7 +396,7 @@ export class LinkedPhotoManager {
 
             if (photo === null) {
                 await this.showInfo(
-                    "Fotoğraf okunamadı",
+                    "Fotoğraf Okunamadı",
                     `"${targetName}" açılamadı.`
                 );
 
