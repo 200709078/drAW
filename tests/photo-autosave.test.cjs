@@ -178,3 +178,67 @@ test("a photo changed during an in-flight save is persisted by the follow-up wri
     assert.equal(writes, 2);
     assert.equal(f.auto.isDirty(), false);
 });
+
+test("reconnecting after manual unlink passes the last folder to the picker", async (t) => {
+    const f = fixture(t);
+    const picker = t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto");
+    await f.photos.toggle();
+    await f.photos.toggle();
+    assert.equal(f.photos.isLinked(), false);
+    await f.photos.toggle();
+    assert.equal(picker.mock.calls[1].arguments[0], "/photos");
+});
+
+for (const failingMethods of [["getItem"], ["setItem"], ["getItem", "setItem"]]) {
+    test(`reconnecting remembers this session's folder when ${failingMethods.join(" and ")} fails`, async (t) => {
+        const f = fixture(t);
+        f.local.set("draw:photo-last-folder", "/old-folder");
+        for (const method of failingMethods) {
+            t.mock.method(window.localStorage, method, () => { throw new Error("Storage unavailable"); });
+        }
+        const picker = t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto");
+        await f.photos.toggle();
+        await f.photos.toggle();
+        await f.photos.toggle();
+        assert.equal(picker.mock.calls[1].arguments[0], "/photos");
+        assert.equal(f.photos.isLinked(), true);
+    });
+}
+
+test("a newly selected folder wins over an older stored folder when writing fails", async (t) => {
+    const f = fixture(t);
+    await f.photos.toggle();
+    await f.photos.toggle();
+    t.mock.method(window.localStorage, "setItem", () => { throw new Error("Storage full"); });
+    const picker = t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto", async () => ({
+        folderPath: "/Dersler/Çizim Fotoğrafları", fileName: "1.png"
+    }));
+    await f.photos.toggle();
+    await f.photos.toggle();
+    await f.photos.toggle();
+    assert.equal(picker.mock.calls[1].arguments[0], "/Dersler/Çizim Fotoğrafları");
+    assert.equal(f.local.get("draw:photo-last-folder"), "/photos", "test must retain the older stored path");
+});
+
+test("a fresh photo manager reads the folder persisted by a previous instance", async (t) => {
+    const f = fixture(t);
+    await f.photos.toggle();
+    await f.photos.toggle();
+    const next = new LinkedPhotoManager(f.document, { render() {} }, () => f.auto.markDirty());
+    const picker = t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto");
+    await next.toggle();
+    assert.equal(picker.mock.calls[0].arguments[0], "/photos");
+});
+
+test("automatic unlink and a cancelled picker keep the remembered folder", async (t) => {
+    const f = fixture(t);
+    await f.photos.toggle();
+    f.document.clearCurrentPage();
+    f.history.reset();
+    assert.equal(f.photos.isLinked(), false);
+    const picker = t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto", async () => null);
+    await f.photos.toggle();
+    await f.photos.toggle();
+    assert.deepEqual(picker.mock.calls.map((call) => call.arguments[0]), ["/photos", "/photos"]);
+    assert.equal(f.photos.isLinked(), false);
+});

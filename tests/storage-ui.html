@@ -12,6 +12,8 @@ const result = document.getElementById("result");
 const records = new Map();
 const errors = [];
 let failSave = false;
+let saveGate = null;
+let waitingAtGate = false;
 let shutdownRequest;
 let completed = 0;
 let cancelled = 0;
@@ -19,6 +21,10 @@ window.addEventListener("unhandledrejection", (event) => errors.push(String(even
 window.drAWDesktop = {
     storage: {
         async save(record) {
+            if (saveGate !== null) {
+                waitingAtGate = true;
+                await saveGate;
+            }
             if (failSave) return { ok: false, error: { kind: "disk-full", message: "Disk dolu" } };
             records.set(record.id, structuredClone(record));
             return { ok: true };
@@ -81,6 +87,7 @@ try {
     newButton.click();
     await dismissError();
     preserve();
+    assert(!newButton.disabled, "new drawing stayed disabled after a failed save");
 
     await until(() => document.querySelector(`[data-id="${otherId}"] .drawings-card__open`));
     document.querySelector(`[data-id="${otherId}"] .drawings-card__open`).click();
@@ -107,10 +114,17 @@ try {
         context.fillRect(0, 0, 2, 2);
         return photoCanvas.toDataURL();
     });
+    let photoGate = null;
     window.drAWDesktop.photoFolder = {
         async selectPhoto() { return { folderPath: "/photos", fileName: "1.png" }; },
         async listPhotos() { return ["1.png", "2.png", "3.png"]; },
-        async readPhoto(_folder, name) { return { dataUrl: photoData[Number(name[0]) - 1], width: 2, height: 2 }; }
+        async readPhoto(_folder, name) {
+            if (photoGate !== null) {
+                waitingAtGate = true;
+                await photoGate;
+            }
+            return { dataUrl: photoData[Number(name[0]) - 1], width: 2, height: 2 };
+        }
     };
     const photos = managers.getPhotoLinkManager();
     await photos.toggle();
@@ -138,9 +152,54 @@ try {
     assert(records.get(auto.getActiveDocument().getId()).canvasState.data.images[0].dataUrl === photoData[2], "prepared photo was not saved");
     assert(!history.canUndo(), "photo transition added an undo entry");
 
+    // Repeated clicks must not overlap while loading a photo or saving a drawing.
+    let transitions = 0;
+    window.addEventListener("newdraw:started", () => transitions++);
+    for (const blockedPhase of ["photo", "save"]) {
+        if (photos.isLinked()) await photos.toggle();
+        newButton.click();
+        await until(() => drawing.getCurrentPage().getImages().length === 0 && !newButton.disabled);
+        await photos.toggle();
+        const originalId = auto.getActiveDocument().getId();
+        const before = transitions;
+        let release;
+        const gate = new Promise((resolve) => { release = resolve; });
+        waitingAtGate = false;
+        if (blockedPhase === "photo") photoGate = gate;
+        else saveGate = gate;
+
+        newButton.click();
+        newButton.click();
+        await until(() => waitingAtGate);
+        // dispatchEvent also exercises the guard when a click bypasses native disabled handling.
+        newButton.dispatchEvent(new MouseEvent("click"));
+        await delay(40);
+        assert(transitions === before, `${blockedPhase}: transition completed before its dependency`);
+        const disabledDuringOperation = newButton.disabled;
+        assert(auto.getActiveDocument().getId() === originalId, `${blockedPhase}: active drawing changed early`);
+
+        photoGate = saveGate = null;
+        release();
+        await until(() => transitions > before && !newButton.disabled);
+        await delay(40);
+        assert(photos.isLinked(), `${blockedPhase}: repeated clicks disconnected the folder`);
+        assert(transitions === before + 1, `${blockedPhase}: repeated clicks started multiple drawings`);
+        assert(disabledDuringOperation, `${blockedPhase}: new drawing button was not disabled`);
+        assert(JSON.parse(localStorage.getItem("draw:photo-link")).fileName === "2.png", `${blockedPhase}: photo advanced incorrectly`);
+        assert(localStorage.getItem("draw:photo-last-folder") === "/photos", `${blockedPhase}: last folder was lost`);
+        assert(drawing.getCurrentPage().getImages().length === 1, `${blockedPhase}: duplicate photo`);
+        assert(drawing.getCurrentPage().getImages()[0].getDataUrl() === photoData[1], `${blockedPhase}: incorrect photo`);
+        assert(records.get(originalId).canvasState.data.images[0].dataUrl === photoData[0], `${blockedPhase}: original photo was not saved`);
+
+        newButton.click();
+        await until(() => transitions === before + 2 && !newButton.disabled);
+        assert(photos.isLinked(), `${blockedPhase}: folder disconnected on the next separate click`);
+        assert(drawing.getCurrentPage().getImages()[0].getDataUrl() === photoData[2], `${blockedPhase}: next separate click did not advance`);
+    }
+
     assert(errors.length === 0, `unhandled rejection: ${errors.join(", ")}`);
     await auto.shutdown();
-    result.textContent = "PASS: failed new/open/close preserve drawing and undo; error dialog, retry, photo-only saves, photo changes and new-drawing photo transitions work";
+    result.textContent = "PASS: failed new/open/close preserve drawing and undo; error dialog, retry, photo-only saves, photo changes and new-drawing photo transitions work; repeated new-drawing clicks preserve the folder link during photo loading and saving";
 } catch (error) {
     result.textContent = `FAIL: ${error.stack ?? error}`;
 }

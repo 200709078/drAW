@@ -9,6 +9,12 @@ import { registerWindowShutdown } from "./window-shutdown.ts";
 const electron = createRequire(import.meta.url)("electron") as typeof import("electron");
 const { app, BrowserWindow, ipcMain } = electron;
 
+if (process.platform === "linux") {
+    // Portal v4 öncesinde defaultPath desteklenmez; eski sürümlerde GTK/KDE seçicisine dön.
+    // Bu ayar app.whenReady() öncesinde uygulanmalı.
+    app.commandLine.appendSwitch("xdg-portal-required-version", "4");
+}
+
 if (!app.isPackaged) {
     app.setName("drAW");
     app.commandLine.appendSwitch("class", "drAW");

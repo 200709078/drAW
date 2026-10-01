@@ -53,6 +53,7 @@ export class LinkedPhotoManager {
     private readonly statusElement: HTMLDivElement;
 
     private folderPath: string | null;
+    private lastFolderPath: string | undefined;
     private fileName: string | null;
     private holder: DocumentImage | null;
     // Tutucu bu oturumda hiç eklendiyse true; geri yüklenen bağda false başlar.
@@ -78,6 +79,7 @@ export class LinkedPhotoManager {
         this.statusElement.hidden = true;
         document.body.appendChild(this.statusElement);
         this.folderPath = null;
+        this.lastFolderPath = undefined;
         this.fileName = null;
         this.holder = null;
         this.holderEverAdded = false;
@@ -631,20 +633,28 @@ export class LinkedPhotoManager {
 
     private readLastFolder(): string | undefined {
 
-        try {
-            return window.localStorage.getItem(LAST_FOLDER_KEY) ?? undefined;
-        } catch {
-            return undefined;
+        if (this.lastFolderPath !== undefined) {
+            return this.lastFolderPath;
         }
+
+        try {
+            this.lastFolderPath = window.localStorage.getItem(LAST_FOLDER_KEY) ?? undefined;
+        } catch {
+            // Depoya erişilemiyorsa seçici varsayılan konumunda açılabilir.
+        }
+
+        return this.lastFolderPath;
 
     }
 
     private writeLastFolder(folderPath: string): void {
 
+        this.lastFolderPath = folderPath;
+
         try {
             window.localStorage.setItem(LAST_FOLDER_KEY, folderPath);
         } catch {
-            // yok say
+            // Kayıt başarısız olsa da klasör yolu bu oturum için bellekte kalır.
         }
 
     }

@@ -540,7 +540,7 @@ export class ToolbarPanel {
             className: "sidebar__history"
         });
         this.newDrawButton = newDrawButton;
-        newDrawButton.addEventListener("click", async () => {
+        const startNewDrawing = async (): Promise<void> => {
             const nextPhoto = photoLinkManager !== null
                 ? await photoLinkManager.prepareNewDrawing()
                 : null;
@@ -591,6 +591,21 @@ export class ToolbarPanel {
             photoLinkManager?.placePreparedPhoto(nextPhoto);
 
             window.dispatchEvent(new CustomEvent("newdraw:started"));
+        };
+
+        newDrawButton.addEventListener("click", async () => {
+            // Fotoğraf hazırlanırken ve kayıt sürerken ikinci bir geçiş başlatma.
+            if (newDrawButton.disabled) {
+                return;
+            }
+
+            newDrawButton.disabled = true;
+
+            try {
+                await startNewDrawing();
+            } finally {
+                newDrawButton.disabled = false;
+            }
         });
 
         const flyouts = [
