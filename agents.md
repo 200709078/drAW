@@ -11,17 +11,21 @@
 - Linux'tan Windows hedefi build etmeye çalışma (wine gerekir, sağlıksız olur).
 - Yapılandırma: `package.json` -> `build.win` + `build.nsis`.
 
-## Platform TODO (ertelenen — tahta + ortak düzeltmeler yapıldı)
+## Platform ve akıllı tahta — yapılanlar
 
-Tahta (`board-mode` CSS, tahta kalem seti, metin sınırı, coalesced, pointerId kilitleri, 400px thumbnail) ve ortak düzeltmeler tamam. Aşağıdakiler bekliyor:
-
-- [x] YAPILDI — Küçük dokunma hedeflerini büyüt: 44px seçim-sil + kart aksiyonları, 44px renk/genişlik paletleri (+dar ekranda sarma), 40px kenar okları (`src/style.css`)
-- [x] YAPILDI — Yatay modda sol panel taşması: `max-height` + kaydırma (`src/style.css`)
-- [ ] Pinch-zoom / tuval kaydırma aracı (mobilde detay çalışması için; yeni araç + renderer ölçeği — büyük iş)
-- [x] YAPILDI — Pinch-zoom: iki parmak zoom+pan (`ViewportManager`, %25-400), ctrl+tekerlek zoom, sağ altta -/%/+ kontrolleri + sıfırlama; tüm araçlar dünya koordinatına geçti
-- [x] YAPILDI — iOS çift-dokunma zoom'u: butonlara `touch-action: manipulation`
-- [x] YAPILDI — Pile duyarlı kayıt: şarjda 10sn, pilde 30sn (`src/autosave/AutoSaveManager.ts`)
-- [x] YAPILDI (ara çözüm) — PC trackpad pinch: sayfa zoom'u kilitlendi, gerçek yakınlaştırma pinch-zoom aracını bekliyor (`src/core/Application.ts`)
+- [x] YAPILDI — Tahta görünümü, tahta kalem kalınlıkları ve metin boyutu sınırları (`src/platform/DeviceProfile.ts`, `src/style.css`).
+- [x] YAPILDI — Dokunma hedefleri büyütüldü: seçim/sil ve kart aksiyonları 44px, kenar okları 40px; paletler dar ekranda sarılıyor (`src/style.css`).
+- [x] YAPILDI — Yatay modda sol panel için `max-height` ve kaydırma (`src/style.css`).
+- [x] YAPILDI — İki parmakla yakınlaştırma ve tuval kaydırma: %25–400, Ctrl+tekerlek, -/%/+ kontrolleri ve sıfırlama. Araçlar dünya koordinatlarını kullanıyor (`PointerManager`, `ViewportManager`, `ZoomControls`).
+- [x] YAPILDI — PC trackpad pinch için tarayıcı sayfa zoom'u engelleniyor; Ctrl+wheel olayları uygulamanın yakınlaştırmasına aktarılıyor (`src/core/Application.ts`, `src/core/PointerManager.ts`).
+- [x] YAPILDI — Butonlarda çift dokunma zoom'unu engelleyen `touch-action: manipulation` (`src/style.css`).
+- [x] YAPILDI — Dokunma/kalem örnekleri için `getCoalescedEvents`, araçlarda aktif `pointerId` takibi (`src/tools/PenTool.ts`, silgi ve seçim araçları).
+- [x] YAPILDI — Silme sırasında iki parmakla yakınlaştırmaya geçince kalan parmaklar çizim aracına aktarılmıyor; silme geçmişi korunuyor (`tests/pointer-eraser.test.cjs`).
+- [x] YAPILDI — Araç değiştirme sırasında seçim hareketi temizleniyor; eski dokunma yeni seçimi engellemiyor (`tests/selection-switch.test.cjs`).
+- [x] YAPILDI — Boyutlandırmanın son konumu bırakma anında uygulanıyor; tutamacın kenarına dokunmak fotoğrafı sıçratmıyor. Dokunma, kalem ve fareyle %25–400 yakınlaştırmada test edildi (`src/tools/SelectionTool.ts`).
+- [x] YAPILDI — Pile duyarlı kayıt: şarjda 10 saniye, pilde 30 saniye (`src/autosave/AutoSaveManager.ts`).
+- [x] YAPILDI — 400px küçük önizlemeler (`src/autosave/ThumbnailGenerator.ts`).
+- [x] YAPILDI — Kayıt sırasında gelen yeni değişiklikler de kaydediliyor; kayıt hatası Yeni Çizim, kayıt açma ve kapanışı durduruyor. Yavaş kayıt pencereyi zorla kapatmıyor (`tests/autosave.test.cjs`, `tests/shutdown.test.cjs`).
 
 ## Çizim gecikmesi (tahta) — incelenecek
 
@@ -31,44 +35,46 @@ Tahta (`board-mode` CSS, tahta kalem seti, metin sınırı, coalesced, pointerId
   2. `StrokeRenderer` opak çizgilerde kesit başına ayrı `beginPath()+stroke()` + kare başına `new Point` üretiyor.
   3. `getCoalescedEvents` ile stoğa eklenen nokta sayısı katlanıyor.
   4. Tahtada GPU hızlandırma kapalı olabilir (Linux/Electron) → 4K tuval yazılımla çiziliyor. Kontrol: GPU-process/swiftshader izleri, Electron bayrakları.
-- Aday çözüm: artımlı çizim (bitmiş sahne önbelleği + üstüne yalnız yeni kesit) + toplu path + nokta seyreltme + rAF birleştirme. PC'yi olumsuz etkilemez (hızlanır); kritik nokta önbellek geçersiz kılma (undo, seçim, zoom/pan, boyut, kılavuz, resim yükleme).
-- Durum: Kullanıcı mevcut haliyle tahtada tekrar deneyip dönecek, ondan sonra bakılacak.
+- [ ] BEKLİYOR — Artımlı çizim, sahne önbelleği, toplu path, nokta seyreltme ve rAF birleştirme uygulanmadı. Undo, seçim, zoom/pan, boyut, kılavuz ve resim yükleme sırasında önbelleğin geçersiz kılınması planlanmalı.
+- [ ] BEKLİYOR — Pardus ETAP 25 üzerinde çizim gecikmesi ve GPU kullanımı ölçümü. Kullanıcı tahtada deneyip geri bildirim verecek; bu çalışma o geri bildirimden sonra ele alınacak.
 
-## Klasör Bağlama özelliği — durum notu (KODLANMADI)
+## Klasör bağlama — YAPILDI
 
-### Netleşen konular
+Uygulama `src/photos/LinkedPhotoManager.ts` ve `electron/photo-folder.ts` içinde mevcut. Önceki “kodlanmadı” notu güncel değildi.
 
-- Son bağlanılan klasör ayrıca hatırlanır (`draw:photo-last-folder`, bağ kopunca silinmez); yeniden bağlanırken dosya seçici o klasörde açılır.
+### Yapılanlar
 
-- Klasör Bağla butonu klasör değil, klasör içinden **bir fotoğraf** seçtirir; seçilen fotoğraf canvasa tutucu olarak eklenir, üstüne çizim yapılır.
-- Klasör + fotoğraf bilgisi ve bağ durumu (bağlı/değil) yerelde saklanır; kapatıp açınca buton aynı klasör+fotoğrafa bağlanabilir; tekrar basınca bağ kopar.
-- Fotoğraf seçim aracıyla seçilince sil/taşı/boyutlandırma aynen olur; ek olarak sil butonu yanı veya sağ/sol kenarlarda **Önceki/Sonraki fotoğraf** butonları olur (klasörde gezinme).
-- Bağlıyken Yeni Çizim → yeni çizim + otomatik tutucu ile **gösterilmekte olandan sonraki** fotoğraf (ayrı sayaç yok, klasör sırasındaki konum baz alınır).
-- Bağ kopunca açık olan fotoğraf ekranda kalır (normal resim gibi), Önceki/Sonraki butonları görünmez. Çizim yapılıp yapılmaması fark etmez.
+- [x] YAPILDI — Özellik Electron'da tahta ve PC için kullanılabilir; dosya köprüsü olmayan web sürümünde buton gizli. Web ve Android klasör erişimi kapsam dışında.
+- [x] YAPILDI — Buton klasör içinden bir fotoğraf seçtiriyor; fotoğraf tuvale ekleniyor ve üzerine yazılabiliyor.
+- [x] YAPILDI — Son klasör `draw:photo-last-folder` ile hatırlanıyor ve bağ kopunca korunuyor. Yerel depolama hatasında aynı oturumdaki klasör bellekte tutuluyor.
+- [x] YAPILDI — Pardus/Linux dosya seçicisine önceki konum aktarılıyor; portal sürümü için `xdg-portal-required-version=4` ayarı var (`electron/main.ts`). Fiziksel ETAP doğrulaması aşağıda bekleyen olarak kayıtlı.
+- [x] YAPILDI — Klasör ve fotoğraf bilgisi `draw:photo-link` ile saklanıyor. Bu kayıt tek başına açılışta bağı yeniden etkinleştirmiyor.
+- [x] YAPILDI — Yalnız üst klasörün fotoğrafları taranıyor; alt klasörler, gizli dosyalar ve `Thumbs.db`/`.DS_Store`/`desktop.ini` eleniyor. Sıralama doğal isim sırası (`1.jpg`, `2.jpg`, `10.jpg`); yalnız gereken fotoğraf okunuyor.
+- [x] YAPILDI — Uzun kenarı 1920px'i aşan fotoğraflar küçültülüyor; küçültülmüş JPEG geçerli base64 data URL olarak dönüyor (`tests/photo-folder.test.cjs`).
+- [x] YAPILDI — İlk yerleşim sol üstte 16px payla, ekran yüksekliğinin yarısı ve fotoğrafın en-boy oranı korunarak yapılıyor. Bu, önceki “contain” önerisinin yerine alınan son karar.
+- [x] YAPILDI — Bağlı tutucu kimliği diğer resimlerden ayrılıyor. Önceki/Sonraki okları yalnız o fotoğraf seçiliyken gösteriliyor; ilk/son fotoğrafta ilgili ok pasif.
+- [x] YAPILDI — Fotoğraf gezinmesinde çizgiler korunuyor. Fotoğraf nesnesi aynı tutucu kimliği, konumu ve yüksekliğiyle yenileniyor; genişliği yeni en-boy oranına uyarlanıyor.
+- [x] YAPILDI — Bağlı Yeni Çizim önce mevcut çizimi kaydediyor, sonra sıradaki fotoğrafı ekliyor ve **Seç ve Taşı** aracını etkinleştiriyor. Son fotoğrafta boş çizime geçiliyor ve bağ kopuyor.
+- [x] YAPILDI — Fotoğraf hazırlama ve kayıt sırasında tekrar Yeni Çizim başlatılmıyor. Bu sırada başka kayıt açılırsa eski işlem yeni açılan çizimi değiştirmiyor.
+- [x] YAPILDI — Geciken klasör seçimi, fotoğraf okuma ve gezinme sonuçları başka çizime veya yeni klasör bağına eklenmiyor.
+- [x] YAPILDI — Fotoğraf ekleme ve gezinme undo geçmişinin dışında. Çizgi düzenlemeleri, fotoğraf geometrisi ve silme geri alınabiliyor; undo/redo güncel bağlı fotoğrafı tanıyor.
+- [x] YAPILDI — Elle bağ koparılınca fotoğraf normal resim olarak sayfada kalıyor, oklar kapanıyor. Sonraki Yeni Çizim'de eski seçim çerçevesi/boş tutucu kalmıyor.
+- [x] YAPILDI — Normal silgi bağlı fotoğrafı koruyarak yazıları siliyor. Stroke/Çizgi Silgi fotoğrafa doğrudan temas edince fotoğrafı da siliyor ve bağ kopuyor. Silmeyi geri almak bağı otomatik kurmuyor.
+- [x] YAPILDI — Silgi fotoğrafın dışına değince fotoğraf kaldırılmıyor. Normal silginin koruması yalnız bağlı tutucu için; bağ koparılmış veya başka bir resim mevcut silme davranışını kullanıyor.
+- [x] YAPILDI — Klasöre geçici erişim/okuma hatasında çizim ve bağ korunuyor. Başarıyla okunan listede bağlı dosya yoksa bilgi kutusu gösteriliyor ve bağ kopuyor.
+- [x] YAPILDI — Bağ butonunda zincir/kırık zincir simgesi ve ekranda klasör/fotoğraf bilgisi var. Seçim aracı açıkken bağlanmak yeni fotoğrafın seçimini kaldırmıyor; eski gezinme düğmeleri araç değişiminde temizleniyor.
 
-### Sorunlu yerler + öneriler
+### Bekleyen ayrıntılar
 
-1. Büyük fotoğraflar: dataURL kayda gömülürse depo şişer, 50 kayıt limiti gerçek çizimleri silebilir. Öneri: eklerken uzun kenarı ~1920px'e indir.
-2. Fotoğraf sırası tanımsız: isme göre doğal sıralama önerilir (`1.jpg, 2.jpg, 10.jpg`); tek fotoğrafta butonlar pasif.
-3. Tutucuyu ayırt etme: ekran alıntısı gibi başka resimlerle karışmamalı; bağlı tutucu id/işaretle takip edilmeli, Önceki/Sonraki yalnız o seçiliyken görünmeli.
-4. Yerine koyma vs yeniden ekleme: tutucunun içeriğini değiştir (konum/seçim korunur), silip yeniden ekleme.
-5. Dosya kaybolursa (silinme/taşıma): bilgi ver + bağı kopar.
-6. Buton yeri önerisi: sol panel, Yeni Çizim yakını; bağlıyken klasör adını göstermeli.
-7. Platform: Electron'da dosya erişimi kolay; webde File System Access API (yalnızca Chromium + her açılışta izin); Android kapsam dışı önerilir.
+- [ ] BEKLİYOR — Açılışta otomatik klasör bağı geri yükleme: `restore()` mevcut, ancak uygulama açılışında çağrılmıyor. Şu an son klasör hatırlanıyor; yeniden bağlama kullanıcı seçimiyle yapılıyor. Bu akış bu kontrolde etkinleştirilmedi.
+- [ ] BEKLİYOR — Bağlı butonun ipucunda klasör adı: `title` şu an yalnız “Klasör Bağını Kopar”. Klasör/fotoğraf bilgisi ayrı durum alanında gösteriliyor.
+- [ ] BEKLİYOR — Tutucu silinerek bağ koptuğunda kısa bilgi notu: şu anda bağ sessizce kopuyor; ayrı bildirim gösterilmiyor.
+- [ ] BEKLİYOR — Fiziksel Pardus ETAP 25 üzerinde dokunma, silgi, yeniden bağlama ve dosya seçicinin önceki konumu hatırlama kontrolü. Chromium'da tahta/PC arayüz testleri geçti; bunlar fiziksel tahta testi sayılmaz.
 
-### Onay gereken açık sorular (kodlamadan önce)
+## Doğrulama
 
-**KAPSAM KARARI:** Klasör Bağlama yalnız tahta + PC'de (Electron) çalışır; web ve mobilde çalışmaz (buton görünmez).
-
-1. ~~Önceki/Sonraki ile fotoğraf değişince mevcut çizgiler ne olacak?~~ **KARAR:** Çizgiler aynen kalacak, yalnız fotoğraf değişecek.
-2. ~~Tutucu elle silinirse Önceki/Sonraki ne yapacak?~~ **KARAR:** Bağ otomatik kopar; foto+çizimler ekranda kalır, yeniden bağlamak kullanıcıya kalır. Kopuş her silme yoluna kanca takılarak değil, bağ kullanılacağı anda (Önceki/Sonraki, Yeni Çizim) tutucunun sayfada olup olmadığına bakılarak yakalanır (tembel doğrulama). Kopunca küçük bilgi notu gösterilir, onay kutusu yok.
-3. ~~Klasörde fotoğraf yoksa / tek fotoğrafsa davranış?~~ **KARAR:** Boş klasörde fotoğraf seçilemediği için bağ kurulamaz (iptal edilir). Tek fotoğrafta o seçilir, Önceki/Sonraki pasif olur.
-7. Yeni Çizim + son fotoğraf: Tek fotoğraf varsa veya klasördeki son fotoğraftayken Yeni Çizim'e basılırsa bağ kopar, her şey normal haline döner. İlk fotoğrafta Önceki, son fotoğrafta Sonraki pasif olur.
-4. ~~Alt klasörler taransın mı, yalnız üst düzey mi?~~ **KARAR:** Yalnız seçilen klasör taranacak, alt klasör yok.
-5. Dosya filtresi: yalnız resim uzantıları; `Thumbs.db`, `.DS_Store`, `desktop.ini` elenecek. Tembel yükleme (yalnız gösterilen fotoğraf okunur).
-6. Boyut kuralı: uzun kenar 1920px'ten büyükse indir, küçükse aynen al. Yerleşim: tuvale içine sığdır (contain).
-7. **KARAR:** Klasör Bağla butonu sol panelde metin aracının solunda durur. Üstünde yazı yazmaz, yalnız ikon gösterir: bağlı değilken zincir (link) ikonu, bağlıyken kırık zincir ikonu. Açıklama `title`/ipucunda çıkar (örn. bağlıyken klasör adı + koparma bilgisi).
-8. **KARAR:** Sıralama isme göre doğal sıralamadır.
-9. **KARAR:** Tutucu ilk eklenişte sol üst köşeye konur, yüksekliği ekran yüksekliğinin yarısı olur, en-boy oranı korunur.
-10. **KARAR:** Önceki/Sonraki aynı tutucunun içeriğini değiştirir, konumu korur. Tutucunun sol üst köşesi sabit kalır, başka fotoğrafa geçince en-boy oranı yeniden hesaplanır.
-11. **KARAR (undo):** Fotoğraf ekleme/değiştirme geçmişe yazılmaz (B). Gerekçe: dataURL kopyalarıyla bellek şişmesi, undo'nun fotoğraf gezgini gibi davranıp kafa karıştırması; çizim değiştirmede geçmişin sıfırlanması emsali. Undo yalnız çizgileri etkiler.
+- Son kontrolde 158 Node testi ve Chromium'da tahta/PC arayüz kontrolleri geçti.
+- Node testleri: `node --test tests/*.test.cjs`.
+- Arayüz: `npm run dev` ardından `/tests/storage-ui.html?tahta=1` ve `/tests/storage-ui.html` (`tests/README.md`).
+- Testler sahte masaüstü depolaması kullanır; kullanıcının çizim dosyalarına erişmez.
+- Linux paketleri: `npm run dist`; `.deb` ve `.AppImage` çıktıları `release/` altında. Windows paketi yukarıdaki Windows makine yönergesine göre üretilir.

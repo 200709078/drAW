@@ -525,6 +525,60 @@ try {
     }
     viewport.reset();
 
+    // The normal eraser clears writing on a linked photo without disconnecting the folder.
+    draw(150);
+    const normalEraserButton = document.querySelector('button[aria-label="Silgi: Normal Silgi"]');
+    normalEraserButton.click();
+    const eraseWriting = (tool) => {
+        const touch = {
+            pointerId: 20, pointerType: "touch",
+            offsetX: viewport.worldToScreenX(150), offsetY: viewport.worldToScreenY(100),
+            clientX: viewport.worldToScreenX(150), clientY: viewport.worldToScreenY(100)
+        };
+        tool.onPointerDown(touch);
+        tool.onPointerUp(touch);
+    };
+    assert(managers.getToolManager().getActiveTool() === managers.getPartialEraserTool(), "normal eraser button selected the wrong tool");
+    eraseWriting(managers.getPartialEraserTool());
+    assert(drawing.getCurrentPage().getStrokes().length === 0 && drawing.getCurrentPage().getImages().length === 1 && photos.isLinked(),
+        "normal erasing removed the linked photo or disconnected the folder");
+    undoButton.click();
+    assert(drawing.getCurrentPage().getStrokes().length === 1 && photos.isLinked(), "undoing normal erasing lost the writing or photo link");
+    redoButton.click();
+    eraseWriting(managers.getPartialEraserTool());
+    assert(drawing.getCurrentPage().getStrokes().length === 0 && photos.isLinked(), "normal erasing failed to protect the restored photo instance");
+    await auto.saveIfNeeded();
+    const normalSaved = records.get(auto.getActiveDocument().getId()).canvasState.data;
+    assert(normalSaved.images.length === 1 && normalSaved.strokes.length === 0, "normal erasing did not save the photo without its writing");
+    document.querySelector('button[aria-label="Seç ve Taşı"]').click();
+    selection.selectImage(drawing.getCurrentPage().getImages()[0]);
+    document.querySelector('button[aria-label="Sonraki Fotoğraf"]').click();
+    await until(() => !photos.busy && JSON.parse(localStorage.getItem("draw:photo-link")).fileName === "2.png");
+    newButton.click();
+    await until(() => !newButton.disabled && JSON.parse(localStorage.getItem("draw:photo-link")).fileName === "3.png");
+    assert(photos.isLinked() && drawing.getCurrentPage().getImages()[0]?.getDataUrl() === photoData[2],
+        "normal erasing broke photo navigation or the linked New Drawing transition");
+
+    // Stroke erasing retains its current behavior: remove the photo and disconnect its folder.
+    draw(150);
+    await auto.saveIfNeeded();
+    normalEraserButton.click();
+    normalEraserButton.click();
+    document.querySelector('button[aria-label="Çizgi Silgi"]').click();
+    assert(managers.getToolManager().getActiveTool() === managers.getEraserTool(), "stroke eraser button selected the wrong tool");
+    eraseWriting(managers.getEraserTool());
+    assert(drawing.getCurrentPage().getImages().length === 0 && drawing.getCurrentPage().getStrokes().length === 0 && !photos.isLinked(),
+        "stroke erasing did not remove the linked photo and writing");
+    assert(localStorage.getItem("draw:photo-link") === null && localStorage.getItem("draw:photo-last-folder") === "/photos",
+        "stroke erasing retained the old link or forgot the folder");
+    undoButton.click();
+    assert(drawing.getCurrentPage().getImages().length === 1 && drawing.getCurrentPage().getStrokes().length === 1 && !photos.isLinked(),
+        "stroke erasing undo failed or unexpectedly reconnected the folder");
+    redoButton.click();
+    await auto.saveIfNeeded();
+    const strokeSaved = records.get(auto.getActiveDocument().getId()).canvasState.data;
+    assert(strokeSaved.images.length === 0 && strokeSaved.strokes.length === 0, "stroke erasing did not save the cleared drawing");
+
     assert(errors.length === 0, `unhandled rejection: ${errors.join(", ")}`);
     await auto.shutdown();
     result.textContent = "PASS: storage failures, photo history, erasing and new-drawing transitions work; delayed photo navigation, folder linking and New Drawing cannot change another opened record; reconnect still remembers the folder";
