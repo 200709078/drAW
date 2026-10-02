@@ -1,4 +1,5 @@
 import { Document } from "../document/Document";
+import type { DocumentImage } from "../document/DocumentImage";
 import { Point } from "../document/Point";
 import { Stroke } from "../document/Stroke";
 import { DrawingContext } from "../models/DrawingContext";
@@ -17,6 +18,7 @@ export class PartialEraserTool extends Tool {
     private activePointerId: number | null;
     private indicator: EraserIndicator | null;
     private radius: number;
+    private isImageProtected: (image: DocumentImage) => boolean;
 
     constructor(
         drawingContext: DrawingContext,
@@ -34,6 +36,7 @@ export class PartialEraserTool extends Tool {
         this.activePointerId = null;
         this.indicator = null;
         this.radius = 12;
+        this.isImageProtected = () => false;
 
     }
 
@@ -142,6 +145,12 @@ export class PartialEraserTool extends Tool {
 
     }
 
+    public setImageProtection(isProtected: (image: DocumentImage) => boolean): void {
+
+        this.isImageProtected = isProtected;
+
+    }
+
     private eraseAt(x: number, y: number): void {
 
         const page = this.document.getCurrentPage();
@@ -170,8 +179,8 @@ export class PartialEraserTool extends Tool {
         }
 
         for (const image of [...page.getImages()]) {
-            // Fotoğraf bütünüyle silinir; dokunma noktası gerçek sınırları içinde olmalı.
-            if (image.hitTest(x, y)) {
+            // Bağlı fotoğraf korunur; üzerindeki çizgiler ayrı olarak silinir.
+            if (image.hitTest(x, y) && !this.isImageProtected(image)) {
                 page.removeImage(image);
                 hasChanged = true;
             }

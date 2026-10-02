@@ -170,6 +170,7 @@ export class ManagerContainer {
         this.linkedPhotoManager.setToolManager(this.toolManager);
         this.linkedPhotoManager.setHistoryManager(this.historyManager);
         this.selectionTool.setPhotoNavigator(this.linkedPhotoManager);
+        this.partialEraserTool.setImageProtection((image) => this.linkedPhotoManager.isLinkedHolder(image));
         this.toolManager.setTool(this.penTool);
 
     }

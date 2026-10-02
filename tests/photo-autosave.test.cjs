@@ -14,6 +14,9 @@ const { Document } = require("../src/document/Document.ts");
 const { DocumentImage } = require("../src/document/DocumentImage.ts");
 const { Point } = require("../src/document/Point.ts");
 const { Stroke } = require("../src/document/Stroke.ts");
+const { DrawingContext } = require("../src/models/DrawingContext.ts");
+const { EraserTool } = require("../src/tools/EraserTool.ts");
+const { PartialEraserTool } = require("../src/tools/PartialEraserTool.ts");
 const { HistoryManager } = require("../src/core/HistoryManager.ts");
 const { AutoSaveManager } = require("../src/autosave/AutoSaveManager.ts");
 const { DrawingRepository } = require("../src/storage/DrawingRepository.ts");
@@ -86,6 +89,96 @@ async function storeOtherDrawing(f, withIdenticalPhoto = false) {
     f.auto.resetActiveDocument();
     return stored;
 }
+
+for (const ToolClass of [PartialEraserTool, EraserTool]) {
+    for (const pointerType of ["touch", "pen", "mouse"]) {
+        test(`${ToolClass.name} ${pointerType}: erasing writing on a linked photo preserves the intended photo and folder state`, async (t) => {
+            const f = fixture(t);
+            await f.photos.toggle();
+            f.history.begin();
+            const stroke = new Stroke();
+            for (const x of [50, 100, 150, 200, 250]) stroke.addPoint(new Point(x, 100, 1));
+            f.document.getCurrentPage().addStroke(stroke);
+            f.history.commit();
+            await f.auto.saveIfNeeded();
+            const tool = new ToolClass(new DrawingContext({}, {}), f.document, { render() {} }, f.history);
+            if (ToolClass === PartialEraserTool) {
+                tool.setImageProtection((image) => f.photos.isLinkedHolder(image));
+            }
+            tool.setLineWidth(6);
+            const event = { pointerId: 1, pointerType, offsetX: 150, offsetY: 100 };
+            tool.onPointerDown(event);
+            tool.onPointerUp(event);
+
+            const preservePhoto = ToolClass === PartialEraserTool;
+            const assertPhotoState = () => {
+                assert.equal(f.document.getCurrentPage().getImages().length, preservePhoto ? 1 : 0);
+                assert.equal(f.photos.isLinked(), preservePhoto);
+                if (preservePhoto) {
+                    assert.equal(f.photos.isLinkedHolder(f.document.getCurrentPage().getImages()[0]), true);
+                    assert.equal(f.linkedName(), "1.png");
+                } else {
+                    assert.equal(f.local.has("draw:photo-link"), false);
+                }
+                assert.equal(f.local.get("draw:photo-last-folder"), "/photos");
+            };
+            assertPhotoState();
+            assert.equal(f.document.getCurrentPage().getStrokes().length, preservePhoto ? 2 : 0);
+            assert.equal(f.auto.isDirty(), true);
+            await f.auto.saveIfNeeded();
+            const saved = f.records.get(f.auto.getActiveDocument().getId()).getCanvasState().getData();
+            assert.equal(saved.images.length, preservePhoto ? 1 : 0);
+            assert.equal(saved.strokes.length, preservePhoto ? 2 : 0);
+
+            assert.equal(f.history.undo(), true);
+            assert.equal(f.document.getCurrentPage().getImages().length, 1);
+            assert.equal(f.document.getCurrentPage().getStrokes()[0].getPoints().length, 5);
+            assert.equal(f.photos.isLinked(), preservePhoto, "undo changed the intended folder connection");
+            assert.equal(f.history.redo(), true);
+            assertPhotoState();
+            if (preservePhoto) {
+                await f.step(1);
+                assert.equal(f.linkedName(), "2.png", "normal erasing disabled photo navigation");
+            }
+        });
+    }
+}
+
+test("normal erasing protects only the linked holder when an identical ordinary photo overlaps it", async (t) => {
+    const f = fixture(t);
+    await f.photos.toggle();
+    const holder = f.document.getCurrentPage().getImages()[0];
+    f.document.getCurrentPage().addImage(new DocumentImage(
+        holder.getDataUrl(), holder.getX(), holder.getY(), holder.getWidth(), holder.getHeight()
+    ));
+    const tool = new PartialEraserTool(new DrawingContext({}, {}), f.document, { render() {} }, f.history);
+    tool.setImageProtection((image) => f.photos.isLinkedHolder(image));
+    const event = { pointerId: 1, pointerType: "touch", offsetX: 150, offsetY: 100 };
+    tool.onPointerDown(event);
+    tool.onPointerUp(event);
+    assert.deepEqual(f.document.getCurrentPage().getImages(), [holder]);
+    assert.equal(f.photos.isLinked(), true);
+    assert.equal(f.history.undo(), true);
+    assert.equal(f.document.getCurrentPage().getImages().length, 2);
+    assert.equal(f.photos.isLinkedHolder(f.document.getCurrentPage().getImages()[0]), true);
+});
+
+test("normal erasing can remove a photo after its folder is manually unlinked", async (t) => {
+    const f = fixture(t);
+    await f.photos.toggle();
+    await f.photos.toggle();
+    const tool = new PartialEraserTool(new DrawingContext({}, {}), f.document, { render() {} }, f.history);
+    tool.setImageProtection((image) => f.photos.isLinkedHolder(image));
+    const event = { pointerId: 1, pointerType: "touch", offsetX: 150, offsetY: 100 };
+    tool.onPointerDown(event);
+    tool.onPointerUp(event);
+    assert.equal(f.document.getCurrentPage().getImages().length, 0);
+    assert.equal(f.photos.isLinked(), false);
+    assert.equal(f.local.get("draw:photo-last-folder"), "/photos");
+    assert.equal(f.history.undo(), true);
+    assert.equal(f.document.getCurrentPage().getImages().length, 1);
+    assert.equal(f.photos.isLinked(), false);
+});
 
 for (const withIdenticalPhoto of [false, true]) {
     test(`opening another drawing ${withIdenticalPhoto ? "with an identical photo" : "without photos"} clears the old link and remembers its folder`, async (t) => {
