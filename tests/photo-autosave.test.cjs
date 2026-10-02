@@ -173,6 +173,227 @@ test("opening the already active drawing keeps its photo link and unsaved change
     assert.equal(f.auto.isDirty(), true);
 });
 
+for (const phase of ["listPhotos", "readPhoto"]) {
+    for (const change of ["open drawing", "delete photo", "new drawing"]) {
+        test(`a pending ${phase} navigation cannot change the page after ${change}`, async (t) => {
+            const f = fixture(t);
+            const stored = await storeOtherDrawing(f, true);
+            await f.photos.toggle();
+            f.draw();
+            const holder = f.document.getCurrentPage().getImages()[0];
+            const notice = t.mock.method(f.photos, "showInfo", async () => {});
+            const original = window.drAWDesktop.photoFolder[phase];
+            let release;
+            const gate = new Promise((resolve) => { release = resolve; });
+            t.mock.method(window.drAWDesktop.photoFolder, phase, async (...args) => {
+                await gate;
+                return original(...args);
+            });
+            const stepping = f.photos.stepPhoto(1);
+            if (phase === "readPhoto") await new Promise(setImmediate);
+            try {
+                if (change === "open drawing") {
+                    await f.auto.openDrawing(stored);
+                } else if (change === "delete photo") {
+                    f.history.begin();
+                    f.document.getCurrentPage().removeImage(holder);
+                    f.history.commit();
+                } else {
+                    await f.auto.newDrawing();
+                    f.document.clearCurrentPage();
+                    f.history.reset();
+                    f.auto.resetActiveDocument();
+                    f.photos.placePreparedPhoto(null);
+                }
+                assert.equal(f.photos.isLinked(), false);
+                const before = f.document.createSnapshot();
+                const activeId = f.auto.getActiveDocument().getId();
+                const dirty = f.auto.isDirty();
+                release();
+                await stepping;
+                assert.equal(f.document.snapshotsMatch(before, f.document.createSnapshot()), true,
+                    "a late photo result changed a different drawing");
+                assert.equal(f.auto.getActiveDocument().getId(), activeId);
+                assert.equal(f.auto.isDirty(), dirty);
+                assert.equal(f.local.has("draw:photo-link"), false);
+                assert.equal(notice.mock.callCount(), 0, "an obsolete operation showed a misleading error");
+            } finally {
+                release();
+                await stepping;
+            }
+        });
+    }
+}
+
+test("undo during a pending photo read keeps navigation valid for the same drawing", async (t) => {
+    const f = fixture(t);
+    await f.photos.toggle();
+    f.draw();
+    const original = window.drAWDesktop.photoFolder.readPhoto;
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    t.mock.method(window.drAWDesktop.photoFolder, "readPhoto", async (...args) => {
+        await gate;
+        return original(...args);
+    });
+    const stepping = f.photos.stepPhoto(1);
+    await new Promise(setImmediate);
+    try {
+        f.history.undo();
+        release();
+        await stepping;
+        assert.equal(f.photos.isLinked(), true);
+        assert.equal(f.linkedName(), "2.png");
+        assert.equal(f.document.getCurrentPage().getImages().length, 1);
+        assert.equal(f.photos.isLinkedHolder(f.document.getCurrentPage().getImages()[0]), true);
+        assert.equal(f.document.getCurrentPage().getStrokes().length, 0);
+        await f.auto.saveIfNeeded();
+        assert.equal(f.storedPhoto(), "data:image/png;base64,2.png");
+    } finally {
+        release();
+        await stepping;
+    }
+});
+
+test("an old navigation refresh cannot disable the arrows of a newly linked folder", async (t) => {
+    const f = fixture(t);
+    await f.photos.toggle();
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    t.mock.method(window.drAWDesktop.photoFolder, "listPhotos", (folder) => {
+        return folder === "/photos" ? gate : Promise.resolve(["1.png", "2.png"]);
+    });
+    const refreshing = f.photos.refreshNavState();
+    try {
+        await f.photos.toggle();
+        t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto", async () => ({
+            folderPath: "/other-photos", fileName: "1.png"
+        }));
+        await f.photos.toggle();
+        release([]);
+        await refreshing;
+        assert.equal(f.photos.isLinked(), true);
+        assert.equal(f.photos.canStepPhoto(1), true);
+        assert.equal(JSON.parse(f.local.get("draw:photo-link")).folderPath, "/other-photos");
+    } finally {
+        release([]);
+        await refreshing;
+    }
+});
+
+for (const phase of ["selectPhoto", "readPhoto"]) {
+    for (const change of ["open drawing", "new drawing"]) {
+        test(`a pending folder link ${phase} cannot attach to a different page after ${change}`, async (t) => {
+            const f = fixture(t);
+            const stored = await storeOtherDrawing(f);
+            f.draw();
+            const original = window.drAWDesktop.photoFolder[phase];
+            let release;
+            const gate = new Promise((resolve) => { release = resolve; });
+            const access = t.mock.method(window.drAWDesktop.photoFolder, phase, async (...args) => {
+                await gate;
+                return original(...args);
+            });
+            const linking = f.photos.toggle();
+            if (phase === "readPhoto") await new Promise(setImmediate);
+            try {
+                if (change === "open drawing") {
+                    await f.auto.openDrawing(stored);
+                } else {
+                    await f.auto.newDrawing();
+                    f.document.clearCurrentPage();
+                    f.history.reset();
+                    f.auto.resetActiveDocument();
+                    f.photos.placePreparedPhoto(null);
+                }
+                const before = f.document.createSnapshot();
+                const activeId = f.auto.getActiveDocument().getId();
+                release();
+                await linking;
+                assert.equal(f.document.snapshotsMatch(before, f.document.createSnapshot()), true,
+                    "a cancelled folder link inserted a photo into another drawing");
+                assert.equal(f.auto.getActiveDocument().getId(), activeId);
+                assert.equal(f.auto.isDirty(), false);
+                assert.equal(f.photos.isLinked(), false);
+                assert.equal(f.local.has("draw:photo-link"), false);
+                access.mock.restore();
+                await f.photos.toggle();
+                assert.equal(f.photos.isLinked(), true, "cancelling the pending link blocked a later reconnect");
+                assert.equal(f.document.getCurrentPage().getImages().length, 1);
+            } finally {
+                release();
+                await linking;
+            }
+        });
+    }
+}
+
+test("starting a manual folder picker cancels an older restore before the picker returns", async (t) => {
+    const f = fixture(t);
+    f.local.set("draw:photo-link", JSON.stringify({ folderPath: "/photos", fileName: "1.png" }));
+    let releaseRestore;
+    const restoreGate = new Promise((resolve) => { releaseRestore = resolve; });
+    const originalRead = window.drAWDesktop.photoFolder.readPhoto;
+    t.mock.method(window.drAWDesktop.photoFolder, "readPhoto", async (folder, name) => {
+        if (folder === "/photos") await restoreGate;
+        return originalRead(folder, name);
+    });
+    const restoring = f.photos.restore();
+    await new Promise(setImmediate);
+    let releasePicker;
+    const pickerGate = new Promise((resolve) => { releasePicker = resolve; });
+    t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto", () => pickerGate);
+    const linking = f.photos.toggle();
+    try {
+        releaseRestore();
+        await restoring;
+        assert.equal(f.document.getCurrentPage().getImages().length, 0, "old restore ran after manual linking started");
+        releasePicker({ folderPath: "/other-photos", fileName: "1.png" });
+        await linking;
+        assert.deepEqual(JSON.parse(f.local.get("draw:photo-link")), {
+            folderPath: "/other-photos", fileName: "1.png"
+        });
+        assert.equal(f.document.getCurrentPage().getImages().length, 1);
+    } finally {
+        releaseRestore();
+        releasePicker(null);
+        await Promise.all([restoring, linking]);
+    }
+});
+
+for (const phase of ["listPhotos", "readPhoto"]) {
+    test(`a pending restored folder ${phase} cannot replace a newly selected folder`, async (t) => {
+        const f = fixture(t);
+        f.local.set("draw:photo-link", JSON.stringify({ folderPath: "/photos", fileName: "1.png" }));
+        const original = window.drAWDesktop.photoFolder[phase];
+        let release;
+        const gate = new Promise((resolve) => { release = resolve; });
+        t.mock.method(window.drAWDesktop.photoFolder, phase, async (folder, ...args) => {
+            if (folder === "/photos") await gate;
+            return original(folder, ...args);
+        });
+        const restoring = f.photos.restore();
+        if (phase === "readPhoto") await new Promise(setImmediate);
+        try {
+            t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto", async () => ({
+                folderPath: "/other-photos", fileName: "1.png"
+            }));
+            await f.photos.toggle();
+            release();
+            await restoring;
+            assert.deepEqual(JSON.parse(f.local.get("draw:photo-link")), {
+                folderPath: "/other-photos", fileName: "1.png"
+            });
+            assert.equal(f.local.get("draw:photo-last-folder"), "/other-photos");
+            assert.equal(f.document.getCurrentPage().getImages().length, 1);
+            assert.equal(f.photos.isLinkedHolder(f.document.getCurrentPage().getImages()[0]), true);
+        } finally {
+            release();
+            await restoring;
+        }
+    });
+}
+
 test("adding only a linked photo creates a dirty drawing and saves without an undo entry", async (t) => {
     const f = fixture(t);
     await f.photos.toggle();
@@ -207,11 +428,165 @@ test("restoring a folder link saves the automatically inserted photo", async (t)
     assert.equal(f.history.canUndo(), false);
 });
 
+for (const phase of ["listPhotos", "readPhoto"]) {
+    for (const failure of [false, true]) {
+        test(`new drawing preparation cancels a late ${failure ? "failed" : "successful"} ${phase} after opening a record`, async (t) => {
+            const f = fixture(t);
+            const stored = await storeOtherDrawing(f, true);
+            await f.photos.toggle();
+            f.draw();
+            const previousId = f.auto.getActiveDocument().getId();
+            const notice = t.mock.method(f.photos, "showInfo", async () => {});
+            const original = window.drAWDesktop.photoFolder[phase];
+            let release;
+            const gate = new Promise((resolve) => { release = resolve; });
+            t.mock.method(window.drAWDesktop.photoFolder, phase, async (...args) => {
+                await gate;
+                return failure ? null : original(...args);
+            });
+            const preparing = f.photos.prepareNewDrawing();
+            if (phase === "readPhoto") await new Promise(setImmediate);
+            try {
+                await f.auto.openDrawing(stored);
+                assert.equal(f.photos.isLinked(), false, "opening a record left the old photo link active during preparation");
+                const opened = f.document.createSnapshot();
+                release();
+                assert.equal(await preparing, undefined, "obsolete preparation must cancel the new drawing");
+                assert.equal(f.document.snapshotsMatch(opened, f.document.createSnapshot()), true);
+                assert.equal(f.auto.getActiveDocument().getId(), stored.getId());
+                assert.equal(f.auto.isDirty(), false);
+                assert.equal(f.history.canUndo(), false);
+                assert.equal(f.local.has("draw:photo-link"), false);
+                assert.equal(f.local.get("draw:photo-last-folder"), "/photos");
+                assert.equal(notice.mock.callCount(), 0, "obsolete preparation showed a misleading error");
+                assert.equal(f.records.get(previousId).getCanvasState().getData().strokes.length, 1);
+                assert.equal(f.records.get(previousId).getCanvasState().getData().images[0].dataUrl, "data:image/png;base64,1.png");
+            } finally {
+                release();
+                await preparing;
+            }
+        });
+    }
+}
+
+for (const mode of ["next photo", "last photo", "unlinked"]) {
+    test(`new drawing cannot commit a stale ${mode} preparation after another record opens during save`, async (t) => {
+        const f = fixture(t);
+        const stored = await storeOtherDrawing(f, true);
+        if (mode !== "unlinked") {
+            await f.photos.toggle();
+            if (mode === "last photo") {
+                await f.step(1);
+                await f.step(1);
+            }
+        }
+        f.draw();
+        const previousId = f.auto.getActiveDocument().getId();
+        const prepared = await f.photos.prepareNewDrawing();
+        assert.equal(prepared === null, mode !== "next photo");
+        const write = f.storage.save.bind(f.storage);
+        let release;
+        const gate = new Promise((resolve) => { release = resolve; });
+        let entered;
+        const savingStarted = new Promise((resolve) => { entered = resolve; });
+        t.mock.method(f.storage, "save", async (record) => {
+            entered();
+            await gate;
+            await write(record);
+        });
+        const opening = f.auto.openDrawing(stored);
+        await savingStarted;
+        const savingNew = f.auto.newDrawing();
+        try {
+            assert.equal(f.auto.getActiveDocument().getId(), previousId);
+            release();
+            await opening;
+            const opened = f.document.createSnapshot();
+            await savingNew;
+            assert.equal(f.photos.beginPreparedNewDrawing(), false, "stale preparation permitted clearing the opened drawing");
+            assert.equal(f.document.snapshotsMatch(opened, f.document.createSnapshot()), true);
+            assert.equal(f.auto.getActiveDocument().getId(), stored.getId());
+            assert.equal(f.auto.isDirty(), false);
+            assert.equal(f.history.canUndo(), false);
+            assert.equal(f.photos.isLinked(), false);
+            assert.equal(f.local.has("draw:photo-link"), false);
+            assert.equal(f.records.get(previousId).getCanvasState().getData().strokes.length, 1);
+            if (mode !== "unlinked") assert.equal(f.local.get("draw:photo-last-folder"), "/photos");
+        } finally {
+            release();
+            await Promise.all([opening, savingNew]);
+        }
+    });
+}
+
+test("undo during successful new drawing preparation preserves the link and permits the transition", async (t) => {
+    const f = fixture(t);
+    await f.photos.toggle();
+    f.draw();
+    const read = window.drAWDesktop.photoFolder.readPhoto;
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    t.mock.method(window.drAWDesktop.photoFolder, "readPhoto", async (...args) => {
+        await gate;
+        return read(...args);
+    });
+    const preparing = f.photos.prepareNewDrawing();
+    await new Promise(setImmediate);
+    try {
+        assert.equal(f.history.undo(), true);
+        assert.equal(f.photos.isLinkedHolder(f.document.getCurrentPage().getImages()[0]), true);
+        release();
+        const prepared = await preparing;
+        assert.equal(prepared.fileName, "2.png");
+        await f.auto.newDrawing();
+        assert.equal(f.photos.beginPreparedNewDrawing(), true);
+        f.document.clearCurrentPage();
+        f.history.reset();
+        f.auto.resetActiveDocument();
+        f.photos.placePreparedPhoto(prepared);
+        assert.equal(f.photos.isLinked(), true);
+        assert.equal(f.linkedName(), "2.png");
+        assert.equal(f.history.canUndo(), false);
+        await f.auto.saveIfNeeded();
+        assert.equal(f.storedPhoto(), "data:image/png;base64,2.png");
+    } finally {
+        release();
+        await preparing;
+    }
+});
+
+test("opening a record while the missing-photo notice is pending cancels the new drawing", async (t) => {
+    const f = fixture(t);
+    const stored = await storeOtherDrawing(f);
+    await f.photos.toggle();
+    t.mock.method(window.drAWDesktop.photoFolder, "listPhotos", async () => []);
+    let release;
+    const gate = new Promise((resolve) => { release = resolve; });
+    t.mock.method(f.photos, "showInfo", () => gate);
+    const preparing = f.photos.prepareNewDrawing();
+    await new Promise(setImmediate);
+    try {
+        assert.equal(f.photos.isLinked(), false);
+        await f.auto.openDrawing(stored);
+        const opened = f.document.createSnapshot();
+        release();
+        assert.equal(await preparing, undefined);
+        assert.equal(f.photos.beginPreparedNewDrawing(), false);
+        assert.equal(f.document.snapshotsMatch(opened, f.document.createSnapshot()), true);
+        assert.equal(f.auto.getActiveDocument().getId(), stored.getId());
+        assert.equal(f.auto.isDirty(), false);
+    } finally {
+        release();
+        await preparing;
+    }
+});
+
 test("new drawing saves its prepared photo after resetting the active record", async (t) => {
     const f = fixture(t);
     await f.photos.toggle();
     const nextPhoto = await f.photos.prepareNewDrawing();
     await f.auto.newDrawing();
+    assert.equal(f.photos.beginPreparedNewDrawing(), true);
     f.document.clearCurrentPage();
     f.history.reset();
     f.auto.resetActiveDocument();
@@ -254,6 +629,7 @@ test("preparing a new drawing at the last photo keeps the link until transition 
     assert.equal(f.photos.isLinked(), true);
     await f.photos.prepareNewDrawing();
     await f.auto.newDrawing();
+    assert.equal(f.photos.beginPreparedNewDrawing(), true);
     f.document.clearCurrentPage();
     f.history.reset();
     f.auto.resetActiveDocument();

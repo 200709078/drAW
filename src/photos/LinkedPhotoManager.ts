@@ -59,6 +59,9 @@ export class LinkedPhotoManager {
     // Tutucu bu oturumda hiç eklendiyse true; geri yüklenen bağda false başlar.
     private holderEverAdded: boolean;
     private busy: boolean;
+    // Önceki bağ veya sayfa için başlamış dosya işlemlerini geçersiz kılar.
+    private linkRevision: number;
+    private preparedNewDrawingRevision: number | null;
     private suppressValidation: boolean;
     private navState: { prev: boolean; next: boolean };
 
@@ -84,6 +87,8 @@ export class LinkedPhotoManager {
         this.holder = null;
         this.holderEverAdded = false;
         this.busy = false;
+        this.linkRevision = 0;
+        this.preparedNewDrawingRevision = null;
         this.suppressValidation = false;
         this.navState = { prev: false, next: false };
 
@@ -106,6 +111,10 @@ export class LinkedPhotoManager {
         // Tutucu silinince bağı sessizce kopar (buton eski haline döner).
         // Geri yüklenmiş ama bu oturumda hiç tutucu eklenmemiş bağa dokunulmaz.
         historyManager.addChangeListener((change) => {
+            if (change === "reset") {
+                this.linkRevision++;
+            }
+
             if (!this.isLinked() || !this.holderEverAdded) {
                 return;
             }
@@ -166,13 +175,22 @@ export class LinkedPhotoManager {
 
     public async restore(): Promise<void> {
 
+        if (this.busy || this.isLinked()) {
+            return;
+        }
+
         const stored = this.readStoredLink();
 
         if (stored === null || !this.isAvailable()) {
             return;
         }
 
+        const revision = ++this.linkRevision;
         const files = await this.listPhotos(stored.folderPath);
+
+        if (revision !== this.linkRevision) {
+            return;
+        }
 
         if (files === null) {
             return;
@@ -191,6 +209,10 @@ export class LinkedPhotoManager {
         const nextName = files[index + 1];
         const photo = await this.readPhoto(stored.folderPath, nextName);
 
+        if (revision !== this.linkRevision) {
+            return;
+        }
+
         if (photo === null) {
             return;
         }
@@ -198,13 +220,14 @@ export class LinkedPhotoManager {
         this.folderPath = stored.folderPath;
         this.fileName = nextName;
         this.writeStoredLink();
-        this.addHolder(photo, true);
 
         if (this.toolManager !== null && this.selectionTool !== null) {
             this.toolManager.setTool(this.selectionTool);
         }
+        this.addHolder(photo, true);
 
         await this.refreshNavState();
+        this.selectionTool?.refreshOverlays();
         this.refreshButton();
 
     }
@@ -226,24 +249,29 @@ export class LinkedPhotoManager {
     }
 
     // Yeni çizim öncesi çağrılır: bağı doğrular, sıradaki fotoğrafı
-    // yükleyip döndürür. null: fotoğrafsız devam et; undefined: erişim hatası nedeniyle iptal.
+    // yükleyip döndürür. null: fotoğrafsız devam et; undefined: geçiş iptal edildi.
     public async prepareNewDrawing(): Promise<PreparedLinkedPhoto | null | undefined> {
+
+        // Bu oturumda tutucu eklendiyse yokluğu silinme sayılır.
+        if (this.holderEverAdded && !this.holderOnPage()) {
+            this.unlink();
+        }
+
+        const revision = this.linkRevision;
+        this.preparedNewDrawingRevision = revision;
 
         if (!this.isLinked() || this.folderPath === null || this.fileName === null) {
             return null;
         }
 
-        // Bu oturumda tutucu eklendiyse yokluğu silinme sayılır.
-        if (this.holderEverAdded && !this.holderOnPage()) {
-            this.unlink();
+        const folderPath = this.folderPath;
+        const fileName = this.fileName;
+        const files = await this.listPhotos(folderPath);
 
-            return null;
+        if (!this.isPreparedNewDrawingCurrent(revision)) {
+            this.cancelPreparedNewDrawing();
+            return undefined;
         }
-
-        // Yeni çizim sayfayı temizleyeceği için doğrulamayı beklet.
-        this.suppressValidation = true;
-
-        const files = await this.listPhotos(this.folderPath);
 
         if (files === null) {
             this.cancelPreparedNewDrawing();
@@ -252,14 +280,21 @@ export class LinkedPhotoManager {
             return undefined;
         }
 
-        const currentIndex = files.indexOf(this.fileName);
+        const currentIndex = files.indexOf(fileName);
 
         if (currentIndex === -1) {
             this.unlink();
+            const unlinkedRevision = this.linkRevision;
+            this.preparedNewDrawingRevision = unlinkedRevision;
             await this.showInfo(
                 "Fotoğraf Bulunamadı",
                 "Bağlı fotoğraf klasörde bulunamadığı için klasör bağı koparıldı."
             );
+
+            if (!this.isPreparedNewDrawingCurrent(unlinkedRevision)) {
+                this.cancelPreparedNewDrawing();
+                return undefined;
+            }
 
             return null;
         }
@@ -271,7 +306,12 @@ export class LinkedPhotoManager {
         }
 
         const nextName = files[nextIndex];
-        const photo = await this.readPhoto(this.folderPath, nextName);
+        const photo = await this.readPhoto(folderPath, nextName);
+
+        if (!this.isPreparedNewDrawingCurrent(revision)) {
+            this.cancelPreparedNewDrawing();
+            return undefined;
+        }
 
         if (photo === null) {
             this.cancelPreparedNewDrawing();
@@ -288,14 +328,41 @@ export class LinkedPhotoManager {
 
     }
 
+    public beginPreparedNewDrawing(): boolean {
+
+        if (!this.isPreparedNewDrawingCurrent()) {
+            this.cancelPreparedNewDrawing();
+            return false;
+        }
+
+        // Bağı yalnız sayfanın temizlenip yeni fotoğrafın yerleştirildiği aşamada koru.
+        this.suppressValidation = true;
+
+        return true;
+
+    }
+
+    private isPreparedNewDrawingCurrent(revision = this.preparedNewDrawingRevision): boolean {
+
+        return revision !== null && revision === this.preparedNewDrawingRevision &&
+            revision === this.linkRevision && (!this.holderEverAdded || this.holderOnPage());
+
+    }
+
     public cancelPreparedNewDrawing(): void {
 
+        this.preparedNewDrawingRevision = null;
         this.suppressValidation = false;
+
+        if (this.holderEverAdded && !this.holderOnPage()) {
+            this.unlink();
+        }
 
     }
 
     public placePreparedPhoto(prepared: PreparedLinkedPhoto | null): void {
 
+        this.preparedNewDrawingRevision = null;
         this.suppressValidation = false;
 
         if (prepared === null) {
@@ -305,6 +372,9 @@ export class LinkedPhotoManager {
 
         this.fileName = prepared.fileName;
         this.writeStoredLink();
+        if (this.toolManager !== null && this.selectionTool !== null) {
+            this.toolManager.setTool(this.selectionTool);
+        }
         this.addHolder(prepared.photo, true);
         void this.refreshNavState().then(() => this.selectionTool?.refreshOverlays());
         this.refreshButton();
@@ -321,14 +391,24 @@ export class LinkedPhotoManager {
 
         this.busy = true;
 
+        const revision = ++this.linkRevision;
+
         try {
             const selection = await bridge.selectPhoto(this.readLastFolder());
+
+            if (revision !== this.linkRevision) {
+                return;
+            }
 
             if (selection === null) {
                 return;
             }
 
             const photo = await this.readPhoto(selection.folderPath, selection.fileName);
+
+            if (revision !== this.linkRevision) {
+                return;
+            }
 
             if (photo === null) {
                 await this.showInfo(
@@ -343,11 +423,11 @@ export class LinkedPhotoManager {
             this.fileName = selection.fileName;
             this.writeStoredLink();
             this.writeLastFolder(selection.folderPath);
-            this.addHolder(photo, true);
 
             if (this.toolManager !== null && this.selectionTool !== null) {
                 this.toolManager.setTool(this.selectionTool);
             }
+            this.addHolder(photo, true);
 
             await this.refreshNavState();
             this.selectionTool?.refreshOverlays();
@@ -360,6 +440,8 @@ export class LinkedPhotoManager {
 
     private unlink(): void {
 
+        this.linkRevision++;
+        this.preparedNewDrawingRevision = null;
         this.folderPath = null;
         this.fileName = null;
         this.holderEverAdded = false;
@@ -385,8 +467,16 @@ export class LinkedPhotoManager {
 
         this.busy = true;
 
+        const revision = this.linkRevision;
+        const folderPath = this.folderPath;
+        const fileName = this.fileName;
+
         try {
-            const files = await this.listPhotos(this.folderPath);
+            const files = await this.listPhotos(folderPath);
+
+            if (revision !== this.linkRevision || !this.holderOnPage()) {
+                return;
+            }
 
             if (files === null) {
                 await this.showFolderAccessError();
@@ -394,7 +484,7 @@ export class LinkedPhotoManager {
                 return;
             }
 
-            const currentIndex = files.indexOf(this.fileName);
+            const currentIndex = files.indexOf(fileName);
 
             if (currentIndex === -1) {
                 this.unlink();
@@ -413,7 +503,11 @@ export class LinkedPhotoManager {
             }
 
             const targetName = files[targetIndex];
-            const photo = await this.readPhoto(this.folderPath, targetName);
+            const photo = await this.readPhoto(folderPath, targetName);
+
+            if (revision !== this.linkRevision || !this.holderOnPage()) {
+                return;
+            }
 
             if (photo === null) {
                 await this.showInfo(
@@ -438,6 +532,7 @@ export class LinkedPhotoManager {
 
     private addHolder(photo: LinkedPhotoData, selectAfterAdd: boolean): void {
 
+        this.linkRevision++;
         const height = window.innerHeight / 2;
         const aspect = photo.width > 0 && photo.height > 0
             ? photo.width / photo.height
@@ -465,6 +560,7 @@ export class LinkedPhotoManager {
 
     private replaceHolder(photo: LinkedPhotoData): void {
 
+        this.linkRevision++;
         const previous = this.holder;
 
         if (previous === null) {
@@ -555,13 +651,20 @@ export class LinkedPhotoManager {
             return;
         }
 
-        const files = await this.listPhotos(this.folderPath);
+        const revision = this.linkRevision;
+        const folderPath = this.folderPath;
+        const fileName = this.fileName;
+        const files = await this.listPhotos(folderPath);
+
+        if (revision !== this.linkRevision) {
+            return;
+        }
 
         if (files === null) {
             return;
         }
 
-        const index = files.indexOf(this.fileName);
+        const index = files.indexOf(fileName);
 
         if (index === -1) {
             this.navState = { prev: false, next: false };

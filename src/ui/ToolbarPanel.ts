@@ -557,7 +557,16 @@ export class ToolbarPanel {
                 return;
             }
 
-            toolManager.getActiveTool()?.cancel();
+            if (photoLinkManager !== null && !photoLinkManager.beginPreparedNewDrawing()) {
+                return;
+            }
+
+            const activeTool = toolManager.getActiveTool();
+            activeTool?.cancel();
+            // Fotoğraf kalem etkinken de seçilmiş olabilir; eski çerçeveyi temizle.
+            if (activeTool !== selectionTool) {
+                selectionTool.cancel();
+            }
             drawingDocument.clearCurrentPage();
             historyManager.reset();
             autoSaveManager.resetActiveDocument();
