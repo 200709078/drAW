@@ -7,6 +7,7 @@
 import { Application } from "/src/core/Application.ts";
 import { Point } from "/src/document/Point.ts";
 import { Stroke } from "/src/document/Stroke.ts";
+import { DocumentStateSerializer } from "/src/autosave/DocumentStateSerializer.ts";
 
 const result = document.getElementById("result");
 const records = new Map();
@@ -115,10 +116,15 @@ try {
         return photoCanvas.toDataURL();
     });
     let photoGate = null;
+    let listingGate = null;
     let photoFailure = null;
     window.drAWDesktop.photoFolder = {
         async selectPhoto() { return { folderPath: "/photos", fileName: "1.png" }; },
         async listPhotos() {
+            if (listingGate !== null) {
+                waitingAtGate = true;
+                await listingGate;
+            }
             if (photoFailure === "list") return null;
             if (photoFailure === "ipc") throw new Error("Photo IPC unavailable");
             return ["1.png", "2.png", "3.png"];
@@ -194,6 +200,23 @@ try {
     assert(records.get(auto.getActiveDocument().getId()).canvasState.data.images[0].dataUrl === photoData[2], "prepared photo was not saved");
     assert(!history.canUndo(), "photo transition added an undo entry");
 
+    // Manually unlinking keeps the current photo; New Drawing must clear its selection too.
+    const unlinkedPhoto = drawing.getCurrentPage().getImages()[0];
+    await photos.toggle();
+    assert(!photos.isLinked() && drawing.getCurrentPage().getImages()[0] === unlinkedPhoto,
+        "manual unlink removed the photo from the current drawing");
+    newButton.click();
+    await until(() => drawing.getCurrentPage().getImages().length === 0 && !newButton.disabled);
+    assert(managers.getDocumentRenderer().getSelectionBounds() === null,
+        "manual unlink followed by New Drawing retained an empty photo frame");
+    assert(auto.getActiveDocument().getCanvasState().getData().images.length === 0,
+        "manual unlink left a placeholder image in the new record");
+    assert(managers.getToolManager().getActiveTool() === managers.getPenTool(),
+        "an empty new drawing did not use the normal pen");
+    document.querySelector('button[aria-label="Seç ve Taşı"]').click();
+    assert(managers.getDocumentRenderer().getSelectionBounds() === null,
+        "returning to selection restored the unlinked photo frame");
+
     // Repeated clicks must not overlap while loading a photo or saving a drawing.
     let transitions = 0;
     window.addEventListener("newdraw:started", () => transitions++);
@@ -231,6 +254,9 @@ try {
         assert(localStorage.getItem("draw:photo-last-folder") === "/photos", `${blockedPhase}: last folder was lost`);
         assert(drawing.getCurrentPage().getImages().length === 1, `${blockedPhase}: duplicate photo`);
         assert(drawing.getCurrentPage().getImages()[0].getDataUrl() === photoData[1], `${blockedPhase}: incorrect photo`);
+        assert(managers.getToolManager().getActiveTool() === managers.getSelectionTool(), `${blockedPhase}: linked new drawing did not activate selection`);
+        assert(document.querySelector('button[aria-label="Seç ve Taşı"]').getAttribute("aria-pressed") === "true", `${blockedPhase}: selection button was not marked active`);
+        assert(managers.getDocumentRenderer().getSelectionBounds() !== null, `${blockedPhase}: the new photo was not selected`);
         assert(records.get(originalId).canvasState.data.images[0].dataUrl === photoData[0], `${blockedPhase}: original photo was not saved`);
 
         newButton.click();
@@ -306,9 +332,202 @@ try {
     assert(pickerPaths.length === 1 && pickerPaths[0] === "/photos", "reconnecting needed a second click or forgot the folder");
     assert(drawing.getCurrentPage().getImages()[0]?.getDataUrl() === photoData[0], "reconnecting did not add the selected photo");
 
+    // A delayed next-photo read must not insert its photo into a drawing opened meanwhile.
+    await delay(0);
+    await until(() => document.querySelector(`[data-id="${activeId}"] .drawings-card__open`));
+    const delayedOpenTarget = document.querySelector(`[data-id="${activeId}"] .drawings-card__open`);
+    assert(auto.getActiveDocument().getId() !== activeId, "delayed photo test must open a different drawing");
+    let releaseStep;
+    photoGate = new Promise((resolve) => { releaseStep = resolve; });
+    waitingAtGate = false;
+    const currentNextPhotoButton = document.querySelector('button[aria-label="Sonraki Fotoğraf"]');
+    assert(currentNextPhotoButton && !currentNextPhotoButton.disabled, "reconnected folder has no next-photo control");
+    currentNextPhotoButton.click();
+    await until(() => waitingAtGate);
+    delayedOpenTarget.click();
+    await until(() => auto.getActiveDocument().getId() === activeId);
+    photoGate = null;
+    releaseStep();
+    await until(() => !photos.busy);
+    assert(drawing.getCurrentPage().getImages().length === 0, "a late photo result changed the opened drawing");
+    assert(drawing.getCurrentPage().getStrokes()[0]?.getPoints()[0].getX() === 20, "a late photo result changed the opened strokes");
+    assert(!photos.isLinked() && !auto.isDirty(), "a late photo result reactivated the link or marked the opened drawing dirty");
+    assert(!document.querySelector(".modal"), "a cancelled photo request showed a misleading error");
+    assert(records.get(activeId).canvasState.data.images.length === 0, "a late photo was saved into the opened drawing");
+
+    // A first-time folder link must also stop when its drawing changes during the read.
+    for (const change of ["new drawing", "open drawing"]) {
+        draw(90);
+        const beforeId = auto.getActiveDocument().getId();
+        let releaseLink;
+        photoGate = new Promise((resolve) => { releaseLink = resolve; });
+        waitingAtGate = false;
+        linkButton.click();
+        await until(() => waitingAtGate);
+        assert(!photos.isLinked(), "folder linked before its photo finished loading");
+        if (change === "new drawing") {
+            newButton.click();
+            await until(() => auto.getActiveDocument().getId() !== beforeId && !newButton.disabled);
+        } else {
+            delayedOpenTarget.click();
+            await until(() => auto.getActiveDocument().getId() === activeId);
+        }
+        const opened = drawing.createSnapshot();
+        photoGate = null;
+        releaseLink();
+        await until(() => !photos.busy);
+        assert(drawing.snapshotsMatch(opened, drawing.createSnapshot()), `${change}: cancelled folder link changed the drawing`);
+        assert(!photos.isLinked() && !auto.isDirty(), `${change}: cancelled folder link reactivated or dirtied the drawing`);
+        assert(localStorage.getItem("draw:photo-link") === null, `${change}: cancelled folder link was persisted`);
+    }
+    linkButton.click();
+    await until(() => photos.isLinked() && !photos.busy);
+    assert(drawing.getCurrentPage().getImages().length === 1, "cancelled folder linking blocked a later reconnect");
+    assert(pickerPaths.at(-1) === "/photos", "cancelled folder linking forgot the last folder");
+
+    // Opening another record cancels New Drawing during preparation and during its save.
+    const serializer = new DocumentStateSerializer();
+    for (const [phase, mode] of [
+        ["list", "next photo"], ["read", "next photo"],
+        ["save", "next photo"], ["save", "last photo"], ["save", "unlinked"]
+    ]) {
+        const label = `${phase}/${mode}`;
+        if (photos.isLinked()) await photos.toggle();
+        const beforeSetupId = auto.getActiveDocument().getId();
+        newButton.click();
+        await until(() => auto.getActiveDocument().getId() !== beforeSetupId && !newButton.disabled);
+        if (mode !== "unlinked") {
+            await photos.toggle();
+            if (mode === "last photo") {
+                for (const name of ["2.png", "3.png"]) {
+                    photos.requestStepPhoto(1);
+                    await until(() => JSON.parse(localStorage.getItem("draw:photo-link")).fileName === name && !photos.busy);
+                }
+            }
+        }
+        draw(130);
+        const originalId = auto.getActiveDocument().getId();
+        assert(originalId !== otherId, `${label}: test must open a different record`);
+        await until(() => document.querySelector(`[data-id="${otherId}"] .drawings-card__open`));
+        const openTarget = document.querySelector(`[data-id="${otherId}"] .drawings-card__open`);
+        const expected = serializer.deserialize(records.get(otherId).canvasState.data);
+        const before = transitions;
+        let release;
+        const gate = new Promise((resolve) => { release = resolve; });
+        waitingAtGate = false;
+        if (phase === "list") listingGate = gate;
+        else if (phase === "read") photoGate = gate;
+        else saveGate = gate;
+
+        if (phase === "save") {
+            openTarget.click();
+            await until(() => waitingAtGate);
+            newButton.click();
+            await delay(40);
+            assert(newButton.disabled && auto.getActiveDocument().getId() === originalId,
+                `${label}: new drawing did not wait for the current save`);
+        } else {
+            newButton.click();
+            await until(() => waitingAtGate);
+            openTarget.click();
+            await until(() => auto.getActiveDocument().getId() === otherId);
+            assert(!photos.isLinked(), `${label}: old folder link remained active during preparation`);
+        }
+        listingGate = photoGate = saveGate = null;
+        release();
+        await until(() => !newButton.disabled);
+        assert(auto.getActiveDocument().getId() === otherId, `${label}: new drawing replaced the opened record`);
+        assert(drawing.snapshotsMatch(expected, drawing.createSnapshot()), `${label}: new drawing changed the opened content`);
+        assert(transitions === before, `${label}: obsolete new drawing completed a transition`);
+        assert(!photos.isLinked() && !auto.isDirty() && !history.canUndo(), `${label}: opened record retained link, dirty state or undo history`);
+        assert(!document.querySelector(".modal"), `${label}: obsolete preparation showed an error`);
+        assert(records.get(originalId).canvasState.data.strokes[0].points[0][0] === 130, `${label}: original drawing was not saved`);
+        assert(localStorage.getItem("draw:photo-last-folder") === "/photos", `${label}: last folder was lost`);
+    }
+
+    // Linking with selection already active must keep the newly inserted photo selected.
+    for (const mode of ["manual link", "restore"]) {
+        if (photos.isLinked()) await photos.toggle();
+        const beforeId = auto.getActiveDocument().getId();
+        newButton.click();
+        await until(() => auto.getActiveDocument().getId() !== beforeId && !newButton.disabled);
+        document.querySelector('button[aria-label="Seç ve Taşı"]').click();
+        if (mode === "manual link") {
+            linkButton.click();
+            await until(() => photos.isLinked() && !photos.busy);
+        } else {
+            localStorage.setItem("draw:photo-link", JSON.stringify({ folderPath: "/photos", fileName: "1.png" }));
+            await photos.restore();
+        }
+        assert(managers.getToolManager().getActiveTool() === managers.getSelectionTool(), `${mode}: selection is not active`);
+        assert(drawing.getCurrentPage().getImages().length === 1, `${mode}: linked photo was not inserted`);
+        assert(managers.getDocumentRenderer().getSelectionBounds() !== null, `${mode}: activating selection cleared the new photo's selection`);
+        const next = document.querySelector('button[aria-label="Sonraki Fotoğraf"]');
+        assert(next && !next.hidden && !next.disabled, `${mode}: next-photo control is unavailable`);
+        assert(document.querySelectorAll('button[aria-label="Sonraki Fotoğraf"]').length === 1 &&
+            document.querySelectorAll('button[aria-label="Önceki Fotoğraf"]').length === 1,
+            `${mode}: old photo navigation buttons remained after switching tools`);
+    }
+
+    // A pending photo read can finish after the user switches back to the pen.
+    let releaseLateRead;
+    photoGate = new Promise((resolve) => { releaseLateRead = resolve; });
+    waitingAtGate = false;
+    document.querySelector('button[aria-label="Sonraki Fotoğraf"]').click();
+    await until(() => waitingAtGate);
+    document.querySelector('button[aria-label="Kalem: Normal Kalem"]').click();
+    photoGate = null;
+    releaseLateRead();
+    await until(() => !photos.busy);
+    assert(managers.getToolManager().getActiveTool() === managers.getPenTool(), "late photo navigation changed the chosen tool");
+    await photos.toggle();
+    const beforeUnlinkedNew = auto.getActiveDocument().getId();
+    newButton.click();
+    await until(() => auto.getActiveDocument().getId() !== beforeUnlinkedNew && !newButton.disabled);
+    assert(drawing.getCurrentPage().getImages().length === 0 && managers.getDocumentRenderer().getSelectionBounds() === null,
+        "late photo navigation left an empty frame after unlink and New Drawing");
+    document.querySelector('button[aria-label="Seç ve Taşı"]').click();
+    managers.getSelectionTool().deleteSelection();
+    assert(!auto.isDirty() && !history.canUndo(), "selection retained a removed photo after an empty New Drawing");
+
+    // Resizing a linked photo must reach the release point, save, and preserve its folder link.
+    await photos.toggle();
+    viewport.zoomAt(0, 0, 2);
+    const selection = managers.getSelectionTool();
+    for (const pointerType of ["touch", "pen", "mouse"]) {
+        const image = drawing.getCurrentPage().getImages()[0];
+        const original = [image.getX(), image.getY(), image.getWidth(), image.getHeight()];
+        selection.selectImage(image);
+        const right = image.getX() + image.getWidth();
+        const bottom = image.getY() + image.getHeight();
+        const pointer = (x, y) => ({
+            pointerId: 10, pointerType, shiftKey: false, ctrlKey: false, metaKey: false,
+            offsetX: viewport.worldToScreenX(x), offsetY: viewport.worldToScreenY(y)
+        });
+        selection.onPointerDown(pointer(right - 2, bottom - 2));
+        selection.onPointerMove(pointer(right + 58, bottom + 58));
+        selection.onPointerUp(pointer(right + 118, bottom + 118));
+        const resized = [image.getX(), image.getY(), image.getWidth(), image.getHeight()];
+        assert(resized[0] === original[0] && resized[1] === original[1] &&
+            resized[2] === original[2] + 120 && resized[3] === original[3] + 120,
+            `${pointerType}: linked photo did not reach the release point`);
+        assert(photos.isLinked() && auto.isDirty(), `${pointerType}: resize disconnected the folder or was not marked dirty`);
+        undoButton.click();
+        redoButton.click();
+        const restored = drawing.getCurrentPage().getImages()[0];
+        assert(photos.isLinkedHolder(restored) && restored.getWidth() === resized[2] && restored.getHeight() === resized[3],
+            `${pointerType}: resize undo/redo lost the final geometry or the folder link`);
+        await auto.saveIfNeeded();
+        const saved = records.get(auto.getActiveDocument().getId()).canvasState.data.images;
+        assert(saved.length === 1 && saved[0].width === resized[2] && saved[0].height === resized[3],
+            `${pointerType}: resized photo was not saved correctly`);
+        undoButton.click();
+    }
+    viewport.reset();
+
     assert(errors.length === 0, `unhandled rejection: ${errors.join(", ")}`);
     await auto.shutdown();
-    result.textContent = "PASS: storage failures, photo history, erasing and new-drawing transitions work; opening a saved drawing clears the old link and reconnects with the remembered folder";
+    result.textContent = "PASS: storage failures, photo history, erasing and new-drawing transitions work; delayed photo navigation, folder linking and New Drawing cannot change another opened record; reconnect still remembers the folder";
 } catch (error) {
     result.textContent = `FAIL: ${error.stack ?? error}`;
 }

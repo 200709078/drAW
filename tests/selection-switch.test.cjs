@@ -66,7 +66,7 @@ function fixture(t) {
         }
     });
     return {
-        canvas, document, image, renderer, history, selection, pen, tools,
+        canvas, document, image, renderer, history, selection, pen, tools, viewport: context.getViewport(),
         send(type, id, x, y, pointerType = "touch") {
             canvas.dispatchEvent(Object.assign(new Event(type), {
                 pointerId: id, pointerType, button: 0, pressure: 0.5,
@@ -140,3 +140,72 @@ for (const gesture of ["select", "drag", "resize"]) {
         assert.equal(f.canvas.captures.size, 0);
     });
 }
+
+for (const pointerType of ["touch", "pen", "mouse"]) {
+    for (const handle of ["corner", "edge"]) {
+        for (const scale of [0.25, 1, 4]) {
+            test(`${pointerType} ${handle} resize finishes at the release position and remains undoable at zoom ${scale}`, (t) => {
+                const f = fixture(t);
+                f.viewport.zoomAt(0, 0, scale);
+                f.viewport.panBy(35, 60);
+                f.selection.selectImage(f.image);
+                const y = handle === "corner" ? 500 : 300;
+                const send = (type, x, worldY) => f.send(type, 1,
+                    f.viewport.worldToScreenX(x), f.viewport.worldToScreenY(worldY), pointerType);
+                send("pointerdown", 500, y);
+                send("pointermove", 600, handle === "corner" ? 600 : y);
+                send("pointerup", 650, handle === "corner" ? 650 : y);
+
+                const expected = [100, 100, 550, handle === "corner" ? 550 : 400];
+                const geometry = (image) => [image.getX(), image.getY(), image.getWidth(), image.getHeight()];
+                assert.deepEqual(geometry(f.image), expected, "resize retained its preview instead of the release position");
+                assert.equal(f.canvas.captures.size, 0);
+                assert.equal(f.history.undo(), true);
+                assert.deepEqual(geometry(f.document.getCurrentPage().getImages()[0]), [100, 100, 400, 400]);
+                assert.equal(f.history.canUndo(), false, "one gesture created multiple undo entries");
+                assert.equal(f.history.redo(), true);
+                assert.deepEqual(geometry(f.document.getCurrentPage().getImages()[0]), expected);
+            });
+        }
+    }
+
+    test(`${pointerType} resize accepts a release with no intermediate move event`, (t) => {
+        const f = fixture(t);
+        f.selection.selectImage(f.image);
+        f.send("pointerdown", 1, 500, 500, pointerType);
+        f.send("pointerup", 1, 650, 650, pointerType);
+        assert.deepEqual([f.image.getWidth(), f.image.getHeight()], [550, 550]);
+        assert.equal(f.history.canUndo(), true);
+    });
+
+    test(`${pointerType} resizing near a handle preserves the grabbed offset`, (t) => {
+        const f = fixture(t);
+        f.selection.selectImage(f.image);
+        // Grab within the handle's touch/click area, away from its exact center.
+        f.send("pointerdown", 1, 494, 494, pointerType);
+        f.send("pointerup", 1, 494, 494, pointerType);
+        assert.deepEqual([f.image.getWidth(), f.image.getHeight()], [400, 400]);
+        assert.equal(f.history.canUndo(), false, "tapping a resize handle changed the drawing");
+
+        f.send("pointerdown", 2, 494, 494, pointerType);
+        f.send("pointermove", 2, 594, 594, pointerType);
+        f.send("pointerup", 2, 644, 644, pointerType);
+        assert.deepEqual([f.image.getX(), f.image.getY(), f.image.getWidth(), f.image.getHeight()], [100, 100, 550, 550]);
+    });
+}
+
+test("cancelled touch resize keeps the visible geometry without using the cancellation position", (t) => {
+    const f = fixture(t);
+    f.selection.selectImage(f.image);
+    f.send("pointerdown", 1, 500, 500);
+    f.send("pointermove", 1, 600, 600);
+    const expected = f.document.createSnapshot();
+    f.send("pointercancel", 1, 0, 0);
+    assert.equal(f.document.snapshotsMatch(expected, f.document.createSnapshot()), true);
+    assert.equal(f.history.undo(), true);
+    assert.deepEqual([f.document.getCurrentPage().getImages()[0].getWidth(),
+        f.document.getCurrentPage().getImages()[0].getHeight()], [400, 400]);
+    f.send("pointerdown", 2, 20, 20);
+    f.send("pointerup", 2, 20, 20);
+    assert.equal(f.renderer.getSelectionBounds(), null, "cancelled resize blocked the next touch gesture");
+});

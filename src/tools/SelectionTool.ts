@@ -365,9 +365,9 @@ export class SelectionTool extends Tool {
             if (this.activePointerType === "touch") {
                 this.smoothX += TOUCH_SMOOTHING_FACTOR * (worldMoveX - this.smoothX);
                 this.smoothY += TOUCH_SMOOTHING_FACTOR * (worldMoveY - this.smoothY);
-                this.applyResize(this.smoothX, this.smoothY);
+                this.resizeFromPointer(this.smoothX, this.smoothY);
             } else {
-                this.applyResize(worldMoveX, worldMoveY);
+                this.resizeFromPointer(worldMoveX, worldMoveY);
             }
 
             return;
@@ -463,6 +463,8 @@ export class SelectionTool extends Tool {
         this.activePointerType = null;
 
         if (this.isResizing) {
+            // Hareket yumuşatılsa da son boyut, parmağın bırakıldığı konuma ulaşmalı.
+            this.resizeFromPointer(this.worldX(event), this.worldY(event));
             this.isResizing = false;
             this.activeHandle = null;
             this.resizeBounds = null;
@@ -613,6 +615,21 @@ export class SelectionTool extends Tool {
                 scale: text.getScale()
             }))
         };
+
+    }
+
+    private resizeFromPointer(pointerX: number, pointerY: number): void {
+
+        if (this.activeHandle === null || this.resizeBounds === null) {
+            return;
+        }
+
+        // Tutma alanının kenarına dokunmak, nesneyi tutamacın merkezine sıçratmamalı.
+        const handlePosition = getResizeHandlePosition(this.activeHandle, this.resizeBounds);
+        this.applyResize(
+            handlePosition.x + pointerX - this.startX,
+            handlePosition.y + pointerY - this.startY
+        );
 
     }
 
@@ -1248,12 +1265,12 @@ export class SelectionTool extends Tool {
 
     private removeDeleteButton(): void {
 
-        if (this.deleteButton !== null) {
-            this.deleteButton.remove();
-            this.deleteButton = null;
-            this.prevPhotoButton = null;
-            this.nextPhotoButton = null;
-        }
+        this.deleteButton?.remove();
+        this.prevPhotoButton?.remove();
+        this.nextPhotoButton?.remove();
+        this.deleteButton = null;
+        this.prevPhotoButton = null;
+        this.nextPhotoButton = null;
 
     }
 
