@@ -125,14 +125,15 @@ export function registerPhotoFolderHandlers(ipc: IpcMain = ipcMain): void {
     ipc.handle("photo:list", async (_event, folderPath: unknown) => {
         try {
             if (typeof folderPath !== "string" || folderPath === "") {
-                return [];
+                return null;
             }
 
             return await listPhotoFiles(folderPath);
         } catch (error) {
             console.error("[PhotoFolder] Klasör listelenemedi:", error);
 
-            return [];
+            // Boş liste, klasörün başarıyla okunup fotoğraf bulunamadığını belirtir.
+            return null;
         }
     });
 
@@ -182,7 +183,7 @@ export function registerPhotoFolderHandlers(ipc: IpcMain = ipcMain): void {
             const resizedSize = resized.getSize();
 
             return {
-                dataUrl: resized.toJPEG(85),
+                dataUrl: `data:image/jpeg;base64,${resized.toJPEG(85).toString("base64")}`,
                 width: resizedSize.width,
                 height: resizedSize.height
             };

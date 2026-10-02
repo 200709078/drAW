@@ -48,7 +48,8 @@ export type LinkedPhotoData = {
 
 export type ElectronPhotoFolder = {
     selectPhoto: (defaultPath?: string) => Promise<LinkedPhotoSelection | null>;
-    listPhotos: (folderPath: string) => Promise<string[]>;
+    // null: klasör okunamadı; []: klasör okundu ancak fotoğraf yok.
+    listPhotos: (folderPath: string) => Promise<string[] | null>;
     readPhoto: (folderPath: string, fileName: string) => Promise<LinkedPhotoData | null>;
 };
 

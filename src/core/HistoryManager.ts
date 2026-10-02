@@ -6,6 +6,8 @@ type HistoryEntry = {
     after: DocumentSnapshot;
 };
 
+export type HistoryChange = "commit" | "reset" | "undo" | "redo";
+
 export class HistoryManager {
 
     private static readonly MAX_ENTRIES = 100;
@@ -14,7 +16,7 @@ export class HistoryManager {
     private readonly undoStack: HistoryEntry[];
     private readonly redoStack: HistoryEntry[];
     private pendingSnapshot: DocumentSnapshot | null;
-    private readonly listeners: Set<() => void>;
+    private readonly listeners: Set<(change: HistoryChange) => void>;
 
     constructor(drawingDocument: Document) {
 
@@ -55,7 +57,7 @@ export class HistoryManager {
         }
 
         this.redoStack.length = 0;
-        this.notify();
+        this.notify("commit");
 
     }
 
@@ -70,7 +72,7 @@ export class HistoryManager {
         this.pendingSnapshot = null;
         this.undoStack.length = 0;
         this.redoStack.length = 0;
-        this.notify();
+        this.notify("reset");
 
     }
 
@@ -85,7 +87,7 @@ export class HistoryManager {
 
         this.drawingDocument.restoreSnapshot(entry.before);
         this.redoStack.push(entry);
-        this.notify();
+        this.notify("undo");
 
         return true;
 
@@ -102,7 +104,7 @@ export class HistoryManager {
 
         this.drawingDocument.restoreSnapshot(entry.after);
         this.undoStack.push(entry);
-        this.notify();
+        this.notify("redo");
 
         return true;
 
@@ -120,16 +122,16 @@ export class HistoryManager {
 
     }
 
-    public addChangeListener(listener: () => void): void {
+    public addChangeListener(listener: (change: HistoryChange) => void): void {
 
         this.listeners.add(listener);
 
     }
 
-    private notify(): void {
+    private notify(change: HistoryChange): void {
 
         for (const listener of this.listeners) {
-            listener();
+            listener(change);
         }
 
     }

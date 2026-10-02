@@ -115,10 +115,16 @@ try {
         return photoCanvas.toDataURL();
     });
     let photoGate = null;
+    let photoFailure = null;
     window.drAWDesktop.photoFolder = {
         async selectPhoto() { return { folderPath: "/photos", fileName: "1.png" }; },
-        async listPhotos() { return ["1.png", "2.png", "3.png"]; },
+        async listPhotos() {
+            if (photoFailure === "list") return null;
+            if (photoFailure === "ipc") throw new Error("Photo IPC unavailable");
+            return ["1.png", "2.png", "3.png"];
+        },
         async readPhoto(_folder, name) {
+            if (photoFailure === "read") return null;
             if (photoGate !== null) {
                 waitingAtGate = true;
                 await photoGate;
@@ -134,9 +140,45 @@ try {
     const photoId = auto.getActiveDocument().getId();
     assert(records.get(photoId).canvasState.data.images[0].dataUrl === photoData[0], "photo-only drawing was not saved");
 
-    photos.requestStepPhoto(1);
+    draw(30);
+    const undoButton = document.querySelector('button[aria-label="Çizimi Geri Al"]');
+    const redoButton = document.querySelector('button[aria-label="Çizimi Yinele"]');
+    undoButton.click();
+    assert(photos.isLinked(), "undoing a stroke disconnected the folder");
+    assert(drawing.getCurrentPage().getStrokes().length === 0, "undo did not remove the stroke");
+    assert(photos.isLinkedHolder(drawing.getCurrentPage().getImages()[0]), "restored photo was not recognized as linked");
+    redoButton.click();
+    assert(photos.isLinked(), "redoing a stroke disconnected the folder");
+    assert(drawing.getCurrentPage().getStrokes().length === 1, "redo did not restore the stroke");
+    for (const failure of ["list", "ipc", "read"]) {
+        photoFailure = failure;
+        newButton.click();
+        await dismissError();
+        photoFailure = null;
+        assert(!newButton.disabled, `${failure}: new drawing stayed disabled after photo access failed`);
+        assert(photos.isLinked(), `${failure}: photo access failure disconnected the folder`);
+        assert(JSON.parse(localStorage.getItem("draw:photo-link")).fileName === "1.png", `${failure}: current photo changed`);
+        assert(drawing.getCurrentPage().getImages()[0]?.getDataUrl() === photoData[0], `${failure}: original photo was lost`);
+        assert(drawing.getCurrentPage().getStrokes()[0]?.getPoints()[0].getX() === 30, `${failure}: drawing was lost`);
+        assert(auto.getActiveDocument().getId() === photoId, `${failure}: active drawing changed`);
+        assert(history.canUndo(), `${failure}: undo history was lost`);
+        assert(auto.isDirty(), `${failure}: unsaved drawing was marked clean`);
+    }
+
+    managers.getSelectionTool().selectImage(drawing.getCurrentPage().getImages()[0]);
+    const nextPhotoButton = document.querySelector('button[aria-label="Sonraki Fotoğraf"]');
+    assert(nextPhotoButton && !nextPhotoButton.hidden && !nextPhotoButton.disabled, "photo navigation unavailable after undo/redo");
+    nextPhotoButton.click();
     await until(() => drawing.getCurrentPage().getImages()[0].getDataUrl() === photoData[1]);
     assert(auto.isDirty(), "photo change was not marked dirty");
+    undoButton.click();
+    assert(photos.isLinked(), "undo after photo navigation disconnected the folder");
+    assert(drawing.getCurrentPage().getImages().length === 1, "undo duplicated the linked photo");
+    assert(drawing.getCurrentPage().getImages()[0].getDataUrl() === photoData[1], "undo restored an outdated photo");
+    assert(JSON.parse(localStorage.getItem("draw:photo-link")).fileName === "2.png", "undo changed the linked file name");
+    redoButton.click();
+    assert(photos.isLinked(), "redo after photo navigation disconnected the folder");
+    assert(drawing.getCurrentPage().getImages()[0].getDataUrl() === photoData[1], "redo restored an outdated photo");
     failSave = true;
     newButton.click();
     await dismissError();
@@ -197,9 +239,76 @@ try {
         assert(drawing.getCurrentPage().getImages()[0].getDataUrl() === photoData[2], `${blockedPhase}: next separate click did not advance`);
     }
 
+    // Erasing beside the photo must preserve its link, including after undo/redo and save.
+    const viewport = managers.getDrawingContext().getViewport();
+    const canvas = managers.getCanvasManager().getCanvas();
+    for (const eraser of [managers.getEraserTool(), managers.getPartialEraserTool()]) {
+        const photo = drawing.getCurrentPage().getImages()[0];
+        const outsideX = photo.getX() + photo.getWidth() + 1;
+        draw(outsideX);
+        managers.getToolManager().setTool(eraser);
+        const offsetX = viewport.worldToScreenX(outsideX);
+        const offsetY = viewport.worldToScreenY(100);
+        const bounds = canvas.getBoundingClientRect();
+        const touch = {
+            pointerId: 1, pointerType: "touch", offsetX, offsetY,
+            clientX: bounds.left + offsetX, clientY: bounds.top + offsetY
+        };
+        eraser.onPointerDown(touch);
+        eraser.onPointerUp(touch);
+        assert(drawing.getCurrentPage().getStrokes().length === 0, "eraser did not remove the nearby stroke");
+        assert(drawing.getCurrentPage().getImages()[0] === photo, "eraser removed a photo from outside its bounds");
+        assert(photos.isLinked(), "erasing beside the photo disconnected the folder");
+        undoButton.click();
+        assert(drawing.getCurrentPage().getStrokes().length === 1, "undo did not restore the erased stroke");
+        redoButton.click();
+        assert(drawing.getCurrentPage().getStrokes().length === 0, "redo did not erase the stroke again");
+        assert(photos.isLinked(), "undo/redo after erasing disconnected the folder");
+        assert(photos.isLinkedHolder(drawing.getCurrentPage().getImages()[0]), "erasing history lost the linked photo identity");
+        await auto.saveIfNeeded();
+        const saved = records.get(auto.getActiveDocument().getId()).canvasState.data;
+        assert(saved.images.length === 1 && saved.images[0].dataUrl === photoData[2], "erasing did not preserve the saved photo");
+        assert(saved.strokes.length === 0, "erased stroke remained in the saved drawing");
+    }
+    managers.getToolManager().setTool(managers.getPenTool());
+
+    // Opening a saved drawing must clear the previous photo's link before another edit.
+    const linkButton = document.querySelector('button[aria-label="Klasör bağını kopar"]');
+    const linkedId = auto.getActiveDocument().getId();
+    draw(75);
+    await until(() => document.querySelector(`[data-id="${otherId}"] .drawings-card__open`));
+    const openOtherButton = document.querySelector(`[data-id="${otherId}"] .drawings-card__open`);
+    failSave = true;
+    openOtherButton.click();
+    await dismissError();
+    assert(auto.getActiveDocument().getId() === linkedId && photos.isLinked(), "failed open lost the active drawing or photo link");
+    assert(drawing.getCurrentPage().getImages()[0]?.getDataUrl() === photoData[2], "failed open lost the linked photo");
+    failSave = false;
+    openOtherButton.click();
+    await until(() => auto.getActiveDocument().getId() === otherId);
+    assert(drawing.getCurrentPage().getImages().length === 0, "opened drawing retained the previous photo");
+    assert(drawing.getCurrentPage().getStrokes()[0]?.getPoints()[0].getX() === 10, "wrong drawing was opened");
+    assert(!photos.isLinked(), "opened drawing retained the previous folder link");
+    assert(localStorage.getItem("draw:photo-link") === null, "old photo link remained stored after opening a drawing");
+    assert(localStorage.getItem("draw:photo-last-folder") === "/photos", "opening a drawing forgot the last folder");
+    assert(document.querySelector(".link-status").hidden, "old photo path remained visible");
+    assert(linkButton.getAttribute("aria-label") === "Klasör bağla", "link button still offered to disconnect the old photo");
+    assert(!history.canUndo() && !auto.isDirty(), "opened drawing retained undo history or was marked unsaved");
+    assert(records.get(linkedId).canvasState.data.strokes[0].points[0][0] === 75, "opening a drawing lost the previous edits");
+
+    const pickerPaths = [];
+    window.drAWDesktop.photoFolder.selectPhoto = async (defaultPath) => {
+        pickerPaths.push(defaultPath);
+        return { folderPath: "/photos", fileName: "1.png" };
+    };
+    linkButton.click();
+    await until(() => photos.isLinked());
+    assert(pickerPaths.length === 1 && pickerPaths[0] === "/photos", "reconnecting needed a second click or forgot the folder");
+    assert(drawing.getCurrentPage().getImages()[0]?.getDataUrl() === photoData[0], "reconnecting did not add the selected photo");
+
     assert(errors.length === 0, `unhandled rejection: ${errors.join(", ")}`);
     await auto.shutdown();
-    result.textContent = "PASS: failed new/open/close preserve drawing and undo; error dialog, retry, photo-only saves, photo changes and new-drawing photo transitions work; repeated new-drawing clicks preserve the folder link during photo loading and saving";
+    result.textContent = "PASS: storage failures, photo history, erasing and new-drawing transitions work; opening a saved drawing clears the old link and reconnects with the remembered folder";
 } catch (error) {
     result.textContent = `FAIL: ${error.stack ?? error}`;
 }

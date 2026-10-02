@@ -1,18 +1,34 @@
 export class DocumentImage {
 
+    // Oturum içi kimlik, geçmiş kopyalarında korunur; çizim dosyasına yazılmaz.
+    private readonly id: symbol;
     private readonly dataUrl: string;
     private x: number;
     private y: number;
     private width: number;
     private height: number;
 
-    constructor(dataUrl: string, x: number, y: number, width: number, height: number) {
+    constructor(
+        dataUrl: string,
+        x: number,
+        y: number,
+        width: number,
+        height: number,
+        id: symbol = Symbol("image")
+    ) {
 
+        this.id = id;
         this.dataUrl = dataUrl;
         this.x = x;
         this.y = y;
         this.width = width;
         this.height = height;
+
+    }
+
+    public getId(): symbol {
+
+        return this.id;
 
     }
 
