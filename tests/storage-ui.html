@@ -8,6 +8,7 @@ import { Application } from "/src/core/Application.ts";
 import { Point } from "/src/document/Point.ts";
 import { Stroke } from "/src/document/Stroke.ts";
 import { DocumentStateSerializer } from "/src/autosave/DocumentStateSerializer.ts";
+import { getLineProfile } from "/src/platform/DeviceProfile.ts";
 
 const result = document.getElementById("result");
 const records = new Map();
@@ -579,9 +580,55 @@ try {
     const strokeSaved = records.get(auto.getActiveDocument().getId()).canvasState.data;
     assert(strokeSaved.images.length === 0 && strokeSaved.strokes.length === 0, "stroke erasing did not save the cleared drawing");
 
+    // Palette labels stay unchanged while board shapes and both erasers use calibrated sizes.
+    const board = getLineProfile() === "smartboard";
+    const expectedWidths = board ? [24, 30, 36, 42, 50, 56, 70, 90] : [1, 2, 4, 6, 10, 16, 24, 32];
+    const widthButtons = [...document.querySelectorAll(".sidebar__width-palette button[data-width]")];
+    assert(JSON.stringify(widthButtons.map((button) => Number(button.dataset.width))) === JSON.stringify(expectedWidths),
+        "thickness palette values changed");
+    const pen = managers.getPenTool();
+    const shapes = managers.getShapesTool();
+    for (const button of widthButtons) {
+        button.click();
+        const width = Number(button.dataset.width);
+        assert(pen.getLineWidth() === width && document.querySelector(".sidebar__width-trigger").title === String(width),
+            "selected palette value or pen thickness changed");
+        viewport.reset();
+        for (const shapeType of ["rectangle", "ellipse", "triangle", "line"]) {
+            drawing.getCurrentPage().clearStrokes();
+            history.reset();
+            shapes.setShapeType(shapeType);
+            managers.getToolManager().setTool(shapes);
+            const start = { pointerId: 1, pointerType: "touch", offsetX: 100, offsetY: 100 };
+            const end = { ...start, offsetX: 300, offsetY: 250 };
+            shapes.onPointerDown(start);
+            shapes.onPointerMove(end);
+            shapes.onPointerUp(end);
+            const shape = drawing.getCurrentPage().getStrokes()[0];
+            const expectedWidth = board ? width / 2 : width;
+            assert(shape?.isShape() && shape.getLineWidth() === expectedWidth, `${shapeType}: incorrect shape width`);
+            assert(history.undo() && history.redo(), "shape thickness change broke undo/redo");
+            const serializer = new DocumentStateSerializer();
+            const restored = serializer.deserialize(serializer.serialize(drawing.createSnapshot()));
+            assert(restored.strokes[0].getLineWidth() === expectedWidth, "saved shape thickness changed on reload");
+        }
+        for (const eraser of [managers.getEraserTool(), managers.getPartialEraserTool()]) {
+            managers.getToolManager().setTool(eraser);
+            for (const scale of [0.25, 1, 4]) {
+                viewport.reset();
+                viewport.zoomAt(0, 0, scale);
+                canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 100, clientY: 100 }));
+                const diameter = board ? width : Math.max(8, width * 4);
+                assert(document.querySelector(".eraser-indicator").style.width === `${Math.max(4, diameter * scale)}px`,
+                    `eraser indicator has incorrect diameter at width=${width}, zoom=${scale}`);
+            }
+        }
+    }
+    viewport.reset();
+
     assert(errors.length === 0, `unhandled rejection: ${errors.join(", ")}`);
     await auto.shutdown();
-    result.textContent = "PASS: storage failures, photo history, erasing and new-drawing transitions work; delayed photo navigation, folder linking and New Drawing cannot change another opened record; reconnect still remembers the folder";
+    result.textContent = "PASS: storage, photo history, erasing and new-drawing transitions; unchanged thickness palette, calibrated shapes and eraser indicators at all zoom levels";
 } catch (error) {
     result.textContent = `FAIL: ${error.stack ?? error}`;
 }

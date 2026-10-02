@@ -8,6 +8,7 @@ import { ToolManager } from "../core/ToolManager";
 import { PenTool } from "./PenTool";
 import { SelectionTool } from "./SelectionTool";
 import { getShapePointFactory, type ShapeType } from "../shapes/ShapeFactory";
+import { shapeLineWidthForProfile, type LineProfile } from "../platform/DeviceProfile";
 
 const MIN_SHAPE_SIZE = 2;
 
@@ -19,6 +20,7 @@ export class ShapesTool extends Tool {
     private readonly toolManager: ToolManager;
     private readonly penTool: PenTool;
     private readonly selectionTool: SelectionTool;
+    private readonly lineProfile: LineProfile;
     private shapeType: ShapeType;
     private startX: number;
     private startY: number;
@@ -33,7 +35,8 @@ export class ShapesTool extends Tool {
         toolManager: ToolManager,
         penTool: PenTool,
         selectionTool: SelectionTool,
-        shapeType: ShapeType = "rectangle"
+        shapeType: ShapeType = "rectangle",
+        lineProfile: LineProfile = "standard"
     ) {
 
         super(drawingContext);
@@ -44,6 +47,7 @@ export class ShapesTool extends Tool {
         this.toolManager = toolManager;
         this.penTool = penTool;
         this.selectionTool = selectionTool;
+        this.lineProfile = lineProfile;
         this.shapeType = shapeType;
         this.startX = 0;
         this.startY = 0;
@@ -153,7 +157,7 @@ export class ShapesTool extends Tool {
 
         const stroke = new Stroke(
             this.penTool.getColor(),
-            this.penTool.getLineWidth(),
+            shapeLineWidthForProfile(this.penTool.getLineWidth(), this.lineProfile),
             1,
             true
         );

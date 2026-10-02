@@ -45,12 +45,12 @@ function pointerEvent(type, id, x, y, pointerType = "touch") {
     });
 }
 
-function createFixture(ToolClass) {
+function createFixture(ToolClass, profile = "standard") {
     const canvas = new CanvasStub();
     const context = new DrawingContext(canvas, {});
     const document = new Document();
     const history = new HistoryManager(document);
-    const tool = new ToolClass(context, document, { render() {} }, history);
+    const tool = new ToolClass(context, document, { render() {} }, history, profile);
     new PointerManager(canvas, { getActiveTool: () => tool }, context.getViewport());
 
     return {
@@ -68,6 +68,37 @@ function addStroke(document, x, y) {
 }
 
 for (const ToolClass of [EraserTool, PartialEraserTool]) {
+    test(`${ToolClass.name}: calibrated board footprint erases only nearby writing at every zoom`, () => {
+        for (const profile of ["standard", "smartboard"]) {
+            for (const lineWidth of [12, 24, 42, 90]) {
+                for (const scale of [0.25, 1, 4]) {
+                    const { document, history, tool, viewport, send } = createFixture(ToolClass, profile);
+                    const radius = profile === "smartboard" ? lineWidth / 2 : lineWidth * 2;
+                    const strokes = [radius + 2, radius + 4].map((distance) => {
+                        const stroke = new Stroke("#ff0000", 6);
+                        stroke.addPoint(new Point(100 + distance, 90));
+                        stroke.addPoint(new Point(100 + distance, 110));
+                        document.getCurrentPage().addStroke(stroke);
+                        return stroke;
+                    });
+                    tool.setLineWidth(lineWidth);
+                    viewport.zoomAt(0, 0, scale);
+                    viewport.panBy(35, 60);
+                    const x = viewport.worldToScreenX(100);
+                    const y = viewport.worldToScreenY(100);
+                    send("pointerdown", 1, x, y);
+                    send("pointerup", 1, x, y);
+                    assert.deepEqual(document.getCurrentPage().getStrokes(), [strokes[1]],
+                        `${profile}: incorrect eraser footprint at width=${lineWidth}, zoom=${scale}`);
+                    assert.equal(history.undo(), true);
+                    assert.equal(document.getCurrentPage().getStrokes().length, 2);
+                    assert.equal(history.redo(), true);
+                    assert.equal(document.getCurrentPage().getStrokes().length, 1);
+                }
+            }
+        }
+    });
+
     test(`${ToolClass.name}: touching outside a photo preserves it at PC and board widths and zoom levels`, () => {
         for (const lineWidth of [STANDARD_DEFAULT_LINE_WIDTH, SMARTBOARD_DEFAULT_LINE_WIDTH, 90]) {
             for (const scale of [0.25, 1, 4]) {

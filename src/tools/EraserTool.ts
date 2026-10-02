@@ -6,6 +6,7 @@ import { DocumentRenderer } from "../renderers/DocumentRenderer";
 import { Tool } from "./Tool";
 import { HistoryManager } from "../core/HistoryManager";
 import { EraserIndicator } from "../ui/EraserIndicator";
+import { defaultWidthForDeviceProfile, eraserRadiusForProfile, type LineProfile } from "../platform/DeviceProfile";
 
 export const ERASER_CURSOR = "url(\"data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='32' height='32' viewBox='0 0 32 32'%3E%3Cpath fill='%23fda4af' stroke='%239e2940' stroke-width='1.5' stroke-linejoin='round' d='m5 27 4-12L20 4l8 8-11 11z'/%3E%3Cpath fill='%23f8fafc' stroke='%2394a3b8' stroke-width='1.5' stroke-linejoin='round' d='m5 27 4-12 8 8z'/%3E%3Cpath fill='%23fecdd3' d='m20 4 8 8-2.5 2.5-8-8z'/%3E%3C/svg%3E\") 5 27, cell";
 
@@ -18,12 +19,14 @@ export class EraserTool extends Tool {
     private activePointerId: number | null;
     private indicator: EraserIndicator | null;
     private radius: number;
+    private readonly lineProfile: LineProfile;
 
     constructor(
         drawingContext: DrawingContext,
         document: Document,
         renderer: DocumentRenderer,
-        history: HistoryManager
+        history: HistoryManager,
+        lineProfile: LineProfile = "standard"
     ) {
 
         super(drawingContext);
@@ -34,7 +37,8 @@ export class EraserTool extends Tool {
         this.isErasing = false;
         this.activePointerId = null;
         this.indicator = null;
-        this.radius = 12;
+        this.lineProfile = lineProfile;
+        this.radius = eraserRadiusForProfile(defaultWidthForDeviceProfile(lineProfile), lineProfile);
 
     }
 
@@ -138,7 +142,7 @@ export class EraserTool extends Tool {
     public setLineWidth(lineWidth: number): void {
 
         if (Number.isFinite(lineWidth) && lineWidth > 0) {
-            this.radius = Math.max(4, lineWidth * 2);
+            this.radius = eraserRadiusForProfile(lineWidth, this.lineProfile);
         }
 
     }

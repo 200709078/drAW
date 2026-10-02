@@ -81,6 +81,8 @@ export class SelectionTool extends Tool {
     private photoNavigator: PhotoNavigator | null;
     private lastTextClick: TextObject | null;
     private lastTextClickTime: number;
+    private lastTextClickX: number = 0;
+    private lastTextClickY: number = 0;
     private activePointerId: number | null;
     private activePointerType: string | null;
     private dragThresholdPassed: boolean;
@@ -286,7 +288,7 @@ export class SelectionTool extends Tool {
 
         const selectedObject = this.findObjectAt(worldStartX, worldStartY, unit);
 
-        if (this.isDoubleClickOnText(selectedObject)) {
+        if (this.isDoubleClickOnText(selectedObject, event)) {
             this.clearSelectedObjects();
             this.addObject(selectedObject);
             this.updateRendererSelection();
@@ -462,6 +464,10 @@ export class SelectionTool extends Tool {
         this.activePointerId = null;
         this.activePointerType = null;
 
+        if (this.isDragging || this.isResizing) {
+            this.lastTextClick = null;
+        }
+
         if (this.isResizing) {
             // Hareket yumuşatılsa da son boyut, parmağın bırakıldığı konuma ulaşmalı.
             this.resizeFromPointer(this.worldX(event), this.worldY(event));
@@ -491,6 +497,7 @@ export class SelectionTool extends Tool {
 
     public override cancel(): void {
 
+        this.lastTextClick = null;
         this.activePointerId = null;
         this.activePointerType = null;
         this.isDragging = false;
@@ -1064,15 +1071,22 @@ export class SelectionTool extends Tool {
 
     }
 
-    private isDoubleClickOnText(selectedObject: SelectableObject | null): selectedObject is TextObject {
+    private isDoubleClickOnText(
+        selectedObject: SelectableObject | null,
+        event: PointerEvent
+    ): selectedObject is TextObject {
 
         const now = performance.now();
+        const tolerance = event.pointerType === "touch" ? 16 : 6;
         const isDoubleClick = selectedObject instanceof TextObject &&
             selectedObject === this.lastTextClick &&
-            now - this.lastTextClickTime < 350;
+            now - this.lastTextClickTime < 350 &&
+            Math.hypot(event.offsetX - this.lastTextClickX, event.offsetY - this.lastTextClickY) <= tolerance;
 
         this.lastTextClick = selectedObject instanceof TextObject ? selectedObject : null;
         this.lastTextClickTime = now;
+        this.lastTextClickX = event.offsetX;
+        this.lastTextClickY = event.offsetY;
 
         return isDoubleClick;
 
@@ -1125,6 +1139,7 @@ export class SelectionTool extends Tool {
         this.removeDeleteButton();
 
         openTextEditor(textObject, (value) => {
+            this.lastTextClick = null;
             const page = this.document.getCurrentPage();
 
             this.history.begin();

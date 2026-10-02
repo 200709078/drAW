@@ -24,6 +24,7 @@ import { DrawingRepository } from "../storage/DrawingRepository";
 import { createStorageProvider } from "../storage/createStorageProvider";
 import { ThumbnailStorageDecorator } from "../storage/ThumbnailStorageDecorator";
 import { LinkedPhotoManager } from "../photos/LinkedPhotoManager";
+import { getLineProfile } from "../platform/DeviceProfile";
 
 export class ManagerContainer {
 
@@ -102,6 +103,7 @@ export class ManagerContainer {
         });
 
         // Varsayılan araç
+        const lineProfile = getLineProfile();
         this.penTool = new PenTool(
             this.drawingContext,
             this.document,
@@ -112,7 +114,8 @@ export class ManagerContainer {
             this.drawingContext,
             this.document,
             this.documentRenderer,
-            this.historyManager
+            this.historyManager,
+            lineProfile
         );
         this.highlighterTool = new HighlighterTool(
             this.drawingContext,
@@ -130,7 +133,8 @@ export class ManagerContainer {
             this.drawingContext,
             this.document,
             this.documentRenderer,
-            this.historyManager
+            this.historyManager,
+            lineProfile
         );
         this.textTool = new TextTool(
             this.drawingContext,
@@ -159,7 +163,9 @@ export class ManagerContainer {
             this.historyManager,
             this.toolManager,
             this.penTool,
-            this.selectionTool
+            this.selectionTool,
+            "rectangle",
+            lineProfile
         );
         this.linkedPhotoManager = new LinkedPhotoManager(
             this.document,

@@ -4,6 +4,7 @@ import { TitleBar } from "../ui/TitleBar";
 import { ZoomControls } from "../ui/ZoomControls";
 import { isSmartBoard } from "../platform/DeviceProfile";
 import { registerShutdownHandlers } from "./ShutdownHandlers";
+import { closeTextEditor } from "../ui/TextEditor";
 
 export class Application {
 
@@ -45,7 +46,7 @@ export class Application {
 
         new ZoomControls(this.managers.getDrawingContext().getViewport());
 
-        registerShutdownHandlers(this.managers.getAutoSaveManager());
+        registerShutdownHandlers(this.managers.getAutoSaveManager(), closeTextEditor);
 
     }
 

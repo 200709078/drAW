@@ -14,6 +14,7 @@ import { AutoSaveManager } from "../autosave/AutoSaveManager";
 import type { DrawingRepository } from "../storage/DrawingRepository";
 import { DrawingsPanel } from "./DrawingsPanel";
 import { showStorageError } from "./StorageErrorDialog";
+import { closeTextEditor } from "./TextEditor";
 import type { ShapeType } from "../shapes/ShapeFactory";
 import {
     defaultWidthForDeviceProfile,
@@ -165,28 +166,6 @@ export class ToolbarPanel {
             })
             : null;
 
-        const leftToolButtons: HTMLButtonElement[] = [textButton];
-
-        if (screenCaptureButton !== null) {
-            leftToolButtons.push(screenCaptureButton);
-        }
-
-        const selectLeftTool = (selectedButton: HTMLButtonElement): void => {
-            for (const button of leftToolButtons) {
-                const isSelected = button === selectedButton;
-
-                button.classList.toggle("sidebar__tool--selected", isSelected);
-                button.setAttribute("aria-pressed", String(isSelected));
-            }
-        };
-
-        textButton.addEventListener("click", () => selectLeftTool(textButton));
-
-        if (screenCaptureButton !== null) {
-            const captureButton = screenCaptureButton;
-            captureButton.addEventListener("click", () => selectLeftTool(captureButton));
-        }
-
         const guideControl = document.createElement("div");
         guideControl.className = "sidebar__control";
 
@@ -313,6 +292,14 @@ export class ToolbarPanel {
         refreshHistoryButtons();
 
         document.addEventListener("keydown", (event) => {
+            const target = event.target;
+
+            // Yazarken geri alma/yineleme metin alanının kendi geçmişini kullanır.
+            if (target instanceof HTMLElement &&
+                (target.isContentEditable || target.closest("input, textarea, select") !== null)) {
+                return;
+            }
+
             if (!event.ctrlKey && !event.metaKey) {
                 return;
             }
@@ -367,10 +354,12 @@ export class ToolbarPanel {
             penButton,
             eraserButton,
             shapesButton,
-            selectionButton
+            selectionButton,
+            textButton,
+            ...(screenCaptureButton !== null ? [screenCaptureButton] : [])
         ];
 
-        const selectTool = (selectedButton: HTMLButtonElement): void => {
+        const selectTool = (selectedButton: HTMLButtonElement | null): void => {
             for (const button of toolButtons) {
                 const isSelected = button === selectedButton;
 
@@ -378,8 +367,6 @@ export class ToolbarPanel {
                 button.setAttribute("aria-pressed", String(isSelected));
             }
         };
-
-        selectionButton.addEventListener("click", () => selectTool(selectionButton));
 
         const penControl = document.createElement("div");
         penControl.className = "sidebar__control";
@@ -550,6 +537,8 @@ export class ToolbarPanel {
             }
 
             try {
+                // Dokunmada/fokus değişmeden tetiklenen geçişte de son metni önce kaydet.
+                closeTextEditor();
                 await autoSaveManager.newDrawing();
             } catch (error) {
                 photoLinkManager?.cancelPreparedNewDrawing();
@@ -882,6 +871,7 @@ export class ToolbarPanel {
 
         toolManager.addChangeListener(() => {
             const activeTool = toolManager.getActiveTool();
+            selectTool(null);
 
             if (activeTool === penTool) {
                 highlightPen(normalPenButton);
@@ -891,10 +881,12 @@ export class ToolbarPanel {
                 selectTool(selectionButton);
             } else if (activeTool === shapesTool) {
                 selectTool(shapesButton);
+            } else if (activeTool === eraserTool || activeTool === partialEraserTool) {
+                selectTool(eraserButton);
             } else if (activeTool === textTool) {
-                selectLeftTool(textButton);
+                selectTool(textButton);
             } else if (screenCaptureButton !== null && activeTool === screenCaptureTool) {
-                selectLeftTool(screenCaptureButton);
+                selectTool(screenCaptureButton);
             }
         });
 
