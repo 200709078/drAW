@@ -119,10 +119,11 @@ export class AutoSaveManager {
 
         const snapshot = this.serializer.deserialize(stored.getCanvasState().getData());
 
-        this.history.reset();
         this.document.restoreSnapshot(snapshot);
         this.activeDocument = stored;
         this.persisted = true;
+        // Dinleyiciler açılan çizimi görmeli; önceki fotoğrafın bağı bu sırada doğrulanır.
+        this.history.reset();
         this.repository.getDirtyFlag().markClean();
 
     }

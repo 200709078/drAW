@@ -105,15 +105,16 @@ export class LinkedPhotoManager {
 
         // Tutucu silinince bağı sessizce kopar (buton eski haline döner).
         // Geri yüklenmiş ama bu oturumda hiç tutucu eklenmemiş bağa dokunulmaz.
-        historyManager.addChangeListener(() => {
-            if (this.suppressValidation ||
-                !this.isLinked() ||
-                !this.holderEverAdded ||
-                this.holderOnPage()) {
+        historyManager.addChangeListener((change) => {
+            if (!this.isLinked() || !this.holderEverAdded) {
                 return;
             }
 
-            this.unlink();
+            if (change === "undo" || change === "redo") {
+                this.restoreHolderAfterHistory();
+            } else if (!this.suppressValidation && !this.holderOnPage()) {
+                this.unlink();
+            }
         });
 
     }
@@ -172,6 +173,11 @@ export class LinkedPhotoManager {
         }
 
         const files = await this.listPhotos(stored.folderPath);
+
+        if (files === null) {
+            return;
+        }
+
         const index = files.indexOf(stored.fileName);
 
         // Son fotoğraftaysak veya dosya yoksa sessizce normal açılış.
@@ -186,8 +192,6 @@ export class LinkedPhotoManager {
         const photo = await this.readPhoto(stored.folderPath, nextName);
 
         if (photo === null) {
-            this.clearStoredLink();
-
             return;
         }
 
@@ -222,8 +226,8 @@ export class LinkedPhotoManager {
     }
 
     // Yeni çizim öncesi çağrılır: bağı doğrular, sıradaki fotoğrafı
-    // yükleyip döndürür. Bağ koptuysa null döner.
-    public async prepareNewDrawing(): Promise<PreparedLinkedPhoto | null> {
+    // yükleyip döndürür. null: fotoğrafsız devam et; undefined: erişim hatası nedeniyle iptal.
+    public async prepareNewDrawing(): Promise<PreparedLinkedPhoto | null | undefined> {
 
         if (!this.isLinked() || this.folderPath === null || this.fileName === null) {
             return null;
@@ -240,6 +244,14 @@ export class LinkedPhotoManager {
         this.suppressValidation = true;
 
         const files = await this.listPhotos(this.folderPath);
+
+        if (files === null) {
+            this.cancelPreparedNewDrawing();
+            await this.showFolderAccessError();
+
+            return undefined;
+        }
+
         const currentIndex = files.indexOf(this.fileName);
 
         if (currentIndex === -1) {
@@ -262,13 +274,13 @@ export class LinkedPhotoManager {
         const photo = await this.readPhoto(this.folderPath, nextName);
 
         if (photo === null) {
-            this.unlink();
+            this.cancelPreparedNewDrawing();
             await this.showInfo(
                 "Fotoğraf Okunamadı",
-                `"${nextName}" açılamadığı için klasör bağı koparıldı.`
+                `"${nextName}" açılamadı. Klasör bağlantısı ve mevcut çizim korundu. Yeniden deneyin.`
             );
 
-            return null;
+            return undefined;
         }
 
         // Bağı ancak mevcut çizim başarıyla kaydedilip yeni çizime geçilince ilerlet.
@@ -375,6 +387,13 @@ export class LinkedPhotoManager {
 
         try {
             const files = await this.listPhotos(this.folderPath);
+
+            if (files === null) {
+                await this.showFolderAccessError();
+
+                return;
+            }
+
             const currentIndex = files.indexOf(this.fileName);
 
             if (currentIndex === -1) {
@@ -463,7 +482,8 @@ export class LinkedPhotoManager {
             previous.getX(),
             previous.getY(),
             height * aspect,
-            height
+            height,
+            previous.getId()
         );
 
         const page = this.drawingDocument.getCurrentPage();
@@ -477,6 +497,43 @@ export class LinkedPhotoManager {
         if (this.selectionTool !== null) {
             this.selectionTool.selectImage(image);
         }
+
+    }
+
+    private restoreHolderAfterHistory(): void {
+
+        const holder = this.holder;
+
+        if (holder === null) {
+            return;
+        }
+
+        const page = this.drawingDocument.getCurrentPage();
+        const restored = page.getImages().find((image) => image.getId() === holder.getId());
+
+        // Fotoğraf ekleme geçmişe yazılmaz; daha eski çizgileri geri almak tutucuyu kaldırmamalı.
+        if (restored === undefined) {
+            page.addImage(holder);
+            return;
+        }
+
+        if (restored.getDataUrl() === holder.getDataUrl()) {
+            this.holder = restored;
+            return;
+        }
+
+        // Fotoğraf gezintisi de geçmişin dışında kalır. Geometriyi geri alırken güncel içeriği koru.
+        const aspect = holder.getHeight() > 0 ? holder.getWidth() / holder.getHeight() : 1;
+        const current = new DocumentImage(
+            holder.getDataUrl(),
+            restored.getX(),
+            restored.getY(),
+            restored.getHeight() * aspect,
+            restored.getHeight(),
+            holder.getId()
+        );
+        page.setImages(page.getImages().map((image) => image === restored ? current : image));
+        this.holder = current;
 
     }
 
@@ -499,6 +556,11 @@ export class LinkedPhotoManager {
         }
 
         const files = await this.listPhotos(this.folderPath);
+
+        if (files === null) {
+            return;
+        }
+
         const index = files.indexOf(this.fileName);
 
         if (index === -1) {
@@ -511,16 +573,16 @@ export class LinkedPhotoManager {
 
     }
 
-    private async listPhotos(folderPath: string): Promise<string[]> {
+    private async listPhotos(folderPath: string): Promise<string[] | null> {
 
         try {
             const files = await window.drAWDesktop?.photoFolder?.listPhotos(folderPath);
 
-            return files ?? [];
+            return files ?? null;
         } catch (error) {
             console.error("[PhotoLink] Klasör listelenemedi:", error);
 
-            return [];
+            return null;
         }
 
     }
@@ -656,6 +718,15 @@ export class LinkedPhotoManager {
         } catch {
             // Kayıt başarısız olsa da klasör yolu bu oturum için bellekte kalır.
         }
+
+    }
+
+    private async showFolderAccessError(): Promise<void> {
+
+        await this.showInfo(
+            "Klasöre Erişilemedi",
+            "Fotoğraf klasörü şu anda okunamıyor. Bağlantı ve mevcut çizim korundu. Klasör erişimini kontrol edip yeniden deneyin."
+        );
 
     }
 

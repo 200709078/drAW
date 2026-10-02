@@ -545,6 +545,10 @@ export class ToolbarPanel {
                 ? await photoLinkManager.prepareNewDrawing()
                 : null;
 
+            if (nextPhoto === undefined) {
+                return;
+            }
+
             try {
                 await autoSaveManager.newDrawing();
             } catch (error) {

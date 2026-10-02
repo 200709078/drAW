@@ -170,7 +170,8 @@ export class PartialEraserTool extends Tool {
         }
 
         for (const image of [...page.getImages()]) {
-            if (image.hitTest(x, y, this.radius)) {
+            // Fotoğraf bütünüyle silinir; dokunma noktası gerçek sınırları içinde olmalı.
+            if (image.hitTest(x, y)) {
                 page.removeImage(image);
                 hasChanged = true;
             }

@@ -93,7 +93,8 @@ export class Document {
             image.getX(),
             image.getY(),
             image.getWidth(),
-            image.getHeight()
+            image.getHeight(),
+            image.getId()
         );
 
     }
