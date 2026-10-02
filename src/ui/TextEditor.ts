@@ -21,10 +21,9 @@ export function openTextEditor(
 
 export function closeTextEditor(): void {
 
-    if (activeTextEditor !== null) {
-        activeTextEditor.close();
-        activeTextEditor = null;
-    }
+    const editor = activeTextEditor;
+    activeTextEditor = null;
+    editor?.close();
 
 }
 
@@ -136,6 +135,11 @@ class TextEditor {
         }
 
         this.finished = true;
+        // Bitirme geri çağrısı yeni bir editör açabilir veya aracı değiştirebilir.
+        if (activeTextEditor === this) {
+            activeTextEditor = null;
+        }
+
         this.textarea.removeEventListener("keydown", this.handleKeyDown);
         this.textarea.removeEventListener("blur", this.finish);
         this.textarea.removeEventListener("input", this.handleInput);

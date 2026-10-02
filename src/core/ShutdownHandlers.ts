@@ -1,12 +1,16 @@
 import type { AutoSaveManager } from "../autosave/AutoSaveManager";
 import { showStorageError } from "../ui/StorageErrorDialog";
 
-export function registerShutdownHandlers(autoSaveManager: AutoSaveManager): void {
+export function registerShutdownHandlers(
+    autoSaveManager: AutoSaveManager,
+    finishEditing: () => void = () => {}
+): void {
 
     const desktop = window.drAWDesktop;
 
     if (desktop !== undefined) {
         desktop.onShutdownRequest(() => {
+            finishEditing();
             void autoSaveManager.shutdown().then(() => {
                 desktop.shutdownComplete();
             }).catch((error: unknown) => {
@@ -19,6 +23,7 @@ export function registerShutdownHandlers(autoSaveManager: AutoSaveManager): void
 
     // Tarayıcı kapanışta asenkron kaydı beklemez; kaydedilmemiş çizimde kullanıcıyı uyar.
     window.addEventListener("beforeunload", (event) => {
+        finishEditing();
         if (autoSaveManager.isDirty()) {
             if (desktop === undefined) {
                 event.preventDefault();
@@ -29,6 +34,7 @@ export function registerShutdownHandlers(autoSaveManager: AutoSaveManager): void
     });
 
     window.addEventListener("pagehide", () => {
+        finishEditing();
         void autoSaveManager.saveIfNeeded().catch(() => undefined);
     });
 

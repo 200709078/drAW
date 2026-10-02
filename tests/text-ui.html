@@ -1,0 +1,255 @@
+<!doctype html>
+<html lang="tr">
+<head><meta charset="UTF-8"><title>Text UI regression checks</title></head>
+<body>
+<div id="app"></div><pre id="result">RUNNING</pre>
+<script type="module">
+import { Application } from "/src/core/Application.ts";
+import { TextObject } from "/src/document/TextObject.ts";
+import { openTextEditor, closeTextEditor } from "/src/ui/TextEditor.ts";
+
+const records = new Map();
+let failSave = false;
+let shutdownRequest;
+let shutdownComplete = false;
+window.drAWDesktop = {
+    storage: {
+        async save(record) {
+            if (failSave) return { ok: false, error: { kind: "disk-full", message: "Test kayıt hatası" } };
+            records.set(record.id, structuredClone(record));
+            return { ok: true };
+        },
+        async load(id) { return { ok: true, value: records.get(id) ?? null }; },
+        async list() { return { ok: true, value: [...records.values()] }; },
+        async delete(id) { records.delete(id); return { ok: true }; },
+        async rename(id, name) { records.get(id).displayName = name; return { ok: true }; }
+    },
+    onShutdownRequest(callback) { shutdownRequest = callback; },
+    shutdownComplete() { shutdownComplete = true; },
+    shutdownCancelled() {}
+};
+
+const app = new Application();
+const managers = app.getManagers();
+const tools = managers.getToolManager();
+const text = managers.getTextTool();
+const pen = managers.getPenTool();
+const selection = managers.getSelectionTool();
+const drawing = managers.getDocument();
+const renderer = managers.getDocumentRenderer();
+const history = managers.getHistoryManager();
+const auto = managers.getAutoSaveManager();
+const viewport = managers.getDrawingContext().getViewport();
+const textButton = document.querySelector('button[aria-label="Metin"]');
+const selectionButton = document.querySelector('button[aria-label="Seç ve Taşı"]');
+const newButton = document.querySelector('button[aria-label="Yeni Çizim"]');
+const failures = [];
+let passed = 0;
+window.addEventListener("error", (event) => failures.push(String(event.error)));
+window.addEventListener("unhandledrejection", (event) => failures.push(String(event.reason)));
+const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+function assert(value, message) { if (!value) throw new Error(message); }
+async function until(check) {
+    for (let attempt = 0; attempt < 100; attempt++) {
+        if (check()) return;
+        await delay(20);
+    }
+    throw new Error("Timed out waiting for UI operation");
+}
+function pointer(x = 250, y = 200, pointerType = "touch") {
+    return { pointerId: 1, pointerType, offsetX: viewport.worldToScreenX(x),
+        offsetY: viewport.worldToScreenY(y), pressure: 0.5, shiftKey: false, ctrlKey: false, metaKey: false };
+}
+function beginText(value = "Yeni metin") {
+    textButton.click();
+    text.onPointerDown(pointer());
+    text.onPointerUp(pointer());
+    const editor = document.querySelector(".text-editor");
+    assert(editor, "text editor did not open");
+    editor.value = value;
+    editor.dispatchEvent(new Event("input"));
+    return editor;
+}
+function assertSelected(button, tool) {
+    assert(tools.getActiveTool() === tool, "incorrect active tool");
+    const selected = [...document.querySelectorAll(".sidebar__tool--selected")];
+    assert(selected.length === 1 && selected[0] === button, "toolbar retained another selected tool");
+    assert(button.getAttribute("aria-pressed") === "true", "active tool has incorrect aria-pressed");
+    for (const other of document.querySelectorAll(".sidebar__tool[aria-pressed]")) {
+        if (other !== button) assert(other.getAttribute("aria-pressed") === "false", "inactive tool is pressed");
+    }
+}
+async function check(name, run) {
+    try {
+        failSave = false;
+        closeTextEditor();
+        tools.setTool(pen);
+        selection.cancel();
+        drawing.clearCurrentPage();
+        history.reset();
+        auto.resetActiveDocument();
+        viewport.reset();
+        await run();
+        passed++;
+    } catch (error) {
+        failures.push(`${name}: ${error.message}`);
+    }
+}
+
+await check("text activation and every tool transition", () => {
+    const targets = [
+        [pen, () => document.querySelector('button[aria-label="Kalem: Normal Kalem"]')],
+        [managers.getHighlighterTool(), () => document.querySelector('button[aria-label="Kalem: Fosforlu Kalem"]')],
+        [selection, () => selectionButton],
+        [managers.getShapesTool(), () => document.querySelector('button[aria-label^="Şekil"]')],
+        [managers.getEraserTool(), () => document.querySelector('button[aria-label^="Silgi:"]')],
+        [managers.getPartialEraserTool(), () => document.querySelector('button[aria-label^="Silgi:"]')]
+    ];
+    for (const [target, button] of targets) {
+        beginText("Araç değişimi");
+        assertSelected(textButton, text);
+        tools.setTool(target);
+        assertSelected(button(), target);
+        assert(!document.querySelector(".text-editor"), "editor survived tool change");
+        assert(drawing.getCurrentPage().getTexts().at(-1).getText() === "Araç değişimi", "typed value was lost");
+    }
+});
+
+for (const finish of ["blur", "Escape"]) {
+    await check(`finish with ${finish}`, () => {
+        const editor = beginText("Birinci satır\nİkinci satır: çğıöşü");
+        editor.dispatchEvent(finish === "blur" ? new FocusEvent("blur") : new KeyboardEvent("keydown", { key: "Escape", bubbles: true }));
+        assertSelected(selectionButton, selection);
+        assert(!editor.isConnected, "finished editor remained visible");
+        assert(drawing.getCurrentPage().getTexts()[0].getText() === "Birinci satır\nİkinci satır: çğıöşü", "multiline text was lost");
+        assert(history.undo() && drawing.getCurrentPage().getTexts().length === 0, "text insertion is not undoable");
+        assert(history.redo() && drawing.getCurrentPage().getTexts().length === 1, "text insertion is not redoable");
+    });
+}
+
+await check("blank text", () => {
+    beginText(" \n ");
+    closeTextEditor();
+    assert(!drawing.getCurrentPage().getTexts().length && !history.canUndo(), "blank text left an object or undo entry");
+    assertSelected(selectionButton, selection);
+});
+
+await check("textarea keyboard shortcuts", () => {
+    const editor = beginText("Klavye testi");
+    for (const shortcut of [{ key: "z", ctrlKey: true }, { key: "y", ctrlKey: true },
+        { key: "z", ctrlKey: true, shiftKey: true }, { key: "z", metaKey: true }]) {
+        const event = new KeyboardEvent("keydown", { ...shortcut, bubbles: true, cancelable: true });
+        editor.dispatchEvent(event);
+        assert(!event.defaultPrevented && editor.isConnected, "canvas undo intercepted text editing");
+    }
+});
+
+await check("new drawing saves unfinished text", async () => {
+    beginText("Yeni çizim öncesi son metin");
+    const oldId = auto.getActiveDocument().getId();
+    newButton.click();
+    await until(() => !newButton.disabled);
+    assert(!document.querySelector(".text-editor"), "editor survived New Drawing");
+    assertSelected(document.querySelector('button[aria-label="Kalem: Normal Kalem"]'), pen);
+    assert(!drawing.getCurrentPage().getTexts().length, "new drawing contains the previous text");
+    assert(records.get(oldId)?.canvasState.data.texts[0]?.text === "Yeni çizim öncesi son metin", "unfinished text was not saved before clearing");
+});
+
+await check("failed new drawing preserves text", async () => {
+    beginText("Kayıt hatasında korunan metin");
+    const oldId = auto.getActiveDocument().getId();
+    failSave = true;
+    newButton.click();
+    await until(() => document.querySelector(".modal"));
+    document.querySelector(".modal__button--confirm").click();
+    await until(() => !newButton.disabled);
+    failSave = false;
+    assert(auto.getActiveDocument().getId() === oldId, "failed save switched drawings");
+    assert(drawing.getCurrentPage().getTexts()[0]?.getText() === "Kayıt hatasında korunan metin", "failed save lost text");
+    assert(history.canUndo() && auto.isDirty(), "failed save discarded history or unsaved state");
+});
+
+await check("existing text edit, delete, move and resize", () => {
+    beginText("Düzenlenecek uzun metin");
+    closeTextEditor();
+    let object = drawing.getCurrentPage().getTexts()[0];
+    function edit(value) {
+        selection.cancel();
+        const bounds = renderer.getTextBounds(object);
+        const event = pointer((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2, "mouse");
+        for (let count = 0; count < 2; count++) {
+            selection.onPointerDown(event);
+            selection.onPointerUp(event);
+        }
+        const editor = document.querySelector(".text-editor");
+        assert(editor, "double click did not reopen the text");
+        editor.value = value;
+        closeTextEditor();
+    }
+    edit("Düzenlenmiş uzun metin");
+    assert(object.getText() === "Düzenlenmiş uzun metin", "existing text did not update");
+    assert(history.undo(), "text edit is not undoable");
+    assert(drawing.getCurrentPage().getTexts()[0].getText() === "Düzenlenecek uzun metin", "undo did not restore text");
+    history.redo();
+    object = drawing.getCurrentPage().getTexts()[0];
+    selection.selectText(object);
+    const bounds = renderer.getSelectionBounds();
+    // Nesneler seçim çerçevesinin kenarından taşınır; tutamaçlardan boyutlandırılır.
+    const x = bounds.minX + (bounds.maxX - bounds.minX) / 4;
+    const y = bounds.minY;
+    selection.onPointerDown(pointer(x, y, "mouse"));
+    selection.onPointerMove(pointer(x + 80, y + 60, "mouse"));
+    selection.onPointerUp(pointer(x + 80, y + 60, "mouse"));
+    assert(object.getX() > 250, "text could not be moved");
+    const resized = renderer.getSelectionBounds();
+    selection.onPointerDown(pointer(resized.maxX, resized.maxY, "mouse"));
+    selection.onPointerMove(pointer(resized.maxX + 100, resized.maxY + 50, "mouse"));
+    selection.onPointerUp(pointer(resized.maxX + 100, resized.maxY + 50, "mouse"));
+    assert(object.getScale() !== 1, "text could not be resized");
+    edit("");
+    assert(drawing.getCurrentPage().getTexts().length === 0, "clearing existing text did not remove it");
+    assert(history.undo() && drawing.getCurrentPage().getTexts().length === 1, "text deletion is not undoable");
+});
+
+await check("text anchor and editor follow zoom", () => {
+    for (const scale of [0.25, 1, 4]) {
+        viewport.reset();
+        viewport.zoomAt(0, 0, scale);
+        viewport.panBy(35, 60);
+        const editor = beginText("Yakınlaştırma");
+        const object = drawing.getCurrentPage().getTexts().at(-1);
+        assert(object.getX() === 250 && object.getY() === 200, "text anchor has incorrect world coordinates");
+        assert(editor.style.fontSize === `${object.getFontSize() * scale}px`, "editor font does not match zoom");
+        assert(editor.style.left === `${viewport.worldToScreenX(250)}px`, "editor is misplaced");
+        closeTextEditor();
+    }
+});
+
+await check("editor replacement during finish", () => {
+    let finished = 0;
+    openTextEditor(new TextObject("First"), () => {
+        openTextEditor(new TextObject("Second"), () => finished++);
+    });
+    closeTextEditor();
+    assert(document.querySelector(".text-editor")?.value === "Second", "replacement editor did not open");
+    closeTextEditor();
+    assert(finished === 1 && !document.querySelector(".text-editor"), "replacement editor was left active");
+});
+
+await check("shutdown saves unfinished text", async () => {
+    beginText("Kapanış öncesi son metin");
+    const id = auto.getActiveDocument().getId();
+    shutdownRequest();
+    await until(() => shutdownComplete);
+    assert(records.get(id)?.canvasState.data.texts[0]?.text === "Kapanış öncesi son metin", "shutdown lost unfinished text");
+    assert(!document.querySelector(".text-editor"), "shutdown retained the text editor");
+});
+
+closeTextEditor();
+await auto.shutdown();
+document.getElementById("result").textContent = failures.length
+    ? `FAIL (${passed} passed):\n${failures.join("\n")}`
+    : `PASS: ${passed} text checks (tool switching, editing, history, save, zoom and shutdown)`;
+</script>
+</body>
+</html>

@@ -72,6 +72,21 @@ export function defaultWidthForDeviceProfile(profile: LineProfile): number {
 
 }
 
+export function shapeLineWidthForProfile(lineWidth: number, profile: LineProfile): number {
+
+    // Tahtada basınç bildirmeyen dokunma genellikle 0.5 basınçla çizilir.
+    // Sabit kalınlıklı şekilleri bu kalem görünümüne yaklaştır.
+    return profile === "smartboard" ? lineWidth * 0.5 : lineWidth;
+
+}
+
+export function eraserRadiusForProfile(lineWidth: number, profile: LineProfile): number {
+
+    // Tahtada palet değeri silginin çapıdır; eski 4 kat çap fazla alan siliyordu.
+    return Math.max(4, lineWidth * (profile === "smartboard" ? 0.5 : 2));
+
+}
+
 export function textFontSizeForProfile(lineWidth: number, profile: LineProfile): number {
 
     if (profile !== "smartboard") {

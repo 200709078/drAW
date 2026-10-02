@@ -14,6 +14,7 @@
 ## Platform ve akıllı tahta — yapılanlar
 
 - [x] YAPILDI — Tahta görünümü, tahta kalem kalınlıkları ve metin boyutu sınırları (`src/platform/DeviceProfile.ts`, `src/style.css`).
+- [x] YAPILDI — Tahtada kalınlık paletindeki değerler korunarak şekil çizgileri seçilen değerin yarısına, normal ve çizgi silgisinin çapı seçilen değere ayarlandı. Örnek: 42 seçimi → 21px şekil çizgisi ve 42px silgi çapı (eskiden 168px). Kalem ve standart profil aynı kaldı. Silgi göstergesi aynı yarıçapı kullanır; yakınlaştırma, undo/redo ve şekil kaydı test edildi (`tests/pointer-eraser.test.cjs`, `tests/storage-ui.html`). Fiziksel tahtada boyut hissi henüz doğrulanmadı.
 - [x] YAPILDI — Dokunma hedefleri büyütüldü: seçim/sil ve kart aksiyonları 44px, kenar okları 40px; paletler dar ekranda sarılıyor (`src/style.css`).
 - [x] YAPILDI — Yatay modda sol panel için `max-height` ve kaydırma (`src/style.css`).
 - [x] YAPILDI — İki parmakla yakınlaştırma ve tuval kaydırma: %25–400, Ctrl+tekerlek, -/%/+ kontrolleri ve sıfırlama. Araçlar dünya koordinatlarını kullanıyor (`PointerManager`, `ViewportManager`, `ZoomControls`).
@@ -73,7 +74,7 @@ Uygulama `src/photos/LinkedPhotoManager.ts` ve `electron/photo-folder.ts` içind
 
 ## Doğrulama
 
-- Son kontrolde 158 Node testi ve Chromium'da tahta/PC arayüz kontrolleri geçti.
+- Son kontrolde 160 Node testi, üretim derlemesi ve Chromium'da tahta/PC arayüz kontrolleri geçti.
 - Node testleri: `node --test tests/*.test.cjs`.
 - Arayüz: `npm run dev` ardından `/tests/storage-ui.html?tahta=1` ve `/tests/storage-ui.html` (`tests/README.md`).
 - Testler sahte masaüstü depolaması kullanır; kullanıcının çizim dosyalarına erişmez.

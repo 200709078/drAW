@@ -93,8 +93,9 @@ export class TextTool extends Tool {
             this.editing = false;
 
             const kept = this.finalizeNewText(textObject, value);
+            this.renderer.render();
 
-            if (!this.isDeactivating) {
+            if (!this.isDeactivating && this.toolManager.getActiveTool() === this) {
                 this.toolManager.setTool(this.selectionTool);
 
                 if (kept) {
