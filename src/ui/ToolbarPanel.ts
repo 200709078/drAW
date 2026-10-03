@@ -187,6 +187,7 @@ export class ToolbarPanel {
             { type: "rows", label: "Yatay Çizgili", icon: rowsIcon },
             { type: "columns", label: "Dikey Çizgili", icon: columnsIcon }
         ];
+        const guideButtons: HTMLButtonElement[] = [];
 
         const selectGuideLines = (
             type: GuideLineType,
@@ -235,6 +236,7 @@ export class ToolbarPanel {
             });
 
             guidePalette.appendChild(guideOptionButton);
+            guideButtons.push(guideOptionButton);
         }
 
         guideButton.addEventListener("click", () => {
@@ -561,8 +563,7 @@ export class ToolbarPanel {
             autoSaveManager.resetActiveDocument();
             documentRenderer.render();
 
-            documentRenderer.setGuideLines("none");
-            documentRenderer.render();
+            selectGuideLines("none", guideButtons[0]);
 
             currentColorIndex = 0;
             previousColorIndex = 1;

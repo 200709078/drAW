@@ -12,7 +12,7 @@
   "author": "mADEMatik <madematik@madematik.com> (https://www.madematik.com)",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && vite build",
+    "build": "tsc && node scripts/build-overlay-preload.mjs && vite build",
     "preview": "vite preview",
     "electron": "electron electron/main.ts",
     "dist": "npm run build && electron-builder"

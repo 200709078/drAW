@@ -5,6 +5,7 @@ import { TextObject, TEXT_FONT_FAMILY, TEXT_LINE_HEIGHT } from "../document/Text
 import { DrawingContext } from "../models/DrawingContext";
 import { StrokeRenderer } from "./StrokeRenderer";
 import { ALL_RESIZE_HANDLES, getResizeHandlePosition, type SelectionBounds } from "./ResizeHandle";
+import type { LineProfile } from "../platform/DeviceProfile";
 
 export type GuideLineType = "none" | "grid" | "rows" | "columns";
 
@@ -13,6 +14,7 @@ export class DocumentRenderer {
     private readonly drawingContext: DrawingContext;
     private readonly document: Document;
     private readonly strokeRenderer: StrokeRenderer;
+    private readonly lineProfile: LineProfile;
     private selectedStrokes: Set<Stroke>;
     private selectedImages: Set<DocumentImage>;
     private selectedTexts: Set<TextObject>;
@@ -22,11 +24,13 @@ private selectionBounds: { startX: number; startY: number; endX: number; endY: n
 
     constructor(
         drawingContext: DrawingContext,
-        document: Document
+        document: Document,
+        lineProfile: LineProfile = "standard"
     ) {
 
         this.drawingContext = drawingContext;
         this.document = document;
+        this.lineProfile = lineProfile;
 
         this.strokeRenderer = new StrokeRenderer(
             drawingContext
@@ -293,9 +297,10 @@ this.selectedTexts = new Set();
         const spacing = 50;
 
         context.save();
-        context.strokeStyle = "#d1d5db";
-        context.fillStyle = "#d1d5db";
-        context.lineWidth = 1 * unit;
+        // Tahtada uzaktan görülebilecek kontrast; kalınlık zoom ile incelmez.
+        const board = this.lineProfile === "smartboard";
+        context.strokeStyle = board ? "#94a3b8" : "#d1d5db";
+        context.lineWidth = (board ? 2 : 1) * unit;
         context.setLineDash([]);
         context.beginPath();
 

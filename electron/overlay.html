@@ -13,6 +13,9 @@
             margin: 0;
             overflow: hidden;
             background: #000;
+            touch-action: none;
+            overscroll-behavior: none;
+            user-select: none;
 
             display: flex;
             justify-content: center;
@@ -21,6 +24,8 @@
 
         #capture {
             display: block;
+            width: 100%;
+            height: 100%;
             object-fit: contain;
             user-select: none;
         }
@@ -29,6 +34,7 @@
             position: fixed;
             inset: 0;
             cursor: default;
+            touch-action: none;
         }
 
         #toolbox button img {
@@ -50,63 +56,71 @@
 
         #selection .handle {
             position: absolute;
-            width: 10px;
-            height: 10px;
-            background: #60a5fa;
-            border: 1px solid #fff;
-            border-radius: 2px;
+            width: 44px;
+            height: 44px;
             box-sizing: border-box;
             pointer-events: auto;
+            touch-action: none;
             z-index: 10;
         }
 
+        #selection .handle::after {
+            content: "";
+            position: absolute;
+            inset: 15px;
+            background: #60a5fa;
+            border: 1px solid #fff;
+            border-radius: 3px;
+            pointer-events: none;
+        }
+
         #selection .handle--nw {
-            left: -6px;
-            top: -6px;
+            left: -24px;
+            top: -24px;
             cursor: nwse-resize;
         }
 
         #selection .handle--n {
             left: 50%;
-            top: -6px;
+            top: -24px;
             transform: translateX(-50%);
             cursor: ns-resize;
         }
 
         #selection .handle--ne {
-            right: -6px;
-            top: -6px;
+            right: -24px;
+            top: -24px;
             cursor: nesw-resize;
         }
 
         #selection .handle--e {
-            right: -6px;
+            right: -24px;
             top: 50%;
             transform: translateY(-50%);
             cursor: ew-resize;
         }
 
         #selection .handle--se {
-            right: -6px;
-            bottom: -6px;
+            right: -24px;
+            bottom: -24px;
             cursor: nwse-resize;
         }
 
         #selection .handle--s {
             left: 50%;
-            bottom: -6px;
+            bottom: -24px;
             transform: translateX(-50%);
             cursor: ns-resize;
         }
 
         #selection .handle--sw {
-            left: -6px;
-            bottom: -6px;
+            left: -24px;
+            bottom: -24px;
             cursor: nesw-resize;
         }
 
         #selection .handle--w {
-            left: -6px;
+            left: -24px;
             top: 50%;
             transform: translateY(-50%);
             cursor: ew-resize;
@@ -168,8 +182,8 @@
         }
 
         #toolbox .toolbox__close {
-            width: 26px;
-            height: 26px;
+            width: 44px;
+            height: 44px;
             border: 0;
             border-radius: 6px;
             background: transparent;
@@ -275,9 +289,9 @@
 </head>
 
 <body>
-    <img id="capture" alt="Ekran alıntısı için seçilecek görüntü">
+    <img id="capture" alt="Ekran alıntısı için seçilecek görüntü" draggable="false">
     <div id="interaction"></div>
-    <div id="selection">
+    <div id="selection" hidden>
         <span class="handle handle--nw" data-dir="nw"></span>
         <span class="handle handle--n" data-dir="n"></span>
         <span class="handle handle--ne" data-dir="ne"></span>
@@ -306,7 +320,7 @@
         </div>
 
 
-        <button type="button" id="captureButton" aria-label="Yakala" title="Yakala">
+        <button type="button" id="captureButton" aria-label="Yakala" title="Yakala" disabled>
             <img src="./assets/icons/capture.svg" alt="" draggable="false">
         </button>
 
