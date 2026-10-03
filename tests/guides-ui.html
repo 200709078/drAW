@@ -1,0 +1,104 @@
+<!doctype html>
+<html lang="tr">
+<head><meta charset="UTF-8"><title>Guide visibility regression checks</title></head>
+<body>
+<div id="app"></div><pre id="result">RUNNING</pre>
+<script type="module">
+import "/src/style.css";
+import { Application } from "/src/core/Application.ts";
+import { getLineProfile } from "/src/platform/DeviceProfile.ts";
+
+// Exercise the Electron canvas offset without accessing real user records.
+window.drAWDesktop = {
+    storage: {
+        async save() { return { ok: true }; },
+        async load() { return { ok: true, value: null }; },
+        async list() { return { ok: true, value: [] }; }
+    },
+    onShutdownRequest() {}, shutdownComplete() {}, shutdownCancelled() {},
+    windowControls: {
+        minimize() {}, toggleMaximize() {}, toggleFullscreen() {}, setFullscreen() {}, close() {},
+        onMaximizeChanged() {}, onFullscreenChanged() {}, async isFullscreen() { return false; }
+    }
+};
+const result = document.getElementById("result");
+function assert(value, message) { if (!value) throw new Error(message); }
+const app = new Application();
+const managers = app.getManagers();
+const renderer = managers.getDocumentRenderer();
+const canvas = managers.getCanvasManager().getCanvas();
+const context = canvas.getContext("2d");
+const viewport = managers.getDrawingContext().getViewport();
+const board = getLineProfile() === "smartboard";
+const ratio = window.devicePixelRatio || 1;
+const types = { none: "Çizgisiz", grid: "Kareli", rows: "Yatay Çizgili", columns: "Dikey Çizgili" };
+let checks = 0;
+
+try {
+    // Check actual painted pixels across the canvas at normal and fractional pan positions.
+    for (const scale of [0.25, 1, 4]) {
+        for (const [panX, panY] of [[0, 0], [17.25, -22.75]]) {
+            viewport.reset();
+            viewport.zoomAt(0, 0, scale);
+            viewport.panBy(panX, panY);
+            for (const [type, label] of Object.entries(types)) {
+                document.querySelector(`.sidebar__guideline-palette button[aria-label="${label}"]`).click();
+                assert(renderer.getGuideLines() === type, "palette did not activate the requested guide");
+                const pixels = context.getImageData(0, 0, canvas.width, canvas.height).data;
+                function darkness(x, y) {
+                    let darkest = 0;
+                    for (let py = Math.floor((y - 3) * ratio); py <= Math.ceil((y + 3) * ratio); py++) {
+                        for (let px = Math.floor((x - 3) * ratio); px <= Math.ceil((x + 3) * ratio); px++) {
+                            if (px < 0 || py < 0 || px >= canvas.width || py >= canvas.height) continue;
+                            const index = (py * canvas.width + px) * 4;
+                            const average = (pixels[index] + pixels[index + 1] + pixels[index + 2]) / 3;
+                            darkest = Math.max(darkest, (255 - average) * pixels[index + 3] / 255);
+                        }
+                    }
+                    return darkest;
+                }
+                const threshold = board ? 55 : 12;
+                for (const fraction of [0.2, 0.5, 0.8]) {
+                    const baseX = Math.round(viewport.screenToWorldX(canvas.clientWidth * fraction) / 50) * 50;
+                    const baseY = Math.round(viewport.screenToWorldY(canvas.clientHeight * fraction) / 50) * 50;
+                    // Hücrenin görünür taraftaki ortasını seç; dar ekranda +25 tuvalin dışına taşabilir.
+                    const middleX = viewport.worldToScreenX(baseX + 25) < canvas.clientWidth - 4 ? baseX + 25 : baseX - 25;
+                    const middleY = viewport.worldToScreenY(baseY + 25) < canvas.clientHeight - 4 ? baseY + 25 : baseY - 25;
+                    const vertical = darkness(viewport.worldToScreenX(baseX), viewport.worldToScreenY(middleY));
+                    const horizontal = darkness(viewport.worldToScreenX(middleX), viewport.worldToScreenY(baseY));
+                    const expectVertical = type === "grid" || type === "columns";
+                    const expectHorizontal = type === "grid" || type === "rows";
+                    assert(expectVertical ? vertical >= threshold : vertical === 0,
+                        `${type}: vertical guide visibility at zoom=${scale}, pan=${panX}, region=${fraction} (${vertical})`);
+                    assert(expectHorizontal ? horizontal >= threshold : horizontal === 0,
+                        `${type}: horizontal guide visibility at zoom=${scale}, pan=${panY}, region=${fraction} (${horizontal})`);
+                }
+                checks++;
+            }
+        }
+    }
+
+    viewport.reset();
+    document.querySelector('.sidebar__guideline-palette button[aria-label="Kareli"]').click();
+    const newButton = document.querySelector('button[aria-label="Yeni Çizim"]');
+    newButton.click();
+    for (let i = 0; i < 100 && newButton.disabled; i++) await new Promise((resolve) => setTimeout(resolve, 20));
+    assert(!newButton.disabled && renderer.getGuideLines() === "none", "New Drawing did not reset guides");
+    assert(document.querySelector('.sidebar__guideline-option[aria-pressed="true"]').title === "Çizgisiz",
+        "New Drawing retained an enabled guide option");
+    assert(document.querySelector('button[aria-label="Kılavuz Çizgileri: Çizgisiz"]'),
+        "guide trigger retained its old label after New Drawing");
+    checks++;
+
+    document.querySelector('.sidebar__guideline-palette button[aria-label="Kareli"]').click();
+    const bounds = canvas.getBoundingClientRect();
+    assert(document.elementFromPoint(bounds.left + canvas.clientWidth / 3, bounds.top + canvas.clientHeight / 3) === canvas,
+        "another element covers the empty canvas");
+    result.textContent = `PASS: ${checks} guide checks (${getLineProfile()}, DPR ${ratio}, ${canvas.clientWidth}x${canvas.clientHeight})`;
+} catch (error) {
+    result.textContent = `FAIL: ${error.stack ?? error}`;
+}
+await managers.getAutoSaveManager().shutdown();
+</script>
+</body>
+</html>

@@ -15,6 +15,9 @@
 
 - [x] YAPILDI — Tahta görünümü, tahta kalem kalınlıkları ve metin boyutu sınırları (`src/platform/DeviceProfile.ts`, `src/style.css`).
 - [x] YAPILDI — Tahtada kalınlık paletindeki değerler korunarak şekil çizgileri seçilen değerin yarısına, normal ve çizgi silgisinin çapı seçilen değere ayarlandı. Örnek: 42 seçimi → 21px şekil çizgisi ve 42px silgi çapı (eskiden 168px). Kalem ve standart profil aynı kaldı. Silgi göstergesi aynı yarıçapı kullanır; yakınlaştırma, undo/redo ve şekil kaydı test edildi (`tests/pointer-eraser.test.cjs`, `tests/storage-ui.html`). Fiziksel tahtada boyut hissi henüz doğrulanmadı.
+- [x] YAPILDI — Metin aracı ve diğer araçlar tek seçim grubunda gösteriliyor; araç değişince veya Yeni Çizim'e geçince Metin düğmesi seçili kalmıyor. Açık metin editörü yeni çizim ve kapanış kaydından önce tamamlanıyor; metin alanındaki Ctrl/Cmd+Z/Y tuval geçmişini değiştirmiyor. Editör kapanışında yeniden çizim ve etkin editör kaydı temizleniyor (`ToolbarPanel`, `TextEditor`, `TextTool`, `ShutdownHandlers`).
+- [x] YAPILDI — Metin üzerinde çift tıklama aynı konuma yakın iki dokunuş gerektiriyor; taşıma/boyutlandırma sonrasında eski tıklama bilgisi temizleniyor. Metin ekleme, yeniden düzenleme, silme, taşıma, boyutlandırma, undo/redo, kayıt hatası ve kapanışta kayıt için 11 tarayıcı kontrolü tahta ve PC modunda geçti (`tests/text-ui.html`).
+- [x] YAPILDI — Tahtada boş tuval kılavuzları 2 CSS piksel ve daha koyu gri (`#94a3b8`); kalınlık yakınlaştırmadan bağımsız. Yeni Çizim, kılavuz simgesini ve palet seçimini de Çizgisiz'e sıfırlıyor. Gerçek tuval pikselleriyle 25 kontrol; %25/%100/%400 zoom, kesirli kaydırma, 4K, DPR 2 ve dikey ekranda geçti (`tests/guides-ui.html`). Fiziksel tahtada görünürlük henüz doğrulanmadı.
 - [x] YAPILDI — Dokunma hedefleri büyütüldü: seçim/sil ve kart aksiyonları 44px, kenar okları 40px; paletler dar ekranda sarılıyor (`src/style.css`).
 - [x] YAPILDI — Yatay modda sol panel için `max-height` ve kaydırma (`src/style.css`).
 - [x] YAPILDI — İki parmakla yakınlaştırma ve tuval kaydırma: %25–400, Ctrl+tekerlek, -/%/+ kontrolleri ve sıfırlama. Araçlar dünya koordinatlarını kullanıyor (`PointerManager`, `ViewportManager`, `ZoomControls`).
@@ -27,6 +30,14 @@
 - [x] YAPILDI — Pile duyarlı kayıt: şarjda 10 saniye, pilde 30 saniye (`src/autosave/AutoSaveManager.ts`).
 - [x] YAPILDI — 400px küçük önizlemeler (`src/autosave/ThumbnailGenerator.ts`).
 - [x] YAPILDI — Kayıt sırasında gelen yeni değişiklikler de kaydediliyor; kayıt hatası Yeni Çizim, kayıt açma ve kapanışı durduruyor. Yavaş kayıt pencereyi zorla kapatmıyor (`tests/autosave.test.cjs`, `tests/shutdown.test.cjs`).
+
+## Ekran alıntısı — dokunma düzeltmesi
+
+- [x] YAPILDI — Alıntı penceresinde tarayıcının dokunarak kaydırma/yakınlaştırma davranışı kapatıldı. Seçim ve araç kutusu hareketleri aktif `pointerId` ile izleniyor; ikinci parmak hareketi devralmıyor.
+- [x] YAPILDI — `pointercancel`, `lostpointercapture` ve pencere odağının kaybı hareketi temizliyor. İptal edilen seçim önceki konumuna dönüyor; bırakma anındaki son konum uygulanıyor.
+- [x] YAPILDI — Sekiz tutamacın dokunma alanı 44px; küçük seçimlerin orta kısmı taşınabiliyor. Görüntü pencereye en-boy oranıyla sığdırılıyor; yüksek DPI ve boş kenarlı görüntülerde kırpma koordinatları korunuyor.
+- [x] YAPILDI — Electron'un kullandığı `electron/overlay-preload.cjs`, artık `overlay-preload.ts` kaynağından `scripts/build-overlay-preload.mjs` ile üretiliyor; `npm run build` bu adımı içerir. `.cjs` dosyasını elle düzenlemeyin.
+- [x] YAPILDI — Gerçek Chromium dokunma/kalem/fare girdileriyle 52 kontrol geçti (`node tests/overlay-touch.cjs`). Yüksek DPI, sekiz tutamaç, ikinci parmak, hareket iptali, küçük seçim, tam ekran modu, araç kutusu ve kırpma koordinatları kontrol edildi. Fiziksel Pardus ETAP tahtasında henüz denenmedi.
 
 ## Çizim gecikmesi (tahta) — incelenecek
 
@@ -76,6 +87,6 @@ Uygulama `src/photos/LinkedPhotoManager.ts` ve `electron/photo-folder.ts` içind
 
 - Son kontrolde 160 Node testi, üretim derlemesi ve Chromium'da tahta/PC arayüz kontrolleri geçti.
 - Node testleri: `node --test tests/*.test.cjs`.
-- Arayüz: `npm run dev` ardından `/tests/storage-ui.html?tahta=1` ve `/tests/storage-ui.html` (`tests/README.md`).
+- Arayüz: `npm run dev` ardından `/tests/storage-ui.html`, `/tests/text-ui.html`, `/tests/guides-ui.html`; tahta modu için her adrese `?tahta=1` ekleyin (`tests/README.md`).
 - Testler sahte masaüstü depolaması kullanır; kullanıcının çizim dosyalarına erişmez.
 - Linux paketleri: `npm run dist`; `.deb` ve `.AppImage` çıktıları `release/` altında. Windows paketi yukarıdaki Windows makine yönergesine göre üretilir.

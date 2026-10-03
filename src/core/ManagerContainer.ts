@@ -79,9 +79,11 @@ export class ManagerContainer {
         );
 
         // Renderer
+        const lineProfile = getLineProfile();
         this.documentRenderer = new DocumentRenderer(
             this.drawingContext,
-            this.document
+            this.document,
+            lineProfile
         );
 
         this.canvasManager.addResizeListener(() => {
@@ -103,7 +105,6 @@ export class ManagerContainer {
         });
 
         // Varsayılan araç
-        const lineProfile = getLineProfile();
         this.penTool = new PenTool(
             this.drawingContext,
             this.document,

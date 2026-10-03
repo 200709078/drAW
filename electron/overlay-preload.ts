@@ -22,6 +22,7 @@ window.addEventListener("DOMContentLoaded", () => {
     let selWidth = 0;
     let selHeight = 0;
     let locked = false;
+    let sourceReady = false;
     let savedSelection: { x: number; y: number; width: number; height: number } | null = null;
 
     const clamp = (value: number, min: number, max: number): number => {
@@ -78,18 +79,22 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const resetInitialSelection = (): void => {
         const bounds = getContentRect();
+        const width = Math.min(200, bounds.width);
+        const height = Math.min(200, bounds.height);
 
         setSelection(
-            (bounds.width - 200) / 2,
-            (bounds.height - 200) / 2,
-            200,
-            200
+            (bounds.width - width) / 2,
+            (bounds.height - height) / 2,
+            width,
+            height
         );
         setLocked(false);
+        savedSelection = { x: selX, y: selY, width: selWidth, height: selHeight };
     };
 
     let mode: "move" | "draw" | "resize" = "move";
-    let isDragging = false;
+    let activePointerId: number | null = null;
+    let toolboxPointerId: number | null = null;
     let startX = 0;
     let startY = 0;
     let originX = 0;
@@ -116,67 +121,58 @@ window.addEventListener("DOMContentLoaded", () => {
 
     const selectScreen = (): void => {
         const bounds = getContentRect();
+        const margin = Math.min(1, bounds.width / 4, bounds.height / 4);
 
         setSelection(
-            (bounds.width - 600) / 2,
-            (bounds.height - 600) / 2,
-            600,
-            600
+            margin,
+            margin,
+            bounds.width - margin * 2,
+            bounds.height - margin * 2
         );
         setLocked(true);
     };
 
-    handles.forEach((handle) => {
-        handle.addEventListener("pointerdown", (event) => {
-            if (locked) {
-                return;
-            }
-
-            const point = getPoint(event);
-
-            mode = "resize";
-            resizeDir = handle.dataset.dir ?? "";
-            startX = point.x;
-            startY = point.y;
-            originX = selX;
-            originY = selY;
-            originW = selWidth;
-            originH = selHeight;
-            isDragging = true;
-            interaction.setPointerCapture(event.pointerId);
-        });
-    });
-
-    interaction.addEventListener("pointerdown", (event) => {
-        const point = getPoint(event);
-
-        if (locked) {
+    const startGesture = (event: PointerEvent, handleDir: string = ""): void => {
+        if (!sourceReady || locked || activePointerId !== null || toolboxPointerId !== null || event.button !== 0) {
             return;
         }
 
-        if (!isInsideSelection(point.x, point.y)) {
+        event.preventDefault();
+        const point = getPoint(event);
+        startX = point.x;
+        startY = point.y;
+        originX = selX;
+        originY = selY;
+        originW = selWidth;
+        originH = selHeight;
+
+        // Büyütülen tutamaçlar küçük seçimlerde üst üste gelse de orta alan taşınabilsin.
+        const central = point.x > selX + Math.min(22, selWidth / 4) &&
+            point.x < selX + selWidth - Math.min(22, selWidth / 4) &&
+            point.y > selY + Math.min(22, selHeight / 4) &&
+            point.y < selY + selHeight - Math.min(22, selHeight / 4);
+
+        if (handleDir !== "" && !central) {
+            mode = "resize";
+            resizeDir = handleDir;
+        } else if (!isInsideSelection(point.x, point.y)) {
             mode = "draw";
-            startX = point.x;
-            startY = point.y;
             setSelection(point.x, point.y, 0, 0);
         } else {
             mode = "move";
-            startX = point.x;
-            startY = point.y;
-            originX = selX;
-            originY = selY;
         }
 
-        isDragging = true;
+        activePointerId = event.pointerId;
         interaction.setPointerCapture(event.pointerId);
+        if (captureButton !== null) captureButton.disabled = true;
+    };
+
+    handles.forEach((handle) => {
+        handle.addEventListener("pointerdown", (event) => startGesture(event, handle.dataset.dir ?? ""));
     });
+    interaction.addEventListener("pointerdown", (event) => startGesture(event));
 
-    interaction.addEventListener("pointermove", (event) => {
-        if (!isDragging) {
-            updateCursor(event);
-            return;
-        }
-
+    const updateGesture = (event: PointerEvent): void => {
         const point = getPoint(event);
 
         if (mode === "resize") {
@@ -191,28 +187,16 @@ window.addEventListener("DOMContentLoaded", () => {
             let bottom = originY + originH;
 
             if (dir.includes("w")) {
-                left = originX + dx;
+                left = clamp(originX + dx, 0, right - minSize);
             }
             if (dir.includes("e")) {
-                right = originX + originW + dx;
+                right = clamp(originX + originW + dx, left + minSize, bounds.width);
             }
             if (dir.includes("n")) {
-                top = originY + dy;
+                top = clamp(originY + dy, 0, bottom - minSize);
             }
             if (dir.includes("s")) {
-                bottom = originY + originH + dy;
-            }
-
-            left = clamp(left, 0, bounds.width - minSize);
-            top = clamp(top, 0, bounds.height - minSize);
-            right = clamp(right, minSize, bounds.width);
-            bottom = clamp(bottom, minSize, bounds.height);
-
-            if (right - left < minSize) {
-                right = left + minSize;
-            }
-            if (bottom - top < minSize) {
-                bottom = top + minSize;
+                bottom = clamp(originY + originH + dy, top + minSize, bounds.height);
             }
 
             setSelection(left, top, right - left, bottom - top);
@@ -233,18 +217,36 @@ window.addEventListener("DOMContentLoaded", () => {
                 Math.abs(point.y - startY)
             );
         }
+    };
+
+    interaction.addEventListener("pointermove", (event) => {
+        if (!sourceReady) return;
+        if (activePointerId === null) {
+            updateCursor(event);
+        } else if (event.pointerId === activePointerId) {
+            event.preventDefault();
+            updateGesture(event);
+        }
     });
 
+    const releaseGesture = (): void => {
+        const pointerId = activePointerId;
+        activePointerId = null;
+        if (captureButton !== null) captureButton.disabled = !sourceReady;
+        if (pointerId !== null && interaction.hasPointerCapture(pointerId)) {
+            interaction.releasePointerCapture(pointerId);
+        }
+    };
+
     interaction.addEventListener("pointerup", (event) => {
-        if (!isDragging) {
+        if (event.pointerId !== activePointerId) {
             return;
         }
 
-        isDragging = false;
-
-        if (interaction.hasPointerCapture(event.pointerId)) {
-            interaction.releasePointerCapture(event.pointerId);
-        }
+        event.preventDefault();
+        // Son pointermove gelmemiş olsa da bırakılan konumu uygula.
+        updateGesture(event);
+        releaseGesture();
 
         if (mode === "draw" && (selWidth < 10 || selHeight < 10)) {
             const bounds = getContentRect();
@@ -252,8 +254,8 @@ window.addEventListener("DOMContentLoaded", () => {
             setSelection(
                 clamp(startX, 0, Math.max(0, bounds.width - 30)),
                 clamp(startY, 0, Math.max(0, bounds.height - 30)),
-                30,
-                30
+                Math.min(30, bounds.width),
+                Math.min(30, bounds.height)
             );
         }
 
@@ -263,6 +265,18 @@ window.addEventListener("DOMContentLoaded", () => {
 
         updateCursor(event);
     });
+
+    const cancelGesture = (): void => {
+        if (activePointerId === null) return;
+        setSelection(originX, originY, originW, originH);
+        releaseGesture();
+    };
+    const handleCancelledPointer = (event: PointerEvent): void => {
+        if (event.pointerId === activePointerId) cancelGesture();
+    };
+    interaction.addEventListener("pointercancel", handleCancelledPointer);
+    interaction.addEventListener("lostpointercapture", handleCancelledPointer);
+    window.addEventListener("blur", cancelGesture);
 
     document.addEventListener("keydown", (event) => {
         if (event.key === "Escape") {
@@ -279,7 +293,7 @@ window.addEventListener("DOMContentLoaded", () => {
     });
 
     captureButton?.addEventListener("click", () => {
-        if (selWidth < 2 || selHeight < 2) {
+        if (!sourceReady || activePointerId !== null || toolboxPointerId !== null || selWidth < 2 || selHeight < 2) {
             return;
         }
 
@@ -299,27 +313,28 @@ window.addEventListener("DOMContentLoaded", () => {
     const toolboxTitlebar = toolbox?.querySelector<HTMLDivElement>(".toolbox__titlebar") ?? null;
 
     if (toolbox !== null && toolboxTitlebar !== null) {
-        let toolboxDragging = false;
         let toolboxOffsetX = 0;
         let toolboxOffsetY = 0;
 
         toolboxTitlebar.addEventListener("pointerdown", (event) => {
-            if (event.button !== 0) {
+            if (event.button !== 0 || toolboxPointerId !== null || activePointerId !== null) {
                 return;
             }
             if (event.target instanceof HTMLElement && event.target.closest(".toolbox__close") !== null) {
                 return;
             }
-            toolboxDragging = true;
+            event.preventDefault();
+            toolboxPointerId = event.pointerId;
             toolboxOffsetX = event.clientX - toolbox.getBoundingClientRect().left;
             toolboxOffsetY = event.clientY - toolbox.getBoundingClientRect().top;
             toolboxTitlebar.setPointerCapture(event.pointerId);
         });
 
-        toolboxTitlebar.addEventListener("pointermove", (event) => {
-            if (!toolboxDragging) {
+        const moveToolbox = (event: PointerEvent): void => {
+            if (event.pointerId !== toolboxPointerId) {
                 return;
             }
+            event.preventDefault();
             const left = clamp(
                 event.clientX - toolboxOffsetX,
                 0,
@@ -334,23 +349,30 @@ window.addEventListener("DOMContentLoaded", () => {
             toolbox.style.top = `${top}px`;
             toolbox.style.bottom = "auto";
             toolbox.style.transform = "none";
-        });
+        };
+        toolboxTitlebar.addEventListener("pointermove", moveToolbox);
 
-        const endToolboxDrag = (event: PointerEvent) => {
-            if (!toolboxDragging) {
+        const endToolboxDrag = (event?: PointerEvent): void => {
+            if (toolboxPointerId === null || (event !== undefined && event.pointerId !== toolboxPointerId)) {
                 return;
             }
-            toolboxDragging = false;
-            if (toolboxTitlebar.hasPointerCapture(event.pointerId)) {
-                toolboxTitlebar.releasePointerCapture(event.pointerId);
+            if (event?.type === "pointerup") moveToolbox(event);
+            const pointerId = toolboxPointerId;
+            toolboxPointerId = null;
+            if (toolboxTitlebar.hasPointerCapture(pointerId)) {
+                toolboxTitlebar.releasePointerCapture(pointerId);
             }
         };
 
         toolboxTitlebar.addEventListener("pointerup", endToolboxDrag);
         toolboxTitlebar.addEventListener("pointercancel", endToolboxDrag);
+        toolboxTitlebar.addEventListener("lostpointercapture", endToolboxDrag);
+        window.addEventListener("blur", () => endToolboxDrag());
     }
 
     const applyModeChange = (): void => {
+        if (!sourceReady) return;
+        cancelGesture();
         if (screenButton?.checked === true) {
             selectScreen();
 
@@ -369,7 +391,15 @@ window.addEventListener("DOMContentLoaded", () => {
     screenButton?.addEventListener("change", applyModeChange);
 
     ipcRenderer.on("screen-capture:source", (_event, source: SourcePayload) => {
+        cancelGesture();
+        sourceReady = false;
+        if (captureButton !== null) captureButton.disabled = true;
+        image.onload = () => {
+            sourceReady = true;
+            resetInitialSelection();
+            if (screenButton?.checked === true) selectScreen();
+            if (captureButton !== null) captureButton.disabled = false;
+        };
         image.src = source.dataUrl;
-        image.onload = resetInitialSelection;
     });
 });
