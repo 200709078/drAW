@@ -14,7 +14,9 @@
 ## Platform ve akıllı tahta — yapılanlar
 
 - [x] YAPILDI — Tahta görünümü, tahta kalem kalınlıkları ve metin boyutu sınırları (`src/platform/DeviceProfile.ts`, `src/style.css`).
-- [x] YAPILDI — Tahtada kalınlık paletindeki değerler korunarak şekil çizgileri seçilen değerin yarısına, normal ve çizgi silgisinin çapı seçilen değere ayarlandı. Örnek: 42 seçimi → 21px şekil çizgisi ve 42px silgi çapı (eskiden 168px). Kalem ve standart profil aynı kaldı. Silgi göstergesi aynı yarıçapı kullanır; yakınlaştırma, undo/redo ve şekil kaydı test edildi (`tests/pointer-eraser.test.cjs`, `tests/storage-ui.html`). Fiziksel tahtada boyut hissi henüz doğrulanmadı.
+- [x] YAPILDI — Tahtada kalınlık paletindeki değerler korunarak şekil çizgileri seçilen değerin yarısına ayarlandı. Normal ve çizgi silgisinin çapı, son kullanıcı isteğiyle önceki boyutundan %10 büyütüldü: 42 seçimi → 21px şekil çizgisi ve 46,2px silgi çapı. Kalem ve standart profil aynı kaldı. Silgi göstergesi aynı yarıçapı kullanır; yakınlaştırma, undo/redo ve şekil kaydı test edildi (`tests/pointer-eraser.test.cjs`, `tests/storage-ui.html`). Fiziksel tahtada boyut hissi henüz doğrulanmadı.
+- [x] YAPILDI — Tüm platformlarda iki silgi de 4 saniye işlem yapılmayınca Normal Kalem'e döner. Temas sürerken araç değişmez; son temasın bırakılması/iptali ve yeni giriş sayacı yeniden başlatır. Önceki kalem Fosforlu Kalem olsa da Normal Kalem seçilir (`src/core/EraserIdleReturn.ts`, `tests/eraser-idle.test.cjs`, `tests/storage-ui.html`).
+- [x] YAPILDI — Mobil web araç çubuğu dikey ekranda solda, yatay ekranda altta sabit; drAW dokunuşları konumu değiştirmez. Dar yatay ekranda araçlar kaydırılabilir; yakınlaştırma düğmeleri çubuğun üstünde kalır. Chromium dokunma benzetimiyle yön değiştirme, paletler ve kaydırma kontrol edildi. Masaüstü ve tahta konum değiştirme davranışı korunur.
 - [x] YAPILDI — Metin aracı ve diğer araçlar tek seçim grubunda gösteriliyor; araç değişince veya Yeni Çizim'e geçince Metin düğmesi seçili kalmıyor. Açık metin editörü yeni çizim ve kapanış kaydından önce tamamlanıyor; metin alanındaki Ctrl/Cmd+Z/Y tuval geçmişini değiştirmiyor. Editör kapanışında yeniden çizim ve etkin editör kaydı temizleniyor (`ToolbarPanel`, `TextEditor`, `TextTool`, `ShutdownHandlers`).
 - [x] YAPILDI — Metin üzerinde çift tıklama aynı konuma yakın iki dokunuş gerektiriyor; taşıma/boyutlandırma sonrasında eski tıklama bilgisi temizleniyor. Metin ekleme, yeniden düzenleme, silme, taşıma, boyutlandırma, undo/redo, kayıt hatası ve kapanışta kayıt için 11 tarayıcı kontrolü tahta ve PC modunda geçti (`tests/text-ui.html`).
 - [x] YAPILDI — Tahtada boş tuval kılavuzları 2 CSS piksel ve daha koyu gri (`#94a3b8`); kalınlık yakınlaştırmadan bağımsız. Yeni Çizim, kılavuz simgesini ve palet seçimini de Çizgisiz'e sıfırlıyor. Gerçek tuval pikselleriyle 25 kontrol; %25/%100/%400 zoom, kesirli kaydırma, 4K, DPR 2 ve dikey ekranda geçti (`tests/guides-ui.html`). Fiziksel tahtada görünürlük henüz doğrulanmadı.
@@ -85,7 +87,7 @@ Uygulama `src/photos/LinkedPhotoManager.ts` ve `electron/photo-folder.ts` içind
 
 ## Doğrulama
 
-- Son kontrolde 160 Node testi, üretim derlemesi ve Chromium'da tahta/PC arayüz kontrolleri geçti.
+- Son kontrolde 175 Node testi, üretim derlemesi ve Chromium'da tahta/PC arayüz kontrolleri geçti.
 - Node testleri: `node --test tests/*.test.cjs`.
 - Arayüz: `npm run dev` ardından `/tests/storage-ui.html`, `/tests/text-ui.html`, `/tests/guides-ui.html`; tahta modu için her adrese `?tahta=1` ekleyin (`tests/README.md`).
 - Testler sahte masaüstü depolaması kullanır; kullanıcının çizim dosyalarına erişmez.

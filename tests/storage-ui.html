@@ -618,17 +618,35 @@ try {
                 viewport.reset();
                 viewport.zoomAt(0, 0, scale);
                 canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 100, clientY: 100 }));
-                const diameter = board ? width : Math.max(8, width * 4);
-                assert(document.querySelector(".eraser-indicator").style.width === `${Math.max(4, diameter * scale)}px`,
+                const diameter = board ? width * 1.1 : Math.max(8, width * 4);
+                assert(Math.abs(parseFloat(document.querySelector(".eraser-indicator").style.width) - Math.max(4, diameter * scale)) < 0.01,
                     `eraser indicator has incorrect diameter at width=${width}, zoom=${scale}`);
             }
         }
     }
     viewport.reset();
 
+    // Idle erasers must choose the normal pen, even if the last pen was the highlighter.
+    const tools = managers.getToolManager();
+    for (const label of ["Normal Silgi", "Çizgi Silgi"]) {
+        document.querySelector('button[aria-label="Fosforlu Kalem"]').click();
+        document.querySelector(`button[aria-label="${label}"]`).click();
+        const selectedEraser = tools.getActiveTool();
+        await delay(3500);
+        assert(tools.getActiveTool() === selectedEraser, "eraser returned to the pen too early");
+        await until(() => tools.getActiveTool() === pen);
+        assert(document.querySelector('button[aria-label="Kalem: Normal Kalem"]').getAttribute("aria-pressed") === "true",
+            "idle return did not select the normal pen button");
+        assert(document.querySelector('button[aria-label="Fosforlu Kalem"]').getAttribute("aria-pressed") === "false",
+            "idle return left the highlighter selected");
+        document.querySelector(`button[aria-label="${label}"]`).click();
+        document.querySelector('button[aria-label="Kalem: Normal Kalem"]').click();
+        assert(tools.getActiveTool() === pen, "pen button remembered the highlighter after idle return");
+    }
+
     assert(errors.length === 0, `unhandled rejection: ${errors.join(", ")}`);
     await auto.shutdown();
-    result.textContent = "PASS: storage, photo history, erasing and new-drawing transitions; unchanged thickness palette, calibrated shapes and eraser indicators at all zoom levels";
+    result.textContent = "PASS: storage, photo history, erasing and new-drawing transitions; unchanged thickness palette, calibrated shapes and eraser indicators at all zoom levels; both idle erasers return to the normal pen";
 } catch (error) {
     result.textContent = `FAIL: ${error.stack ?? error}`;
 }

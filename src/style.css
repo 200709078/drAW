@@ -596,6 +596,37 @@ body.dock-left .sidebar__toolbar {
     }
 }
 
+body.mobile-toolbar-fixed .sidebar {
+    max-width: calc(100vw - 32px);
+    overflow: visible;
+}
+
+body.mobile-toolbar-fixed .sidebar__toolbar {
+    box-sizing: border-box;
+    max-width: 100%;
+}
+
+body.mobile-toolbar-fixed .sidebar__toolbar > * {
+    flex-shrink: 0;
+}
+
+body.mobile-toolbar-fixed:not(.dock-left) .sidebar__toolbar {
+    overflow-x: auto;
+}
+
+body.mobile-toolbar-fixed:not(.dock-left) .zoom-controls {
+    bottom: calc(var(--mobile-toolbar-height, 65px) + 24px);
+}
+
+body.mobile-toolbar-fixed .sidebar__handle {
+    cursor: default;
+    touch-action: pan-x;
+}
+
+body.mobile-toolbar-fixed.dock-left .sidebar__handle {
+    touch-action: pan-y;
+}
+
 .sidebar__tool {
     display: flex;
     align-items: center;

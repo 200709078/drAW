@@ -9,6 +9,7 @@ import { PartialEraserTool } from "../tools/PartialEraserTool";
 import { TextTool } from "../tools/TextTool";
 import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
 import { HistoryManager } from "../core/HistoryManager";
+import { EraserIdleReturn } from "../core/EraserIdleReturn";
 import { ShapesTool } from "../tools/ShapesTool";
 import { AutoSaveManager } from "../autosave/AutoSaveManager";
 import type { DrawingRepository } from "../storage/DrawingRepository";
@@ -86,11 +87,15 @@ export class ToolbarPanel {
         const toolbar = document.createElement("div");
         toolbar.className = "sidebar__toolbar";
 
+        const mobileLayout = window.matchMedia("(max-width: 767px), (hover: none) and (pointer: coarse)");
+        const portraitLayout = window.matchMedia("(orientation: portrait)");
+        const isFixedMobileToolbar = (): boolean => {
+            return !desktopAvailable && getLineProfile() !== "smartboard" && mobileLayout.matches;
+        };
+
         const handle = document.createElement("button");
         handle.type = "button";
         handle.className = "sidebar__handle";
-        handle.setAttribute("aria-label", "Araç çubuğu konumu (değiştirmek için çift tıkla)");
-        handle.title = "Çift tıkla: konumu değiştir (alt / sol / üst)";
         handle.append("dr");
 
         const brandAccent = document.createElement("span");
@@ -101,6 +106,10 @@ export class ToolbarPanel {
         toolbar.appendChild(handle);
 
         handle.addEventListener("dblclick", () => {
+            if (isFixedMobileToolbar()) {
+                return;
+            }
+
             closeAllFlyouts();
             const body = document.body;
             let dock: "bottom" | "left" | "top" = "bottom";
@@ -1114,8 +1123,42 @@ export class ToolbarPanel {
             }
         };
 
-        updateToolbarVars();
-        window.addEventListener("resize", updateToolbarVars);
+        const updateMobileToolbar = (): void => {
+            const fixed = isFixedMobileToolbar();
+            document.body.classList.toggle("mobile-toolbar-fixed", fixed);
+            handle.disabled = fixed;
+            handle.setAttribute("aria-label", fixed
+                ? "Araç çubuğu"
+                : "Araç çubuğu konumu (değiştirmek için çift tıkla)");
+            handle.title = fixed ? "drAW" : "Çift tıkla: konumu değiştir (alt / sol / üst)";
+
+            if (fixed) {
+                document.body.classList.remove("dock-top");
+                document.body.classList.toggle("dock-left", portraitLayout.matches);
+                sidebar.classList.remove("dock-in-bottom", "dock-in-left", "dock-in-top");
+                document.body.style.setProperty("--mobile-toolbar-height", `${sidebar.getBoundingClientRect().height}px`);
+            } else {
+                document.body.style.removeProperty("--mobile-toolbar-height");
+            }
+
+            updateToolbarVars();
+        };
+
+        updateMobileToolbar();
+        mobileLayout.addEventListener("change", () => {
+            closeAllFlyouts();
+            updateMobileToolbar();
+        });
+        toolbar.addEventListener("scroll", () => {
+            if (isFixedMobileToolbar()) {
+                closeAllFlyouts();
+            }
+        }, { passive: true });
+        window.addEventListener("resize", updateMobileToolbar);
+
+        new EraserIdleReturn(toolManager, [eraserTool, partialEraserTool], () => {
+            selectPen(penTool, normalPenButton);
+        });
 
     }
 
