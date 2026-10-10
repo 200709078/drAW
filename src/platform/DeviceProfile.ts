@@ -82,8 +82,10 @@ export function shapeLineWidthForProfile(lineWidth: number, profile: LineProfile
 
 export function eraserRadiusForProfile(lineWidth: number, profile: LineProfile): number {
 
-    // Tahtada palet değeri silginin çapıdır; eski 4 kat çap fazla alan siliyordu.
-    return Math.max(4, lineWidth * (profile === "smartboard" ? 0.5 : 2));
+    // Tahtada silgi çapı palet değerinden %10 büyüktür.
+    const radius = Math.max(4, lineWidth * (profile === "smartboard" ? 0.5 : 2));
+
+    return profile === "smartboard" ? radius * 1.1 : radius;
 
 }
 
