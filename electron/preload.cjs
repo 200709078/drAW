@@ -1,53 +1,60 @@
-const { contextBridge, ipcRenderer } = require("electron");
-
-contextBridge.exposeInMainWorld("drAWDesktop", {
-    requestScreenCapture: () => ipcRenderer.invoke("screen-capture:start"),
-    cancelScreenCapture: () => ipcRenderer.send("screen-capture:cancel"),
+// Generated from preload.ts by scripts/build-preloads.mjs.
+"use strict";
+Object.defineProperty(exports, "__esModule", { value: true });
+const electron_1 = require("electron");
+electron_1.contextBridge.exposeInMainWorld("drAWDesktop", {
+    platform: process.platform,
+    quickCapture: {
+        take: (mode) => electron_1.ipcRenderer.invoke("quick-capture:take", mode),
+        cancel: () => { electron_1.ipcRenderer.send("quick-capture:cancel"); }
+    },
     storage: {
-        save: (document) => ipcRenderer.invoke("storage:save", document),
-        load: (id) => ipcRenderer.invoke("storage:load", id),
-        delete: (id) => ipcRenderer.invoke("storage:delete", id),
-        rename: (id, newName) => ipcRenderer.invoke("storage:rename", id, newName),
-        list: () => ipcRenderer.invoke("storage:list")
+        save: (document) => electron_1.ipcRenderer.invoke("storage:save", document),
+        load: (id) => electron_1.ipcRenderer.invoke("storage:load", id),
+        delete: (id) => electron_1.ipcRenderer.invoke("storage:delete", id),
+        rename: (id, newName) => electron_1.ipcRenderer.invoke("storage:rename", id, newName),
+        list: () => electron_1.ipcRenderer.invoke("storage:list")
     },
     onShutdownRequest: (callback) => {
-        ipcRenderer.on("app:shutdown-request", () => callback());
+        electron_1.ipcRenderer.on("app:shutdown-request", () => callback());
     },
     shutdownComplete: () => {
-        ipcRenderer.send("app:shutdown-complete");
+        electron_1.ipcRenderer.send("app:shutdown-complete");
     },
     shutdownCancelled: () => {
-        ipcRenderer.send("app:shutdown-cancelled");
+        electron_1.ipcRenderer.send("app:shutdown-cancelled");
     },
     windowControls: {
         minimize: () => {
-            ipcRenderer.send("window:minimize");
+            electron_1.ipcRenderer.send("window:minimize");
         },
         toggleMaximize: () => {
-            ipcRenderer.send("window:toggle-maximize");
+            electron_1.ipcRenderer.send("window:toggle-maximize");
         },
         toggleFullscreen: () => {
-            ipcRenderer.send("window:toggle-fullscreen");
+            electron_1.ipcRenderer.send("window:toggle-fullscreen");
         },
         setFullscreen: (enabled) => {
-            ipcRenderer.send("window:set-fullscreen", enabled);
+            electron_1.ipcRenderer.send("window:set-fullscreen", enabled);
         },
         isFullscreen: () => {
-            return ipcRenderer.invoke("window:is-fullscreen");
+            return electron_1.ipcRenderer.invoke("window:is-fullscreen");
         },
         close: () => {
-            ipcRenderer.send("window:close");
+            electron_1.ipcRenderer.send("window:close");
         },
         onMaximizeChanged: (callback) => {
-            ipcRenderer.on("window:maximize-changed", (_event, maximized) => callback(maximized));
+            electron_1.ipcRenderer.on("window:maximize-changed", (_event, maximized) => callback(maximized));
         },
         onFullscreenChanged: (callback) => {
-            ipcRenderer.on("window:fullscreen-changed", (_event, fullscreen) => callback(fullscreen));
+            electron_1.ipcRenderer.on("window:fullscreen-changed", (_event, fullscreen) => callback(fullscreen));
         }
     },
     photoFolder: {
-        selectPhoto: (defaultPath) => ipcRenderer.invoke("photo:select", defaultPath),
-        listPhotos: (folderPath) => ipcRenderer.invoke("photo:list", folderPath),
-        readPhoto: (folderPath, fileName) => ipcRenderer.invoke("photo:read", folderPath, fileName)
+        selectPhoto: (defaultPath) => electron_1.ipcRenderer.invoke("photo:select", defaultPath),
+        listPhotos: (folderPath) => electron_1.ipcRenderer.invoke("photo:list", folderPath),
+        readPhoto: (folderPath, fileName) => {
+            return electron_1.ipcRenderer.invoke("photo:read", folderPath, fileName);
+        }
     }
 });

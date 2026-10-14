@@ -1,5 +1,6 @@
 import type { DrawingDocumentJson } from "../storage/DrawingDocument";
 import type { StorageErrorKind } from "../storage/StorageError";
+import type { QuickCaptureBridge } from "../capture/QuickCaptureBridge";
 
 export type ScreenCaptureResult = {
     dataUrl: string;
@@ -57,6 +58,9 @@ declare global {
     const __APP_VERSION__: string;
     interface Window {
         drAWDesktop?: {
+            platform?: string;
+            quickCapture?: QuickCaptureBridge;
+            // Devre dışı eski aracın yalnızca derleme tipi; preload bu metotları sunmaz.
             requestScreenCapture: () => Promise<ScreenCaptureResult | null>;
             cancelScreenCapture: () => void;
             storage: ElectronStorageBridge;

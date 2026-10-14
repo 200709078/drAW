@@ -809,6 +809,7 @@ body.mobile-toolbar-fixed.dock-left .sidebar__handle {
 }
 
 .sidebar__pen-palette,
+.sidebar__capture-palette,
 .sidebar__eraser-palette,
 .sidebar__shapes-palette,
 .sidebar__color-palette,
@@ -874,6 +875,7 @@ body.mobile-toolbar-fixed.dock-left .sidebar__handle {
 }
 
 .sidebar__eraser-option,
+.sidebar__capture-option,
 .sidebar__pen-option,
 .sidebar__shape-option {
     width: 50px;
@@ -936,6 +938,20 @@ body.mobile-toolbar-fixed.dock-left .sidebar__handle {
     flex-direction: row;
     z-index: 20;
 }
+
+.sidebar__capture-option {
+    width: 64px;
+    height: 54px;
+    flex-direction: column;
+    gap: 2px;
+    font-size: 11px;
+    font-weight: 600;
+}
+
+.sidebar__capture-option img { width: 28px; height: 28px; }
+.sidebar__capture-option:hover { background: #eff6ff; border-color: #2563eb; }
+.sidebar__capture-option:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
+.sidebar__capture-palette.sidebar__flyout--vertical { width: 74px; }
 
 .sidebar__flyout--vertical {
     flex-direction: column;

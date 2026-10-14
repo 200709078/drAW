@@ -16,8 +16,9 @@ import { PartialEraserTool } from "../tools/PartialEraserTool";
 import { TextTool } from "../tools/TextTool";
 import { ShapesTool } from "../tools/ShapesTool";
 import { HistoryManager } from "./HistoryManager";
-import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
-import { getScreenCaptureGateway, isDesktopAvailable } from "../platform/ScreenCaptureGateway";
+import { QuickCaptureController } from "../capture/QuickCaptureController";
+import { getQuickCaptureBridge } from "../capture/QuickCaptureBridge";
+import { isDesktopAvailable } from "../platform/DesktopEnvironment";
 import { AutoSaveManager } from "../autosave/AutoSaveManager";
 import { ThumbnailGenerator } from "../autosave/ThumbnailGenerator";
 import { DrawingRepository } from "../storage/DrawingRepository";
@@ -39,7 +40,7 @@ export class ManagerContainer {
     private readonly textTool: TextTool;
     private readonly shapesTool: ShapesTool;
     private readonly historyManager: HistoryManager;
-    private readonly screenCaptureTool: ScreenCaptureTool;
+    private readonly quickCapture: QuickCaptureController;
     private readonly desktopAvailable: boolean;
     private readonly autoSaveManager: AutoSaveManager;
     private readonly drawingRepository: DrawingRepository;
@@ -146,15 +147,14 @@ export class ManagerContainer {
             this.penTool,
             this.selectionTool
         );
-        this.screenCaptureTool = new ScreenCaptureTool(
+        this.quickCapture = new QuickCaptureController(
             this.drawingContext,
             this.document,
             this.documentRenderer,
             this.historyManager,
-            getScreenCaptureGateway(),
             this.toolManager,
-            this.penTool,
-            this.selectionTool
+            this.selectionTool,
+            getQuickCaptureBridge()
         );
         this.desktopAvailable = isDesktopAvailable();
         this.shapesTool = new ShapesTool(
@@ -266,9 +266,9 @@ export class ManagerContainer {
 
     }
 
-    public getScreenCaptureTool(): ScreenCaptureTool {
+    public getQuickCapture(): QuickCaptureController {
 
-        return this.screenCaptureTool;
+        return this.quickCapture;
 
     }
 
