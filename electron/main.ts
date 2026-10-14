@@ -1,6 +1,6 @@
 import path from "node:path";
 import { createRequire } from "node:module";
-import { ScreenCaptureService } from "./screen-capture.ts";
+import { QuickCaptureService } from "./quick-capture/service.ts";
 import { registerPhotoFolderHandlers } from "./photo-folder.ts";
 import { ElectronStorageService } from "./storage/ElectronStorageService.ts";
 import { StorageError } from "./storage/StorageError.ts";
@@ -19,7 +19,7 @@ if (!app.isPackaged) {
     app.setName("drAW");
     app.commandLine.appendSwitch("class", "drAW");
 }
-const screenCaptureService = new ScreenCaptureService();
+const quickCaptureService = new QuickCaptureService(getAppPath("electron", "quick-capture"));
 const storageService = new ElectronStorageService();
 
 type StorageOperationError = {
@@ -197,6 +197,7 @@ function createWindow(): void {
     });
 
     registerWindowShutdown(window, ipcMain);
+    quickCaptureService.allowWindow(window);
 
     const indexPath = getAppPath(
         "dist",
@@ -207,15 +208,8 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-    ipcMain.handle("screen-capture:start", (event) => {
-        return screenCaptureService.start(event.sender);
-    });
-    ipcMain.on("screen-capture:complete", (event, selection) => {
-        screenCaptureService.complete(event.sender, selection);
-    });
-    ipcMain.on("screen-capture:cancel", (event) => {
-        screenCaptureService.cancel(event.sender);
-    });
+    // Eski alıntı dosyaları korunuyor; hizmeti ve IPC kanalları kaydedilmiyor.
+    quickCaptureService.register(ipcMain);
 
     registerStorageHandlers();
     registerWindowControls();

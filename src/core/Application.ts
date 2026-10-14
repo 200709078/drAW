@@ -40,7 +40,7 @@ export class Application {
             this.managers.getCanvasManager().getCanvas(),
             this.managers.getPhotoLinkManager(),
             this.managers.getTextTool(),
-            this.managers.getScreenCaptureTool(),
+            this.managers.getQuickCapture(),
             this.managers.getDesktopAvailable()
         );
 

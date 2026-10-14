@@ -7,7 +7,8 @@ import { SelectionTool } from "../tools/SelectionTool";
 import { PenTool } from "../tools/PenTool";
 import { PartialEraserTool } from "../tools/PartialEraserTool";
 import { TextTool } from "../tools/TextTool";
-import { ScreenCaptureTool } from "../tools/ScreenCaptureTool";
+import type { QuickCaptureController } from "../capture/QuickCaptureController";
+import type { CaptureMode } from "../capture/QuickCaptureBridge";
 import { HistoryManager } from "../core/HistoryManager";
 import { EraserIdleReturn } from "../core/EraserIdleReturn";
 import { ShapesTool } from "../tools/ShapesTool";
@@ -34,7 +35,9 @@ import lineIcon from "../assets/icons/line.svg";
 import newDrawIcon from "../assets/icons/newdraw.svg";
 import undoIcon from "../assets/icons/undo.svg";
 import redoIcon from "../assets/icons/redo.svg";
-import captureIcon from "../assets/icons/capture.svg";
+import quickCaptureIcon from "../assets/icons/quick-capture.svg";
+import captureScreenIcon from "../assets/icons/capture-screen.svg";
+import captureAreaIcon from "../assets/icons/capture-area.svg";
 import textIcon from "../assets/icons/text.svg";
 import squareIcon from "../assets/icons/square.svg";
 import gridIcon from "../assets/icons/grid.svg";
@@ -76,7 +79,7 @@ export class ToolbarPanel {
         _canvas: HTMLCanvasElement,
         photoLinkManager: LinkedPhotoManager | null = null,
         textTool: TextTool,
-        screenCaptureTool: ScreenCaptureTool,
+        quickCapture: QuickCaptureController,
         desktopAvailable: boolean
     ) {
 
@@ -164,16 +167,37 @@ export class ToolbarPanel {
             }
         });
 
-        const screenCaptureButton = desktopAvailable
-            ? this.createIconButton("Ekran Alıntısı", captureIcon, {
-                className: "sidebar__tool",
-                isSelected: false,
-                selectedClass: "sidebar__tool--selected",
-                onSelect: () => {
-                    toolManager.setTool(screenCaptureTool);
-                }
-            })
-            : null;
+        const captureControl = document.createElement("div");
+        captureControl.className = "sidebar__control";
+        const captureButton = this.createIconButton("Ekran Alıntısı", quickCaptureIcon, { className: "sidebar__tool" });
+        captureButton.setAttribute("aria-expanded", "false");
+        const capturePalette = document.createElement("div");
+        capturePalette.className = "sidebar__flyout sidebar__capture-palette";
+        capturePalette.hidden = true;
+        capturePalette.setAttribute("role", "group");
+        capturePalette.setAttribute("aria-label", "Alıntı türü");
+        captureControl.append(captureButton, capturePalette);
+        for (const [mode, label, icon] of [
+            ["screen", "Tam ekran", captureScreenIcon], ["area", "Alan", captureAreaIcon]
+        ] as const) {
+            const button = this.createIconButton(label, icon, { className: "sidebar__capture-option" });
+            const caption = document.createElement("span");
+            caption.textContent = label;
+            button.append(caption);
+            button.addEventListener("click", async () => {
+                closeAllFlyouts();
+                captureButton.disabled = true;
+                try { await quickCapture.take(mode as CaptureMode); }
+                finally { captureButton.disabled = false; }
+            });
+            capturePalette.append(button);
+        }
+        captureButton.addEventListener("click", () => {
+            if (!quickCapture.isAvailable()) return;
+            guidePalette.hidden = true;
+            guideButton.setAttribute("aria-expanded", "false");
+            toggleFlyout(captureButton, capturePalette);
+        });
 
         const guideControl = document.createElement("div");
         guideControl.className = "sidebar__control";
@@ -366,8 +390,7 @@ export class ToolbarPanel {
             eraserButton,
             shapesButton,
             selectionButton,
-            textButton,
-            ...(screenCaptureButton !== null ? [screenCaptureButton] : [])
+            textButton
         ];
 
         const selectTool = (selectedButton: HTMLButtonElement | null): void => {
@@ -621,6 +644,7 @@ export class ToolbarPanel {
         });
 
         const flyouts = [
+            { button: captureButton, panel: capturePalette, bottomAlign: false },
             { button: penButton, panel: penPalette, bottomAlign: false },
             { button: eraserButton, panel: eraserPalette, bottomAlign: false },
             { button: shapesButton, panel: shapesPalette, bottomAlign: true },
@@ -880,6 +904,8 @@ export class ToolbarPanel {
         });
 
         toolManager.addChangeListener(() => {
+            capturePalette.hidden = true;
+            captureButton.setAttribute("aria-expanded", "false");
             const activeTool = toolManager.getActiveTool();
             selectTool(null);
 
@@ -895,8 +921,6 @@ export class ToolbarPanel {
                 selectTool(eraserButton);
             } else if (activeTool === textTool) {
                 selectTool(textButton);
-            } else if (screenCaptureButton !== null && activeTool === screenCaptureTool) {
-                selectTool(screenCaptureButton);
             }
         });
 
@@ -1105,7 +1129,7 @@ export class ToolbarPanel {
             linkButton,
             shapesControl,
             textButton,
-            ...(screenCaptureButton !== null ? [screenCaptureButton] : []),
+            ...(quickCapture.isAvailable() ? [captureControl] : []),
             guideControl
         );
         sidebar.appendChild(toolbar);

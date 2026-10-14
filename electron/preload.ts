@@ -1,9 +1,10 @@
 import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("drAWDesktop", {
-    requestScreenCapture: (): Promise<unknown> => ipcRenderer.invoke("screen-capture:start"),
-    cancelScreenCapture: (): void => {
-        ipcRenderer.send("screen-capture:cancel");
+    platform: process.platform,
+    quickCapture: {
+        take: (mode: "screen" | "area"): Promise<unknown> => ipcRenderer.invoke("quick-capture:take", mode),
+        cancel: (): void => { ipcRenderer.send("quick-capture:cancel"); }
     },
     storage: {
         save: (document: unknown): Promise<unknown> => ipcRenderer.invoke("storage:save", document),
