@@ -1,0 +1,188 @@
+<!doctype html>
+<html lang="tr">
+<head><meta charset="utf-8"><title>Quick capture UI checks</title></head>
+<body><div id="app"></div><pre id="result" hidden>RUNNING</pre>
+<script type="module">
+import "/src/style.css";
+import { Application } from "/src/core/Application.ts";
+
+const params = new URLSearchParams(location.search);
+const mode = params.get("mode") || "pc";
+const records = new Map();
+const requests = [];
+let pending;
+let cancellations = 0;
+if (mode !== "web") {
+    window.drAWDesktop = {
+        platform: params.get("platform") || "linux",
+        quickCapture: {
+            take(value) { requests.push(value); return new Promise((resolve) => { pending = resolve; }); },
+            cancel() { cancellations++; }
+        },
+        storage: {
+            async save(record) { records.set(record.id, structuredClone(record)); return { ok: true }; },
+            async load(id) { return { ok: true, value: records.get(id) ?? null }; },
+            async list() { return { ok: true, value: [...records.values()] }; },
+            async delete(id) { records.delete(id); return { ok: true }; },
+            async rename() { return { ok: true }; }
+        },
+        windowControls: {
+            minimize() {}, toggleMaximize() {}, toggleFullscreen() {}, setFullscreen() {}, close() {},
+            async isFullscreen() { return false; }, onMaximizeChanged() {}, onFullscreenChanged() {}
+        },
+        onShutdownRequest() {}, shutdownComplete() {}, shutdownCancelled() {}
+    };
+}
+const application = new Application();
+const m = application.getManagers();
+const history = m.getHistoryManager();
+const drawing = m.getDocument();
+const tools = m.getToolManager();
+const viewport = m.getDrawingContext().getViewport();
+const capture = document.querySelector('button[aria-label="Ekran Alıntısı"]');
+const palette = document.querySelector('[aria-label="Alıntı türü"]');
+const button = (label) => document.querySelector(`button[aria-label="${label}"]`);
+const checks = [];
+const errors = [];
+window.__quickCaptureResult = { done: false, checks, errors };
+window.addEventListener("error", (event) => errors.push(String(event.error)));
+window.addEventListener("unhandledrejection", (event) => errors.push(String(event.reason)));
+const delay = (ms = 0) => new Promise((resolve) => setTimeout(resolve, ms));
+function assert(value, message) { if (!value) throw new Error(message); }
+async function until(check) {
+    for (let n = 0; n < 100; n++) { if (check()) return; await delay(20); }
+    throw new Error("UI operation timed out");
+}
+async function check(name, run) {
+    try { await run(); checks.push(name); }
+    catch (error) { errors.push(`${name}: ${error.message}`); }
+}
+function image(width, height) {
+    const canvas = document.createElement("canvas");
+    canvas.width = width; canvas.height = height;
+    const context = canvas.getContext("2d");
+    context.fillStyle = "#f1f5f9"; context.fillRect(0, 0, width, height);
+    context.fillStyle = "#2563eb"; context.fillRect(0, 0, 16, 16);
+    return { dataUrl: canvas.toDataURL(), width, height };
+}
+function begin(label) {
+    if (palette.hidden) capture.click();
+    button(label).click();
+    assert(palette.hidden, "palette must close before capture");
+    assert(capture.disabled, "capture must reject repeated requests");
+}
+async function answer(reply) { pending(reply); await until(() => !capture.disabled); }
+
+const available = mode === "pc" || mode === "board";
+await check("desktop capability gates both toolbar and controller", async () => {
+    assert(Boolean(capture) === available, "capture visible in incorrect mode");
+    assert(m.getQuickCapture().isAvailable() === available, "incorrect capability");
+    if (!available) {
+        await m.getQuickCapture().take("screen");
+        assert(requests.length === 0, "unsupported environment invoked backend");
+    }
+});
+if (available) {
+    await check("opening and closing palette keeps current drawing tool and does not capture", () => {
+        const active = tools.getActiveTool();
+        capture.click();
+        assert(!palette.hidden && capture.getAttribute("aria-expanded") === "true", "palette did not open");
+        assert(palette.querySelectorAll("button").length === 2, "palette must have two options");
+        assert(tools.getActiveTool() === active && requests.length === 0, "opening palette started capture or changed tool");
+        capture.click();
+        assert(palette.hidden, "second click did not close palette");
+    });
+    await check("palette stays visible and touch targets fit at every toolbar position", async () => {
+        for (const dock of ["bottom", "left", "top"]) {
+            document.body.classList.toggle("dock-left", dock === "left");
+            document.body.classList.toggle("dock-top", dock === "top");
+            window.dispatchEvent(new Event("resize"));
+            capture.click();
+            await delay(30);
+            const rect = palette.getBoundingClientRect();
+            assert(rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
+                `${dock}: palette outside viewport ${JSON.stringify(rect)}`);
+            for (const option of palette.querySelectorAll("button")) {
+                const b = option.getBoundingClientRect();
+                assert(b.width >= 44 && b.height >= 44, `${dock}: touch target too small`);
+            }
+            capture.click();
+        }
+        document.body.classList.remove("dock-left", "dock-top");
+        window.dispatchEvent(new Event("resize"));
+    });
+    await check("other tool closes capture palette", () => {
+        capture.click(); button("Metin").click();
+        assert(palette.hidden && capture.getAttribute("aria-expanded") === "false", "palette remained open");
+        tools.setTool(m.getPenTool());
+    });
+    for (const zoom of [.25, 1, 4]) {
+        for (const label of ["Tam ekran", "Alan"]) {
+            await check(`${label} inserts native dimensions at zoom ${zoom}, preserves pixels and supports undo/redo`, async () => {
+                drawing.clearCurrentPage(); history.reset();
+                viewport.reset(); viewport.zoomAt(100, 100, zoom); viewport.panBy(67.5, -21.25);
+                const source = label === "Tam ekran" ? image(3840, 2160) : image(800, 450);
+                begin(label);
+                assert(requests.at(-1) === (label === "Alan" ? "area" : "screen"), "wrong capture mode");
+                await answer({ status: "ok", image: source });
+                const inserted = drawing.getCurrentPage().getImages()[0];
+                assert(inserted.getWidth() === source.width && inserted.getHeight() === source.height, "image was fitted or resized");
+                assert(inserted.getDataUrl() === source.dataUrl, "source pixels changed");
+                assert(Math.abs(viewport.worldToScreenX(inserted.getX()) - 16) < .001, "wrong horizontal insertion position");
+                assert(Math.abs(viewport.worldToScreenY(inserted.getY()) - 16) < .001, "titlebar shifted insertion position");
+                assert(tools.getActiveTool() === m.getSelectionTool(), "new image not selected");
+                assert(history.undo() && drawing.getCurrentPage().getImages().length === 0, "undo failed");
+                assert(history.redo(), "redo failed");
+                const restored = drawing.getCurrentPage().getImages()[0];
+                assert(restored.getWidth() === source.width && restored.getDataUrl() === source.dataUrl, "redo lost dimensions or pixels");
+            });
+        }
+    }
+    await check("cancel preserves drawing and active tool", async () => {
+        tools.setTool(m.getPenTool());
+        const before = drawing.createSnapshot();
+        begin("Alan"); await answer({ status: "cancelled" });
+        assert(drawing.snapshotsMatch(before, drawing.createSnapshot()), "cancel changed drawing");
+        assert(tools.getActiveTool() === m.getPenTool(), "cancel changed active tool");
+    });
+    await check("duplicate request is ignored", async () => {
+        begin("Alan"); const count = requests.length;
+        await m.getQuickCapture().take("screen");
+        assert(requests.length === count, "duplicate request reached backend");
+        await answer({ status: "cancelled" });
+    });
+    await check("late result after document switch is discarded", async () => {
+        begin("Alan"); const count = cancellations;
+        drawing.clearCurrentPage(); history.reset();
+        assert(cancellations > count, "document switch did not cancel capture");
+        await answer({ status: "ok", image: image(600, 400) });
+        assert(drawing.getCurrentPage().getImages().length === 0, "late image entered another drawing");
+    });
+    await check("capture finishes pending text before acquiring image", async () => {
+        button("Metin").click();
+        const event = { pointerId: 1, pointerType: "touch", offsetX: 100, offsetY: 100, button: 0 };
+        m.getTextTool().onPointerDown(event); m.getTextTool().onPointerUp(event);
+        const editor = document.querySelector(".text-editor");
+        assert(editor, "text editor did not open");
+        editor.value = "Alıntı öncesi metin";
+        begin("Tam ekran");
+        assert(!document.querySelector(".text-editor"), "text editor remained open");
+        assert(drawing.getCurrentPage().getTexts().at(-1).getText() === "Alıntı öncesi metin", "pending text lost");
+        await answer({ status: "cancelled" });
+    });
+    await check("capture errors restore toolbar and preserve drawing", async () => {
+        const before = drawing.createSnapshot();
+        begin("Tam ekran"); pending({ status: "error", message: "Test: ekran izni yok" });
+        await until(() => document.querySelector(".modal"));
+        assert(document.querySelector(".modal__message").textContent === "Test: ekran izni yok", "missing capture error");
+        document.querySelector(".modal__button--confirm").click();
+        await until(() => !capture.disabled);
+        assert(drawing.snapshotsMatch(before, drawing.createSnapshot()), "error modified drawing");
+    });
+    // İnceleme için panel açık, tuval boş bırakılır.
+    tools.setTool(m.getPenTool()); drawing.clearCurrentPage(); history.reset(); viewport.reset();
+    m.getDocumentRenderer().render(); capture.click();
+}
+window.__quickCaptureResult.done = true;
+document.getElementById("result").textContent = JSON.stringify(window.__quickCaptureResult);
+</script></body></html>
