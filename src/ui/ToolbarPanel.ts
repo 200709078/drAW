@@ -178,7 +178,7 @@ export class ToolbarPanel {
         capturePalette.setAttribute("aria-label", "Alıntı türü");
         captureControl.append(captureButton, capturePalette);
         for (const [mode, label, icon] of [
-            ["screen", "Tam ekran", captureScreenIcon], ["area", "Alan", captureAreaIcon]
+            ["screen", "Tam Ekran", captureScreenIcon], ["area", "Alan", captureAreaIcon]
         ] as const) {
             const button = this.createIconButton(label, icon, { className: "sidebar__capture-option" });
             const caption = document.createElement("span");
