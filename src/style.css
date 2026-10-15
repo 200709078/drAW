@@ -939,19 +939,9 @@ body.mobile-toolbar-fixed.dock-left .sidebar__handle {
     z-index: 20;
 }
 
-.sidebar__capture-option {
-    width: 64px;
-    height: 54px;
-    flex-direction: column;
-    gap: 2px;
-    font-size: 11px;
-    font-weight: 600;
-}
-
 .sidebar__capture-option img { width: 28px; height: 28px; }
 .sidebar__capture-option:hover { background: #eff6ff; border-color: #2563eb; }
 .sidebar__capture-option:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
-.sidebar__capture-palette.sidebar__flyout--vertical { width: 74px; }
 
 .sidebar__flyout--vertical {
     flex-direction: column;
