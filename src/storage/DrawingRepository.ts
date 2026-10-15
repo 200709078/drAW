@@ -50,14 +50,15 @@ export class DrawingRepository {
     public async saveNewDocument(document: DrawingDocument): Promise<DrawingDocument> {
 
         const revision = this.dirtyFlag.getRevision();
-        const existing = await this.storage.list();
+        const existing = (await this.storage.list()).filter((record) => record.getId() !== document.getId());
         const evictions = this.limiter.getEvictionCandidates(existing, 1);
 
+        // Yeni kayıt başarısız olursa eldeki kayıtları silme.
+        await this.storage.save(document);
         for (const record of evictions) {
             await this.storage.delete(record.getId());
         }
 
-        await this.storage.save(document);
         this.dirtyFlag.markClean(revision);
 
         return document;

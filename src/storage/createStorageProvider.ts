@@ -1,7 +1,7 @@
 import type { Storage } from "./Storage";
 import { WebStorageProvider } from "./providers/WebStorageProvider";
 import { ElectronStorageProvider } from "./providers/ElectronStorageProvider";
-import { isDesktopAvailable } from "../platform/ScreenCaptureGateway";
+import { isDesktopAvailable } from "../platform/DesktopEnvironment";
 
 export function createStorageProvider(): Storage {
 

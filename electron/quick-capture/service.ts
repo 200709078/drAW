@@ -141,7 +141,7 @@ export class QuickCaptureService {
         }
         if (this.active !== session) return;
         const source = sources.find((item) => item.display_id === String(display.id)) ??
-            (sources.length === 1 ? sources[0] : undefined);
+            (sources.length === 1 && !sources[0].display_id ? sources[0] : undefined);
         if (!source || source.thumbnail.isEmpty()) throw new Error("Ekran görüntüsü alınamadı veya ekran seçimi iptal edildi.");
         // PNG'yi yeniden açarak NativeImage'ın DPI gösterimlerini tek fiziksel piksel uzayına indir.
         const image = nativeImage.createFromBuffer(source.thumbnail.toPNG());

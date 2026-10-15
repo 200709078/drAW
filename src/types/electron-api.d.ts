@@ -2,12 +2,6 @@ import type { DrawingDocumentJson } from "../storage/DrawingDocument";
 import type { StorageErrorKind } from "../storage/StorageError";
 import type { QuickCaptureBridge } from "../capture/QuickCaptureBridge";
 
-export type ScreenCaptureResult = {
-    dataUrl: string;
-    width: number;
-    height: number;
-};
-
 export type StorageOperationError = {
     kind: StorageErrorKind;
     message: string;
@@ -60,9 +54,6 @@ declare global {
         drAWDesktop?: {
             platform?: string;
             quickCapture?: QuickCaptureBridge;
-            // Devre dışı eski aracın yalnızca derleme tipi; preload bu metotları sunmaz.
-            requestScreenCapture: () => Promise<ScreenCaptureResult | null>;
-            cancelScreenCapture: () => void;
             storage: ElectronStorageBridge;
             onShutdownRequest: (callback: () => void) => void;
             shutdownComplete: () => void;

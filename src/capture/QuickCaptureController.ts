@@ -8,6 +8,8 @@ import type { SelectionTool } from "../tools/SelectionTool";
 import { closeTextEditor } from "../ui/TextEditor";
 import { confirmDialog } from "../ui/ConfirmDialog";
 import type { CaptureMode, QuickCaptureBridge } from "./QuickCaptureBridge";
+import { fitScreenCapture } from "./CapturePlacement";
+import { isSmartBoard } from "../platform/DeviceProfile";
 
 export class QuickCaptureController {
     private busy = false;
@@ -61,9 +63,17 @@ export class QuickCaptureController {
                 throw new Error("Alıntı görüntüsü okunamadı. Yeniden deneyin.");
             }
             const viewport = this.context.getViewport();
-            // Kaynak pikselleri belge birimlerine birebir aktarılır; ekrana sığdırma uygulanmaz.
+            const dock = window.document.body.classList.contains("dock-left") ? "left"
+                : window.document.body.classList.contains("dock-top") ? "top" : "bottom";
+            const placement = mode === "screen"
+                ? fitScreenCapture(width, height, this.context.getCanvas().getBoundingClientRect(),
+                    window.document.querySelector(".sidebar")?.getBoundingClientRect() ?? null,
+                    dock, viewport.getScale(), isSmartBoard() ? 32 : 24)
+                : { x: 16, y: 16, width, height };
+            // PNG özgün çözünürlükte korunur; tam ekranın yalnızca tuvaldeki geometrisi küçültülür.
             const image = new DocumentImage(dataUrl,
-                viewport.screenToWorldX(16), viewport.screenToWorldY(16), width, height);
+                viewport.screenToWorldX(placement.x), viewport.screenToWorldY(placement.y),
+                placement.width, placement.height);
             this.busy = false;
             this.tools.setTool(this.selection);
             this.history.begin();
