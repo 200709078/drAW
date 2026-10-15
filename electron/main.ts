@@ -208,7 +208,6 @@ function createWindow(): void {
 }
 
 app.whenReady().then(() => {
-    // Eski alıntı dosyaları korunuyor; hizmeti ve IPC kanalları kaydedilmiyor.
     quickCaptureService.register(ipcMain);
 
     registerStorageHandlers();

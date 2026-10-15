@@ -33,13 +33,20 @@
 - [x] YAPILDI — 400px küçük önizlemeler (`src/autosave/ThumbnailGenerator.ts`).
 - [x] YAPILDI — Kayıt sırasında gelen yeni değişiklikler de kaydediliyor; kayıt hatası Yeni Çizim, kayıt açma ve kapanışı durduruyor. Yavaş kayıt pencereyi zorla kapatmıyor (`tests/autosave.test.cjs`, `tests/shutdown.test.cjs`).
 
-## Ekran alıntısı — dokunma düzeltmesi
+## Ekran alıntısı
 
-- [x] YAPILDI — Alıntı penceresinde tarayıcının dokunarak kaydırma/yakınlaştırma davranışı kapatıldı. Seçim ve araç kutusu hareketleri aktif `pointerId` ile izleniyor; ikinci parmak hareketi devralmıyor.
-- [x] YAPILDI — `pointercancel`, `lostpointercapture` ve pencere odağının kaybı hareketi temizliyor. İptal edilen seçim önceki konumuna dönüyor; bırakma anındaki son konum uygulanıyor.
-- [x] YAPILDI — Sekiz tutamacın dokunma alanı 44px; küçük seçimlerin orta kısmı taşınabiliyor. Görüntü pencereye en-boy oranıyla sığdırılıyor; yüksek DPI ve boş kenarlı görüntülerde kırpma koordinatları korunuyor.
-- [x] YAPILDI — Electron'un kullandığı `electron/overlay-preload.cjs`, artık `overlay-preload.ts` kaynağından `scripts/build-overlay-preload.mjs` ile üretiliyor; `npm run build` bu adımı içerir. `.cjs` dosyasını elle düzenlemeyin.
-- [x] YAPILDI — Gerçek Chromium dokunma/kalem/fare girdileriyle 52 kontrol geçti (`node tests/overlay-touch.cjs`). Yüksek DPI, sekiz tutamaç, ikinci parmak, hareket iptali, küçük seçim, tam ekran modu, araç kutusu ve kırpma koordinatları kontrol edildi. Fiziksel Pardus ETAP tahtasında henüz denenmedi.
+- Araç, Windows/Linux masaüstü köprüsü bulunan PC ve akıllı tahta uygulamasında sunulur. Web ve mobilde görünmez; webde tahta görünümü açmak özelliği etkinleştirmez.
+- Toolbarın mevcut palet stiliyle açılan panelinde **Tam Ekran** ve **Alan** seçenekleri bulunur. Kaynak kodu `src/capture/` ve `electron/quick-capture/` altındadır.
+- Tam Ekran, drAW gizlendikten sonra görüntüyü alır; seçim penceresi açılmaz. Kaynak PNG'nin çözünürlüğü korunur. Tuvaldeki görüntü oranı korunarak küçültülür; PC'de 24px, tahtada 32px kenar boşluğu bırakılır ve toolbarın bulunduğu alan dışarıda tutulur.
+- Alan, sabit görüntü üzerinde tek sürüklemeyle belirlenir; parmak/fare bırakılınca tuvale özgün boyutuyla eklenir. Kamera efekti, flaş, ses, karartma veya onay adımı yoktur. İptal için dokunulabilir × düğmesi ve Esc vardır.
+- İkinci parmak seçimi devralmaz; yarıda kesilen hareket görüntü üretmez. İptal, hata, kaynak zaman aşımı ve ekran değişikliği drAW'a döndürür. Geciken sonuç farklı çizime eklenmez; eklenen görüntü undo/redo ve otomatik kayda katılır.
+- `scripts/build-preloads.mjs`, ana preload ve alan seçimi için `.cjs` dosyalarını üretir. `.cjs` dosyalarını elle düzenlemeyin.
+- Windows'un gerçek ekran yakalaması ve fiziksel Pardus ETAP tahtası ayrıca denenmelidir. PipeWire/portal kullanılan sistemlerde işletim sistemi izin veya ekran seçimi gösterebilir. Kaynak özgün çözünürlükte alınamazsa görüntüyü büyütüp eklemek yerine hata bildirilir.
+
+## Kayıt sınırı
+
+- En fazla **30 kayıt** tutulur. Yeni kayıt başarıyla yazılınca en eski güncellenen kayıtlar kaldırılır; önceki sınırdan kalan fazla kayıtlar da bu sırada temizlenir.
+- Yeni kayıt yazılamazsa mevcut kayıtlar silinmez. Temizleme hatasından sonraki tekrar denemesi, yeni kaydı iki kez saymaz (`tests/record-limit.test.cjs`).
 
 ## Çizim gecikmesi (tahta) — incelenecek
 
