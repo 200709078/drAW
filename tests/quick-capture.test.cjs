@@ -42,7 +42,8 @@ function fixture({ scale = 1, platform = "linux", displayId = 7, bounds = { x: 0
     let requested;
     let capture = async () => [{ display_id: String(displayId), thumbnail: image(bounds.width * scale, bounds.height * scale) }];
     const display = { id: displayId, bounds, workArea: { ...bounds, height: bounds.height - 64 }, scaleFactor: scale };
-    const screen = Object.assign(new EventEmitter(), { getDisplayMatching: () => display });
+    const displays = [display];
+    const screen = Object.assign(new EventEmitter(), { getDisplayMatching: () => display, getAllDisplays: () => displays });
     function image(width, height) {
         return {
             isEmpty: () => width === 0,
@@ -101,7 +102,7 @@ function fixture({ scale = 1, platform = "linux", displayId = 7, bounds = { x: 0
     const event = (window = owner) => ({ sender: window.webContents, senderFrame: window.webContents.mainFrame });
     const send = (name, value, window = windows[1]) => handlers.get(`quick-capture:${name}`)(event(window), value);
     return {
-        owner, windows, screen, actions, timers, service, image, event, handlers,
+        owner, windows, screen, displays, actions, timers, service, image, event, handlers,
         requested: () => requested,
         capture: (fn) => { capture = fn; },
         start: (mode = "screen", e = event()) => handlers.get("quick-capture:take")(e, mode), send,
@@ -175,9 +176,51 @@ test("exact display ID takes precedence over a truncated Linux ID", async () => 
     assert.equal((await promise).status, "ok");
 });
 
+for (const mode of ["screen", "area"]) {
+    for (const displayId of [1881264395124801, Number.MAX_SAFE_INTEGER + 1]) {
+        test(`Linux single-monitor ${mode}: accepts a sole native source with unrelated ID (${displayId})`, async () => {
+            const f = fixture({ displayId, scale: 2 });
+            f.capture(async () => [{ display_id: "0", thumbnail: f.image(3840, 2160) }]);
+            const promise = f.start(mode);
+            await f.advance();
+            if (mode === "area") {
+                assert.equal(f.windows.length, 2, "a valid sole screen must reach area selection");
+                f.ready();
+                f.send("selection", { left: .25, top: .25, right: .75, bottom: .75 });
+            }
+            const reply = await promise;
+            assert.equal(reply.status, "ok", reply.message);
+            assert.equal(reply.image.width, mode === "screen" ? 3840 : 1920);
+            assert.equal(reply.image.height, mode === "screen" ? 2160 : 1080);
+            assert.equal(f.owner.visible, true);
+        });
+    }
+}
+
+for (const issue of ["second-display", "replaced-display", "empty-image", "downscaled-image"]) {
+    test(`Linux single-monitor fallback rejects ${issue}`, async () => {
+        const f = fixture();
+        if (issue === "second-display") f.displays.push({ ...f.displays[0], id: 8 });
+        if (issue === "replaced-display") f.displays.splice(0, 1, { ...f.displays[0], id: 8 });
+        f.capture(async () => [{ display_id: "0", thumbnail: f.image(
+            issue === "empty-image" ? 0 : issue === "downscaled-image" ? 960 : 1920,
+            issue === "downscaled-image" ? 540 : 1080
+        ) }]);
+        const promise = f.start("area");
+        await f.advance();
+        const reply = await promise;
+        assert.equal(reply.status, "error");
+        const expected = issue === "empty-image" ? /boş/ : issue === "downscaled-image" ? /özgün çözünürlük/ : /eşleştirilemedi/;
+        assert.match(reply.message, expected);
+        assert.equal(f.windows.length, 1, "invalid source must not open selection");
+        assert.equal(f.owner.visible, true);
+    });
+}
+
 for (const issue of ["windows", "unrelated", "ambiguous", "empty-image"]) {
     test(`X11 ID compatibility rejects ${issue} sources`, async () => {
         const f = fixture({ displayId: 1881264395124801, platform: issue === "windows" ? "win32" : "linux" });
+        if (issue === "unrelated") f.displays.push({ ...f.displays[0], id: 8 });
         f.capture(async () => {
             const source = { display_id: issue === "unrelated" ? "66" : "65", thumbnail: f.image(issue === "empty-image" ? 0 : 1920, 1080) };
             return issue === "ambiguous" ? [source, { ...source }] : [source];
