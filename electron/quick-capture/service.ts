@@ -140,9 +140,18 @@ export class QuickCaptureService {
             throw new Error("Ekran görüntüsüne erişilemedi. Sistem ekran paylaşım iznini kontrol edin.");
         }
         if (this.active !== session) return;
-        const source = sources.find((item) => item.display_id === String(display.id)) ??
-            (sources.length === 1 && !sources[0].display_id ? sources[0] : undefined);
-        if (!source || source.thumbnail.isEmpty()) throw new Error("Ekran görüntüsü alınamadı veya ekran seçimi iptal edildi.");
+        let source = sources.find((item) => item.display_id === String(display.id));
+        if (!source && process.platform === "linux" && Number.isSafeInteger(display.id) && display.id > 0xffffffff) {
+            // Electron'un X11 yakalayıcısı 64 bit ekran kimliğini uint32 olarak döndürebiliyor.
+            // Tam kimlik önceliklidir; kısaltılmış kimlik yalnız tek kaynakla eşleşirse kullanılır.
+            // https://github.com/electron/electron/blob/v43.2.0/shell/browser/api/electron_api_desktop_capturer.cc
+            const matches = sources.filter((item) => item.display_id === String(display.id >>> 0));
+            if (matches.length === 1) source = matches[0];
+        }
+        source ??= sources.length === 1 && !sources[0].display_id ? sources[0] : undefined;
+        if (!sources.length) throw new Error("Ekran görüntüsü kaynağı bulunamadı. Ekran paylaşım iznini kontrol edip yeniden deneyin.");
+        if (!source) throw new Error("drAW'ın bulunduğu ekran, görüntü kaynağıyla eşleştirilemedi. Yeniden deneyin.");
+        if (source.thumbnail.isEmpty()) throw new Error("Ekran görüntüsü boş geldi. Yeniden deneyin.");
         // PNG'yi yeniden açarak NativeImage'ın DPI gösterimlerini tek fiziksel piksel uzayına indir.
         const image = nativeImage.createFromBuffer(source.thumbnail.toPNG());
         const size = image.getSize();

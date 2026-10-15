@@ -14,7 +14,8 @@ tutulan sahte masaüstü depolamasını kullanır; kullanıcının çizim dosyal
 Standart profil için aynı sayfayı `?tahta=1` olmadan açın. Kalınlık paletinin
 değerleri, dört şeklin çizgi kalınlığı ve kayıt/undo/redo sonrası korunması,
 iki silginin göstergesi %25, %100 ve %400 yakınlaştırmada da kontrol edilir.
-Tahtada silgilerin %10 büyütülmesi ve iki silginin de 4 saniye işlem yapılmayınca
+Tahtada çizgi silgisinin palet değerinden %10 büyük olması, normal silginin
+bundan %10 daha büyük olması ve iki silginin de 4 saniye işlem yapılmayınca
 Normal Kalem'e dönmesi sınanır. Zamanlayıcının dokunma/kalem/fare teması,
 çoklu temas, iptal ve araç değişimi kontrolleri `eraser-idle.test.cjs` içindedir.
 

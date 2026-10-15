@@ -89,6 +89,14 @@ export function eraserRadiusForProfile(lineWidth: number, profile: LineProfile):
 
 }
 
+export function normalEraserRadiusForProfile(lineWidth: number, profile: LineProfile): number {
+
+    const radius = eraserRadiusForProfile(lineWidth, profile);
+
+    return profile === "smartboard" ? radius * 1.1 : radius;
+
+}
+
 export function textFontSizeForProfile(lineWidth: number, profile: LineProfile): number {
 
     if (profile !== "smartboard") {

@@ -73,7 +73,8 @@ for (const ToolClass of [EraserTool, PartialEraserTool]) {
             for (const lineWidth of [12, 24, 42, 90]) {
                 for (const scale of [0.25, 1, 4]) {
                     const { document, history, tool, viewport, send } = createFixture(ToolClass, profile);
-                    const radius = profile === "smartboard" ? lineWidth / 2 * 1.1 : lineWidth * 2;
+                    const boardDiameterFactor = ToolClass === PartialEraserTool ? 1.21 : 1.1;
+                    const radius = profile === "smartboard" ? lineWidth / 2 * boardDiameterFactor : lineWidth * 2;
                     const strokes = [radius + 2, radius + 4].map((distance) => {
                         const stroke = new Stroke("#ff0000", 6);
                         stroke.addPoint(new Point(100 + distance, 90));

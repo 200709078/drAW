@@ -618,7 +618,8 @@ try {
                 viewport.reset();
                 viewport.zoomAt(0, 0, scale);
                 canvas.dispatchEvent(new MouseEvent("mousemove", { clientX: 100, clientY: 100 }));
-                const diameter = board ? width * 1.1 : Math.max(8, width * 4);
+                const boardDiameterFactor = eraser === managers.getPartialEraserTool() ? 1.21 : 1.1;
+                const diameter = board ? width * boardDiameterFactor : Math.max(8, width * 4);
                 assert(Math.abs(parseFloat(document.querySelector(".eraser-indicator").style.width) - Math.max(4, diameter * scale)) < 0.01,
                     `eraser indicator has incorrect diameter at width=${width}, zoom=${scale}`);
             }

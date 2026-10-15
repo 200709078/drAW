@@ -8,7 +8,7 @@ import { Tool } from "./Tool";
 import { HistoryManager } from "../core/HistoryManager";
 import { ERASER_CURSOR } from "./EraserTool";
 import { EraserIndicator } from "../ui/EraserIndicator";
-import { defaultWidthForDeviceProfile, eraserRadiusForProfile, type LineProfile } from "../platform/DeviceProfile";
+import { defaultWidthForDeviceProfile, normalEraserRadiusForProfile, type LineProfile } from "../platform/DeviceProfile";
 
 export class PartialEraserTool extends Tool {
 
@@ -39,7 +39,7 @@ export class PartialEraserTool extends Tool {
         this.activePointerId = null;
         this.indicator = null;
         this.lineProfile = lineProfile;
-        this.radius = eraserRadiusForProfile(defaultWidthForDeviceProfile(lineProfile), lineProfile);
+        this.radius = normalEraserRadiusForProfile(defaultWidthForDeviceProfile(lineProfile), lineProfile);
         this.isImageProtected = () => false;
 
     }
@@ -144,7 +144,7 @@ export class PartialEraserTool extends Tool {
     public setLineWidth(lineWidth: number): void {
 
         if (Number.isFinite(lineWidth) && lineWidth > 0) {
-            this.radius = eraserRadiusForProfile(lineWidth, this.lineProfile);
+            this.radius = normalEraserRadiusForProfile(lineWidth, this.lineProfile);
         }
 
     }
