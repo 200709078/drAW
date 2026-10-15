@@ -32,7 +32,7 @@ for (const rect of [null, {}, { left: -1, top: 0, right: 1, bottom: 1 },
     test(`reject malformed/empty selection ${JSON.stringify(rect)}`, () => assert.equal(pixelSelection(rect, 1920, 1080), null));
 }
 
-function fixture({ scale = 1, platform = "linux", bounds = { x: 0, y: 0, width: 1920, height: 1080 } } = {}) {
+function fixture({ scale = 1, platform = "linux", displayId = 7, bounds = { x: 0, y: 0, width: 1920, height: 1080 } } = {}) {
     const handlers = new Map();
     const windows = [];
     const actions = [];
@@ -40,8 +40,8 @@ function fixture({ scale = 1, platform = "linux", bounds = { x: 0, y: 0, width: 
     let clock = 0;
     let sequence = 0;
     let requested;
-    let capture = async () => [{ display_id: "7", thumbnail: image(bounds.width * scale, bounds.height * scale) }];
-    const display = { id: 7, bounds, workArea: { ...bounds, height: bounds.height - 64 }, scaleFactor: scale };
+    let capture = async () => [{ display_id: String(displayId), thumbnail: image(bounds.width * scale, bounds.height * scale) }];
+    const display = { id: displayId, bounds, workArea: { ...bounds, height: bounds.height - 64 }, scaleFactor: scale };
     const screen = Object.assign(new EventEmitter(), { getDisplayMatching: () => display });
     function image(width, height) {
         return {
@@ -133,6 +133,60 @@ for (const platform of ["linux", "win32"]) {
             assert.equal(f.screen.listenerCount("display-metrics-changed"), 0);
         });
     }
+}
+
+for (const mode of ["screen", "area"]) {
+    test(`Linux X11 ${mode}: matches the truncated display ID observed on the PC`, async () => {
+        const f = fixture({ displayId: 1881264395124801, scale: 1.25,
+            bounds: { x: 0, y: 0, width: 1536, height: 864 } });
+        // Two equally sized monitors: source order and dimensions cannot identify the target.
+        let targetRead = false;
+        const target = f.image(1920, 1080);
+        const toPNG = target.toPNG;
+        target.toPNG = () => { targetRead = true; return toPNG(); };
+        f.capture(async () => [
+            { display_id: "66", thumbnail: f.image(1920, 1080) },
+            { display_id: "65", thumbnail: target }
+        ]);
+        const promise = f.start(mode);
+        await f.advance();
+        if (mode === "area") {
+            assert.equal(f.windows.length, 2, "matching the X11 source must open selection");
+            f.ready();
+            f.send("selection", { left: .25, top: .25, right: .75, bottom: .75 });
+        }
+        const reply = await promise;
+        assert.equal(reply.status, "ok");
+        assert.equal(targetRead, true, "must use the matching source, not the first equally sized screen");
+        assert.equal(reply.image.width, mode === "screen" ? 1920 : 960);
+        assert.equal(reply.image.height, mode === "screen" ? 1080 : 540);
+        assert.equal(f.owner.visible, true);
+    });
+}
+
+test("exact display ID takes precedence over a truncated Linux ID", async () => {
+    const f = fixture({ displayId: 1881264395124801 });
+    f.capture(async () => [
+        { display_id: "65", thumbnail: f.image(960, 540) },
+        { display_id: "1881264395124801", thumbnail: f.image(1920, 1080) }
+    ]);
+    const promise = f.start();
+    await f.advance();
+    assert.equal((await promise).status, "ok");
+});
+
+for (const issue of ["windows", "unrelated", "ambiguous", "empty-image"]) {
+    test(`X11 ID compatibility rejects ${issue} sources`, async () => {
+        const f = fixture({ displayId: 1881264395124801, platform: issue === "windows" ? "win32" : "linux" });
+        f.capture(async () => {
+            const source = { display_id: issue === "unrelated" ? "66" : "65", thumbnail: f.image(issue === "empty-image" ? 0 : 1920, 1080) };
+            return issue === "ambiguous" ? [source, { ...source }] : [source];
+        });
+        const promise = f.start();
+        await f.advance();
+        assert.equal((await promise).status, "error");
+        assert.equal(f.owner.visible, true);
+    });
 }
 
 test("area capture uses a separate ready window, original bitmap and correct multi-monitor coordinates", async () => {
