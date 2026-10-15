@@ -46,6 +46,10 @@ import columnsIcon from "../assets/icons/columns.svg";
 import type { LinkedPhotoManager } from "../photos/LinkedPhotoManager";
 import type { GuideLineType } from "../renderers/DocumentRenderer";
 
+// Kılavuz çizgi seçici kapalı: kod duruyor, ileride true yapılarak
+// bütün platformlarda yeniden aktif edilebilir.
+const GUIDELINES_ENABLED = false;
+
 export class ToolbarPanel {
 
     private readonly newDrawButton: HTMLButtonElement;
@@ -181,9 +185,6 @@ export class ToolbarPanel {
             ["screen", "Tam Ekran", captureScreenIcon], ["area", "Alan", captureAreaIcon]
         ] as const) {
             const button = this.createIconButton(label, icon, { className: "sidebar__capture-option" });
-            const caption = document.createElement("span");
-            caption.textContent = label;
-            button.append(caption);
             button.addEventListener("click", async () => {
                 closeAllFlyouts();
                 captureButton.disabled = true;
@@ -297,11 +298,11 @@ export class ToolbarPanel {
             guideButton.setAttribute("aria-expanded", "false");
         });
 
-        const undoButton = this.createIconButton("Çizimi Geri Al", undoIcon, {
+        const undoButton = this.createIconButton("Geri Al", undoIcon, {
             className: "sidebar__history"
         });
 
-        const redoButton = this.createIconButton("Çizimi Yinele", redoIcon, {
+        const redoButton = this.createIconButton("Yinele", redoIcon, {
             className: "sidebar__history"
         });
 
@@ -1130,7 +1131,7 @@ export class ToolbarPanel {
             shapesControl,
             textButton,
             ...(quickCapture.isAvailable() ? [captureControl] : []),
-            guideControl
+            ...(GUIDELINES_ENABLED ? [guideControl] : [])
         );
         sidebar.appendChild(toolbar);
         document.body.appendChild(sidebar);
