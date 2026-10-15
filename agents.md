@@ -41,6 +41,8 @@
 - Alan, sabit görüntü üzerinde tek sürüklemeyle belirlenir; parmak/fare bırakılınca tuvale özgün boyutuyla eklenir. Kamera efekti, flaş, ses, karartma veya onay adımı yoktur. İptal için dokunulabilir × düğmesi ve Esc vardır.
 - İkinci parmak seçimi devralmaz; yarıda kesilen hareket görüntü üretmez. İptal, hata, kaynak zaman aşımı ve ekran değişikliği drAW'a döndürür. Geciken sonuç farklı çizime eklenmez; eklenen görüntü undo/redo ve otomatik kayda katılır.
 - `scripts/build-preloads.mjs`, ana preload ve alan seçimi için `.cjs` dosyalarını üretir. `.cjs` dosyalarını elle düzenlemeyin.
+- Linux/X11'de Electron'un kaynak ekran kimliğini 32 bite kırptığı durum desteklenir. Tam kimlik önceliklidir; kısaltılmış kimlik yalnız tek kaynağa karşılık gelirse kullanılır. Kaynak yokluğu, eşleştirme hatası ve boş görüntü ayrı bildirilir (`tests/quick-capture.test.cjs`).
+- Linux alan penceresinde pencere yöneticisinin tam ekran boyutunu uygulayabilmesi için `resizable` açık tutulur. GNOME/X11, %125 ölçekli gerçek masaüstünde Tam Ekran 1920×1080; 400×300 CSS piksel alan seçimi 500×375 özgün piksel olarak doğrulandı. Kamera simgesine basmak yalnız paleti açar (`tests/quick-capture-electron.cjs`).
 - Windows'un gerçek ekran yakalaması ve fiziksel Pardus ETAP tahtası ayrıca denenmelidir. PipeWire/portal kullanılan sistemlerde işletim sistemi izin veya ekran seçimi gösterebilir. Kaynak özgün çözünürlükte alınamazsa görüntüyü büyütüp eklemek yerine hata bildirilir.
 
 ## Kayıt sınırı

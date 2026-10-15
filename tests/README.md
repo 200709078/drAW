@@ -53,3 +53,17 @@ undo/redo ve gecikmiş sonuçları sınar. Panel önizlemeleri test sırasında
 `record-limit.test.cjs` son 30 kaydın tutulmasını ve kayıt hatasında verilerin
 korunmasını bellekteki depolamayla sınar. Bunlar gerçek Windows veya fiziksel
 akıllı tahta doğrulaması yerine geçmez.
+
+Gerçek Electron ve masaüstü yakalaması için:
+
+```sh
+npm run build
+npx electron tests/quick-capture-electron.cjs
+```
+
+Bu kontrol gerçek ekranı kullanır ve geçici drAW/alan seçimi pencereleri açar;
+çalışırken bu pencerelerin odağını değiştirmeyin. Geçici profil ve bellekteki
+çizim deposuyla çalışır, görüntüleri dosyaya yazmaz. Kamera düğmesinin yalnız
+paleti açmasını, Tam Ekran ve Alan akışlarını, özgün piksel ölçülerini ve
+tuvale eklenince geri almanın etkinleşmesini sınar. GNOME/X11 üzerinde %125
+ölçekle geçti; fiziksel tahta ve Windows kontrolleri ayrıca yapılmalıdır.

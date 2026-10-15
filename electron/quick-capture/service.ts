@@ -167,7 +167,8 @@ export class QuickCaptureService {
         }
         const overlay = new BrowserWindow({
             ...display.bounds, show: false, frame: false, fullscreen: true,
-            alwaysOnTop: true, skipTaskbar: true, resizable: false, movable: false,
+            // Linux pencere yöneticisi tam ekrana geçerken boyutlandırabilmeli.
+            alwaysOnTop: true, skipTaskbar: true, resizable: process.platform === "linux", movable: false,
             minimizable: false, maximizable: false, autoHideMenuBar: true, backgroundColor: "#ffffff",
             webPreferences: {
                 preload: path.join(this.directory, "selection.cjs"),
