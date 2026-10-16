@@ -148,6 +148,12 @@ export class QuickCaptureService {
             const matches = sources.filter((item) => item.display_id === String(display.id >>> 0));
             if (matches.length === 1) source = matches[0];
         }
+        if (!source && process.platform === "linux" && sources.length === 1) {
+            // Bazı Linux sürücülerinde iki API tamamen farklı ekran kimlikleri verir.
+            // Tek ekran ve tek kaynak varsa hedef belirlidir; özgün piksel ölçüsü aşağıda doğrulanır.
+            const displays = screen.getAllDisplays();
+            if (displays.length === 1 && displays[0].id === display.id) source = sources[0];
+        }
         source ??= sources.length === 1 && !sources[0].display_id ? sources[0] : undefined;
         if (!sources.length) throw new Error("Ekran görüntüsü kaynağı bulunamadı. Ekran paylaşım iznini kontrol edip yeniden deneyin.");
         if (!source) throw new Error("drAW'ın bulunduğu ekran, görüntü kaynağıyla eşleştirilemedi. Yeniden deneyin.");
