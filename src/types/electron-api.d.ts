@@ -1,6 +1,7 @@
 import type { DrawingDocumentJson } from "../storage/DrawingDocument";
 import type { StorageErrorKind } from "../storage/StorageError";
 import type { QuickCaptureBridge } from "../capture/QuickCaptureBridge";
+import type { ScreenKeyboardBridge } from "../platform/ScreenKeyboardBridge";
 
 export type StorageOperationError = {
     kind: StorageErrorKind;
@@ -54,6 +55,7 @@ declare global {
         drAWDesktop?: {
             platform?: string;
             quickCapture?: QuickCaptureBridge;
+            screenKeyboard?: ScreenKeyboardBridge;
             storage: ElectronStorageBridge;
             onShutdownRequest: (callback: () => void) => void;
             shutdownComplete: () => void;

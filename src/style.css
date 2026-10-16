@@ -35,6 +35,20 @@ button {
     touch-action: none;
 }
 
+.text-editor-status {
+    position: fixed;
+    z-index: 21;
+    max-width: min(360px, calc(100vw - 16px));
+    padding: 8px 12px;
+    border: 1px solid #d1d5db;
+    border-radius: 8px;
+    background: #fff;
+    color: #374151;
+    font-size: 16px;
+    line-height: 1.4;
+    pointer-events: none;
+}
+
 .selection-delete-button {
     position: fixed;
     z-index: 10;
