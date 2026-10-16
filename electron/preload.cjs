@@ -4,6 +4,10 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const electron_1 = require("electron");
 electron_1.contextBridge.exposeInMainWorld("drAWDesktop", {
     platform: process.platform,
+    screenKeyboard: {
+        show: (requestId) => electron_1.ipcRenderer.invoke("screen-keyboard:show", requestId),
+        hide: (requestId) => { electron_1.ipcRenderer.send("screen-keyboard:hide", requestId); }
+    },
     quickCapture: {
         take: (mode) => electron_1.ipcRenderer.invoke("quick-capture:take", mode),
         cancel: () => { electron_1.ipcRenderer.send("quick-capture:cancel"); }

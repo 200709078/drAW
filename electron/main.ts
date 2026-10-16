@@ -5,6 +5,7 @@ import { registerPhotoFolderHandlers } from "./photo-folder.ts";
 import { ElectronStorageService } from "./storage/ElectronStorageService.ts";
 import { StorageError } from "./storage/StorageError.ts";
 import { registerWindowShutdown } from "./window-shutdown.ts";
+import { ScreenKeyboardService } from "./screen-keyboard.ts";
 
 const electron = createRequire(import.meta.url)("electron") as typeof import("electron");
 const { app, BrowserWindow, ipcMain } = electron;
@@ -21,6 +22,7 @@ if (!app.isPackaged) {
 }
 const quickCaptureService = new QuickCaptureService(getAppPath("electron", "quick-capture"));
 const storageService = new ElectronStorageService();
+const screenKeyboardService = new ScreenKeyboardService();
 
 type StorageOperationError = {
     kind: string;
@@ -198,6 +200,7 @@ function createWindow(): void {
 
     registerWindowShutdown(window, ipcMain);
     quickCaptureService.allowWindow(window);
+    screenKeyboardService.allowWindow(window);
 
     const indexPath = getAppPath(
         "dist",
@@ -209,6 +212,7 @@ function createWindow(): void {
 
 app.whenReady().then(() => {
     quickCaptureService.register(ipcMain);
+    screenKeyboardService.register(ipcMain);
 
     registerStorageHandlers();
     registerWindowControls();

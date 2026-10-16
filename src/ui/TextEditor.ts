@@ -1,6 +1,7 @@
 import { TextObject, TEXT_FONT_FAMILY, TEXT_LINE_HEIGHT } from "../document/TextObject";
 import type { ViewportManager } from "../core/ViewportManager";
 import { getTitlebarOffset } from "./TitleBar";
+import { getScreenKeyboardBridge } from "../platform/ScreenKeyboardBridge";
 
 let activeTextEditor: TextEditor | null = null;
 
@@ -35,6 +36,10 @@ class TextEditor {
     private readonly viewport: ViewportManager | undefined;
     private readonly anchorY: number;
     private finished: boolean;
+    private readonly keyboard = getScreenKeyboardBridge();
+    private keyboardRequestId: string | null = null;
+    private keyboardPending = false;
+    private keyboardStatus: HTMLDivElement | null = null;
 
     constructor(
         textObject: TextObject,
@@ -52,6 +57,8 @@ class TextEditor {
         this.textarea.className = "text-editor";
         this.textarea.value = textObject.getText();
         this.textarea.spellcheck = false;
+        this.textarea.inputMode = "text";
+        this.textarea.setAttribute("aria-label", "Metin düzenle");
 
         this.reposition();
 
@@ -61,8 +68,9 @@ class TextEditor {
 
         document.body.appendChild(this.textarea);
         this.textarea.addEventListener("keydown", this.handleKeyDown);
-        this.textarea.addEventListener("blur", this.finish);
+        this.textarea.addEventListener("blur", this.handleBlur);
         this.textarea.addEventListener("input", this.handleInput);
+        this.textarea.addEventListener("pointerup", this.requestKeyboard);
         this.handleInput();
 
         if (this.viewport !== undefined) {
@@ -73,6 +81,7 @@ class TextEditor {
             if (!this.finished) {
                 this.textarea.focus();
                 this.textarea.select();
+                this.requestKeyboard();
             }
         });
 
@@ -93,6 +102,41 @@ class TextEditor {
 
     };
 
+    private handleBlur = (): void => {
+        // A native keyboard/settings window can briefly take application focus.
+        // Keep the editor alive; an actual focus change inside drAW still finishes it.
+        if (this.keyboard && !document.hasFocus()) return;
+        this.finish();
+    };
+
+    private requestKeyboard = (): void => {
+        if (!this.keyboard || this.finished || this.keyboardPending) return;
+        this.keyboardRequestId ??= crypto.randomUUID();
+        this.keyboardPending = true;
+        void this.keyboard.show(this.keyboardRequestId).catch(() => "unavailable" as const).then((result) => {
+            this.keyboardPending = false;
+            if (this.finished) return;
+            this.keyboardStatus?.remove();
+            this.keyboardStatus = null;
+            if (result === "unavailable") {
+                this.keyboardStatus = document.createElement("div");
+                this.keyboardStatus.className = "text-editor-status";
+                this.keyboardStatus.setAttribute("role", "status");
+                this.keyboardStatus.textContent = "Ekran klavyesi açılamadı. ETA Klavye veya Onboard kurulumunu kontrol edin. Yeniden denemek için metne dokunun.";
+                document.body.appendChild(this.keyboardStatus);
+                this.positionKeyboardStatus();
+            }
+        });
+    };
+
+    private positionKeyboardStatus(): void {
+        if (!this.keyboardStatus) return;
+        const rect = this.textarea.getBoundingClientRect();
+        this.keyboardStatus.style.left = `${Math.max(8, Math.min(rect.left, window.innerWidth - 368))}px`;
+        this.keyboardStatus.style.top = `${Math.max(8, Math.min(rect.bottom + 8,
+            window.innerHeight - this.keyboardStatus.offsetHeight - 8))}px`;
+    }
+
     private handleInput = (): void => {
 
         this.textarea.style.height = "auto";
@@ -108,6 +152,7 @@ class TextEditor {
             : this.anchorY;
 
         this.textarea.style.top = `${anchorScreenY + getTitlebarOffset() - this.textarea.offsetHeight / 2}px`;
+        this.positionKeyboardStatus();
 
     };
 
@@ -141,8 +186,11 @@ class TextEditor {
         }
 
         this.textarea.removeEventListener("keydown", this.handleKeyDown);
-        this.textarea.removeEventListener("blur", this.finish);
+        this.textarea.removeEventListener("blur", this.handleBlur);
         this.textarea.removeEventListener("input", this.handleInput);
+        this.textarea.removeEventListener("pointerup", this.requestKeyboard);
+        if (this.keyboardRequestId) this.keyboard?.hide(this.keyboardRequestId);
+        this.keyboardStatus?.remove();
 
         if (this.viewport !== undefined) {
             this.viewport.removeChangeListener(this.reposition);

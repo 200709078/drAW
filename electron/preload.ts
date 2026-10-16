@@ -2,6 +2,10 @@ import { contextBridge, ipcRenderer } from "electron";
 
 contextBridge.exposeInMainWorld("drAWDesktop", {
     platform: process.platform,
+    screenKeyboard: {
+        show: (requestId: string): Promise<unknown> => ipcRenderer.invoke("screen-keyboard:show", requestId),
+        hide: (requestId: string): void => { ipcRenderer.send("screen-keyboard:hide", requestId); }
+    },
     quickCapture: {
         take: (mode: "screen" | "area"): Promise<unknown> => ipcRenderer.invoke("quick-capture:take", mode),
         cancel: (): void => { ipcRenderer.send("quick-capture:cancel"); }
