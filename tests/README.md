@@ -54,6 +54,10 @@ undo/redo ve gecikmiş sonuçları sınar. Panel önizlemeleri test sırasında
 korunmasını bellekteki depolamayla sınar. Bunlar gerçek Windows veya fiziksel
 akıllı tahta doğrulaması yerine geçmez.
 
+Alıntı testleri, tek ekranlı Linux'ta farklı ekran kimliklerini ve JavaScript'in
+kesin temsil aralığını aşan kimlikleri de kapsar. Tam Ekran/Alan için 4K kaynak,
+ikinci ekran, değişen hedef ekran, boş görüntü ve düşük çözünürlük sınanır.
+
 Gerçek Electron ve masaüstü yakalaması için:
 
 ```sh
