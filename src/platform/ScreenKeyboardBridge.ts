@@ -1,4 +1,4 @@
-import { isSmartBoard } from "./DeviceProfile";
+import { isSmartBoard } from "./DeviceProfile.ts";
 
 export type ScreenKeyboardResult = "shown" | "unavailable" | "cancelled";
 

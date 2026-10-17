@@ -7,12 +7,23 @@
 import { Application } from "/src/core/Application.ts";
 import { TextObject } from "/src/document/TextObject.ts";
 import { openTextEditor, closeTextEditor } from "/src/ui/TextEditor.ts";
+import { getScreenKeyboardBridge } from "/src/platform/ScreenKeyboardBridge.ts";
 
 const records = new Map();
 let failSave = false;
 let shutdownRequest;
 let shutdownComplete = false;
+const keyboardCalls = [];
+let keyboardReply = async () => "shown";
 window.drAWDesktop = {
+    platform: new URLSearchParams(location.search).get("platform") ?? "linux",
+    screenKeyboard: {
+        show(id) {
+            keyboardCalls.push({ action: "show", id, focused: document.activeElement?.className === "text-editor" });
+            return keyboardReply();
+        },
+        hide(id) { keyboardCalls.push({ action: "hide", id }); }
+    },
     storage: {
         async save(record) {
             if (failSave) return { ok: false, error: { kind: "disk-full", message: "Test kayıt hatası" } };
@@ -28,6 +39,7 @@ window.drAWDesktop = {
     shutdownComplete() { shutdownComplete = true; },
     shutdownCancelled() {}
 };
+const expectsKeyboard = getScreenKeyboardBridge() !== null;
 
 const app = new Application();
 const managers = app.getManagers();
@@ -48,6 +60,7 @@ let passed = 0;
 window.addEventListener("error", (event) => failures.push(String(event.error)));
 window.addEventListener("unhandledrejection", (event) => failures.push(String(event.reason)));
 const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+const nextFrame = () => new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
 function assert(value, message) { if (!value) throw new Error(message); }
 async function until(check) {
     for (let attempt = 0; attempt < 100; attempt++) {
@@ -83,6 +96,8 @@ async function check(name, run) {
     try {
         failSave = false;
         closeTextEditor();
+        keyboardCalls.length = 0;
+        keyboardReply = async () => "shown";
         tools.setTool(pen);
         selection.cancel();
         drawing.clearCurrentPage();
@@ -169,11 +184,11 @@ await check("failed new drawing preserves text", async () => {
     assert(history.canUndo() && auto.isDirty(), "failed save discarded history or unsaved state");
 });
 
-await check("existing text edit, delete, move and resize", () => {
+await check("existing text edit, delete, move and resize", async () => {
     beginText("Düzenlenecek uzun metin");
     closeTextEditor();
     let object = drawing.getCurrentPage().getTexts()[0];
-    function edit(value) {
+    async function edit(value) {
         selection.cancel();
         const bounds = renderer.getTextBounds(object);
         const event = pointer((bounds.minX + bounds.maxX) / 2, (bounds.minY + bounds.maxY) / 2, "mouse");
@@ -183,10 +198,14 @@ await check("existing text edit, delete, move and resize", () => {
         }
         const editor = document.querySelector(".text-editor");
         assert(editor, "double click did not reopen the text");
+        const before = keyboardCalls.filter((call) => call.action === "show").length;
+        await nextFrame();
+        assert(keyboardCalls.filter((call) => call.action === "show").length === before + Number(expectsKeyboard),
+            "editing existing text did not request the expected keyboard");
         editor.value = value;
         closeTextEditor();
     }
-    edit("Düzenlenmiş uzun metin");
+    await edit("Düzenlenmiş uzun metin");
     assert(object.getText() === "Düzenlenmiş uzun metin", "existing text did not update");
     assert(history.undo(), "text edit is not undoable");
     assert(drawing.getCurrentPage().getTexts()[0].getText() === "Düzenlenecek uzun metin", "undo did not restore text");
@@ -206,7 +225,7 @@ await check("existing text edit, delete, move and resize", () => {
     selection.onPointerMove(pointer(resized.maxX + 100, resized.maxY + 50, "mouse"));
     selection.onPointerUp(pointer(resized.maxX + 100, resized.maxY + 50, "mouse"));
     assert(object.getScale() !== 1, "text could not be resized");
-    edit("");
+    await edit("");
     assert(drawing.getCurrentPage().getTexts().length === 0, "clearing existing text did not remove it");
     assert(history.undo() && drawing.getCurrentPage().getTexts().length === 1, "text deletion is not undoable");
 });
@@ -236,6 +255,70 @@ await check("editor replacement during finish", () => {
     assert(finished === 1 && !document.querySelector(".text-editor"), "replacement editor was left active");
 });
 
+await check("keyboard opens after focus and closes with the editor", async () => {
+    const editor = beginText();
+    await nextFrame();
+    assert(document.activeElement === editor, "text did not receive focus");
+    assert(keyboardCalls.length === Number(expectsKeyboard), "unexpected keyboard request count");
+    if (expectsKeyboard) assert(keyboardCalls[0].focused, "keyboard requested before text focus");
+    tools.setTool(pen);
+    assert(!editor.isConnected, "keyboard prevented tool change");
+    if (expectsKeyboard) assert(keyboardCalls[1]?.action === "hide" && keyboardCalls[1].id === keyboardCalls[0].id,
+        "closing did not cancel the matching keyboard request");
+});
+
+await check("closing before focus does not open a late keyboard", async () => {
+    beginText();
+    closeTextEditor();
+    await nextFrame();
+    assert(keyboardCalls.length === 0, "closed editor requested a keyboard");
+});
+
+if (expectsKeyboard) {
+    await check("keyboard failure is visible without closing text; touching text retries", async () => {
+        keyboardReply = async () => { throw new Error("D-Bus unavailable"); };
+        const editor = beginText("Yazı korunmalı");
+        await until(() => document.querySelector(".text-editor-status"));
+        assert(editor.isConnected && document.activeElement === editor, "error stole text focus");
+        assert(editor.value === "Yazı korunmalı", "error lost text");
+        keyboardReply = async () => "shown";
+        editor.dispatchEvent(new PointerEvent("pointerup", { pointerType: "touch" }));
+        await until(() => !document.querySelector(".text-editor-status"));
+        assert(keyboardCalls.filter((call) => call.action === "show").length === 2, "touch did not retry");
+    });
+
+    await check("a slow keyboard request cannot affect a replacement editor", async () => {
+        let reply;
+        keyboardReply = () => new Promise((resolve) => { reply = resolve; });
+        beginText("Önceki metin");
+        await until(() => reply);
+        const oldId = keyboardCalls[0].id;
+        newButton.click();
+        await until(() => !newButton.disabled);
+        assert(keyboardCalls.some((call) => call.action === "hide" && call.id === oldId), "new drawing left the old request active");
+        keyboardReply = async () => "shown";
+        const next = beginText("Yeni metin");
+        await nextFrame();
+        reply("unavailable");
+        await nextFrame();
+        assert(next.isConnected && next.value === "Yeni metin", "late result altered the new editor");
+        assert(!document.querySelector(".text-editor-status"), "late error was shown for another editor");
+        assert(keyboardCalls.filter((call) => call.action === "show").at(-1).id !== oldId, "editor reused old request ID");
+    });
+
+    await check("external keyboard focus keeps text editing; internal focus finishes it", async () => {
+        const editor = beginText("Odak testi");
+        await nextFrame();
+        Object.defineProperty(document, "hasFocus", { configurable: true, value: () => false });
+        try {
+            editor.dispatchEvent(new FocusEvent("blur"));
+            assert(editor.isConnected, "external keyboard focus closed the editor");
+        } finally { delete document.hasFocus; }
+        editor.dispatchEvent(new FocusEvent("blur"));
+        assert(!editor.isConnected, "internal blur did not finish the editor");
+    });
+}
+
 await check("shutdown saves unfinished text", async () => {
     beginText("Kapanış öncesi son metin");
     const id = auto.getActiveDocument().getId();
@@ -250,6 +333,7 @@ await auto.shutdown();
 document.getElementById("result").textContent = failures.length
     ? `FAIL (${passed} passed):\n${failures.join("\n")}`
     : `PASS: ${passed} text checks (tool switching, editing, history, save, zoom and shutdown)`;
+window.__textResult = { passed, failures, expectsKeyboard };
 </script>
 </body>
 </html>

@@ -24,6 +24,30 @@ araç düğmelerinin tek seçimi, metni bitirme, yeni çizim/kapanış öncesi k
 kayıt hatası, metin içi klavye kısayolları, yeniden düzenleme, taşıma,
 boyutlandırma, silme ve undo/redo kontrol edilir.
 
+Vite açıkken `node tests/text-browser.cjs`, Linux PC/tahta, Windows tahta ve
+web senaryolarındaki 55 metin kontrolünü çalıştırır. Linux tahta senaryosunda
+klavye isteğinin odaktan sonra gönderilmesi, yeni/eski metin, araç değiştirme,
+geciken yanıt, hata sonrası yeniden deneme ve dış pencereye odak sınanır.
+`screen-keyboard.test.cjs`, çalışan ETA/Onboard seçimi, süreç başlatma,
+geciken D-Bus arayüzü, iptal, süreç temizliği ve IPC erişimini sınar.
+
+Gerçek Electron/preload ile sistem çağrılarını sınamak için (Linux):
+
+```sh
+npm run build
+dbus-run-session -- env ELECTRON_RUN_AS_NODE= npx electron --no-sandbox tests/screen-keyboard-electron.cjs
+```
+
+Bu test `/usr/bin/python3` için `dbus` ve `gi` modüllerini kullanır. Geçici
+bir tam ekran pencere açar; çalışırken pencere odağını değiştirmeyin. Ayrı
+D-Bus oturumunda taklit ETA ve Onboard servisleriyle gerçek `gdbus` çağrıları,
+Türkçe metin girişi, yeniden düzenleme ve Yeni Çizim kontrol edilir. Geçici
+profil ve bellekteki çizimlerle çalışır; sistem klavyesini açmaz veya ayarlarını
+değiştirmez. Fiziksel tahtada gerçek klavyenin görünmesi ayrıca denenmelidir.
+
+Kullanılan sistem arayüzleri: [ETA Klavye](https://github.com/pardus/eta-keyboard/blob/master/src/adaptor.h)
+ve [Onboard](https://github.com/onboard-osk/onboard/blob/main/Onboard/OnboardGtk.py).
+
 Kılavuzlar için `/tests/guides-ui.html` ve `/tests/guides-ui.html?tahta=1`:
 gerçek tuval piksellerinde kareli/yatay/dikey çizgilerin görünürlüğü, zoom,
 kesirli kaydırma ve Yeni Çizim sonrası palet sıfırlaması kontrol edilir.

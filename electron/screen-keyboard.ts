@@ -24,7 +24,7 @@ const keyboards: Keyboard[] = [
 
 export type KeyboardCommands = {
     call(name: string, path: string, method: string, args?: string[]): Promise<string | null>;
-    launch(command: string): Promise<boolean>;
+    launch(command: string): Promise<{ stop(): void } | null>;
     wait(): Promise<void>;
 };
 
@@ -42,8 +42,11 @@ const commands: KeyboardCommands = {
             // ETA starts hidden; show only after its D-Bus service is ready.
             // Do not install packages, change keyboard settings or kill an existing keyboard.
             const child = spawn(command, [], { detached: true, stdio: "ignore" });
-            child.once("error", () => resolve(false));
-            child.once("spawn", () => { child.unref(); resolve(true); });
+            child.once("error", () => resolve(null));
+            child.once("spawn", () => {
+                child.unref();
+                resolve({ stop: () => { child.kill(); } });
+            });
         });
     },
     wait: () => new Promise((resolve) => setTimeout(resolve, 100))
@@ -141,25 +144,28 @@ export class ScreenKeyboardService {
         }
         for (const keyboard of keyboards.filter((candidate) => !running.includes(candidate))) {
             if (!isCurrent()) return null;
-            if (!await this.commands.launch(keyboard.command)) continue;
+            const launched = await this.commands.launch(keyboard.command);
+            if (!launched) continue;
             // Startup must be confirmed by D-Bus; spawning a process alone is not success.
             // Keep waiting after cancellation to hide a late-starting keyboard.
-            for (let attempt = 0; attempt < 30; attempt++) {
+            const deadline = Date.now() + 3000;
+            for (let attempt = 0; attempt < 30 && Date.now() < deadline; attempt++) {
                 const owned = await this.commands.call("org.freedesktop.DBus", "/org/freedesktop/DBus",
                     "org.freedesktop.DBus.NameHasOwner", [keyboard.name]);
                 if (owned === null) break;
                 if (owned.includes("true")) {
                     if (!isCurrent()) {
-                        await this.commands.call(keyboard.name, keyboard.path, keyboard.hide);
-                        return null;
-                    }
-                    if (await this.commands.call(keyboard.name, keyboard.path, keyboard.show, keyboard.args) !== null) {
+                        if (await this.commands.call(keyboard.name, keyboard.path, keyboard.hide) !== null) return null;
+                    } else if (await this.commands.call(keyboard.name, keyboard.path, keyboard.show, keyboard.args) !== null) {
                         return keyboard;
                     }
-                    break;
+                    // Onboard acquires the bus name before exporting its Keyboard object.
                 }
                 await this.commands.wait();
             }
+            // Only stop the process we just launched and could not control. Otherwise a
+            // failed/slow startup could show its UI after the user has left text editing.
+            launched.stop();
             // Do not start a second keyboard while the first may still be initializing.
             return null;
         }
