@@ -46,6 +46,29 @@
 - Linux alan penceresinde pencere yöneticisinin tam ekran boyutunu uygulayabilmesi için `resizable` açık tutulur. GNOME/X11, %125 ölçekli gerçek masaüstünde Tam Ekran 1920×1080; 400×300 CSS piksel alan seçimi 500×375 özgün piksel olarak doğrulandı. Kamera simgesine basmak yalnız paleti açar (`tests/quick-capture-electron.cjs`).
 - Windows'un gerçek ekran yakalaması ve fiziksel Pardus ETAP tahtası ayrıca denenmelidir. PipeWire/portal kullanılan sistemlerde işletim sistemi izin veya ekran seçimi gösterebilir. Kaynak özgün çözünürlükte alınamazsa görüntüyü büyütüp eklemek yerine hata bildirilir.
 
+## Pardus ekran klavyesi
+
+- Linux masaüstü uygulamasının tahta modunda yeni metin eklenirken ve mevcut metin
+  düzenlenirken sistem klavyesi istenir (`src/ui/TextEditor.ts`,
+  `src/platform/ScreenKeyboardBridge.ts`, `electron/screen-keyboard.ts`).
+- Çalışan ETA Klavye veya Onboard kullanılır; ikisi de çalışmıyorsa önce kurulu ETA,
+  ardından kurulu Onboard başlatılır. Açık klavyeyi kapatmamak için Toggle yerine
+  Show kullanılır. Sistem ayarları değiştirilmez, paket kurulmaz.
+- Editör kapanınca klavye gizlenir. Geciken açılma istekleri, Yeni Çizim, araç
+  değiştirme, pencere kapanışı/gizlenmesi ve gezinme sırasında temizlenir.
+  Başlatılıp D-Bus arayüzünü sunamayan yeni süreç sonlandırılır; önceden çalışan
+  klavye süreçleri sonlandırılmaz. Klavye hatası yazıyı veya odağı kaybettirmez;
+  metne tekrar dokunarak açma isteği yinelenebilir.
+- Otomatik açma yalnız Linux tahta profilindedir; PC profili, Windows, web ve
+  mobilde bu Linux çağrıları yapılmaz.
+- 22 klavye servis testi, 55 metin/tarayıcı kontrolü, genel 252 Node testi,
+  üretim derlemesi ve Electron tip kontrolü geçti. Gerçek Electron + geçici
+  D-Bus oturumunda taklit ETA/Onboard servisleriyle tam ekran, preload, odak,
+  Türkçe giriş ve editör yaşam döngüsü sınandı. Bu test gerçek klavye arayüzü
+  değildir; fiziksel Pardus ETAP'ta yeniden doğrulama bekleniyor.
+- Beyaz ekran geçişi bu çalışmaya dahil edilmedi. Fiziksel tahta gözlemleri:
+  `docs/tahta-test-notlari.md`.
+
 ## Kayıt sınırı
 
 - En fazla **30 kayıt** tutulur. Yeni kayıt başarıyla yazılınca en eski güncellenen kayıtlar kaldırılır; önceki sınırdan kalan fazla kayıtlar da bu sırada temizlenir.
