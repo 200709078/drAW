@@ -25,3 +25,5 @@ dist-ssr
 
 .env
 release/
+# Local AI / coding-agent instruction files
+[Aa][Gg][Ee][Nn][Tt][Ss]*.md
