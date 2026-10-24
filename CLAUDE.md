@@ -18,8 +18,22 @@ npm run dist             # build + electron-builder; on Linux → release/*.deb,
 
 - Browser checks are HTML pages under `tests/` run against the Vite server (`tests/README.md`): `storage-ui.html`, `text-ui.html`, `guides-ui.html`, `quick-capture-ui.html`; add `?tahta=1` for board mode. CDP runners: `node tests/quick-capture-browser.cjs`, `node tests/text-browser.cjs` (start Vite with `--host 127.0.0.1`; `DRAW_TEST_URL` overrides the port). Toolbar position depends on window width, so run toolbar-related pages in a wide (~1600px, bottom) and a narrow (~760px, left) window.
 - Real Electron checks: `npx electron tests/quick-capture-electron.cjs`, `tests/screen-keyboard-electron.cjs` (need a graphical session; from VS Code unset `ELECTRON_RUN_AS_NODE`).
-- **Releases** come from `.github/workflows/release.yml`: Linux packages on `ubuntu-latest`, the Windows `.exe` on `windows-latest` (never cross-build Windows from Linux with wine). Pushing a tag `v<package.json version>` creates that GitHub release; "Run workflow" rebuilds the current version and replaces its assets; `yayinla=false` only builds (`gh workflow run release.yml -f yayinla=false`, then `gh run download --name paket-Windows -D release`). `scripts/release-assets.mjs` writes `SHA256SUMS.txt` and the Turkish release notes (workflow and script are identical copies in drAW, drAW2D and drAW3D — keep them in step; push a new workflow before its tag, a tag pushed together with a new workflow did not trigger it); asset names have no version (`drAW-linux-amd64.deb`, `drAW-linux-x86_64.AppImage`, `drAW-win-x64.exe`) so the shared `releases/latest/download/<name>` links always fetch the newest release — don't add the version back. New version: `npm version patch` then `git push --follow-tags`.
+- Releases: see the "Releases" section below.
 - Tests use fake desktop storage and never touch the user's drawings.
+
+## Releases
+
+GitHub Releases is the only place packages are published; madematik.com and the README link to it.
+
+- **Build:** `.github/workflows/release.yml` builds the Linux packages (`.deb`, AppImage) on `ubuntu-latest` and the Windows `.exe` on `windows-latest`. Never cross-build Windows from Linux (wine) and never upload or replace release assets by hand. Before packaging the Linux job runs `npm test` (Node tests). A failing step blocks the release.
+- **Version:** `package.json` is the single source, so the local and GitHub versions are always the same. New release: `npm version patch` (or `minor`), then `git push --follow-tags`. The workflow fails if the tag `vX.Y.Z` differs from `package.json`.
+- **Rebuild without a new version:** Actions → "Sürüm paketleri" → Run workflow replaces the assets of the current version (creates the release if missing). Build only, nothing published: `gh workflow run release.yml -f yayinla=false`, then `gh run download --name paket-Windows -D release`.
+- **Asset names have no version:** `drAW-linux-amd64.deb`, `drAW-linux-x86_64.AppImage`, `drAW-win-x64.exe` (`build.artifactName` is `${productName}-${os}-${arch}.${ext}`), so `https://github.com/200709078/drAW/releases/latest/download/<name>` always fetches the newest release; madematik.com uses these links (drAW has no README; its release notes list them). Don't add the version back.
+- **Notes and checksums:** `scripts/release-assets.mjs` writes `SHA256SUMS.txt` and the Turkish release notes (sizes, DEB dependencies and installed size read from the packages). Change the notes in the script, not on GitHub — the next run overwrites them.
+- **Local copy:** `npm run dist*` output is for local testing only and differs byte-wise from the published files. To make `release/` match GitHub: `rm -rf release && gh release download vX.Y.Z -D release`, then `sha256sum -c SHA256SUMS.txt` inside `release/`.
+- **Shared files:** the workflow and `scripts/release-assets.mjs` are identical copies in drAW, drAW2D and drAW3D (app name and version come from `package.json`) — change all three together. Actions: `checkout`/`setup-node`/`upload-artifact` v7, `download-artifact` v8 (Node 24).
+- **Trigger quirk:** push a new or changed workflow file before the tag; a tag pushed in the same push as a new workflow did not trigger it.
+- **Metadata:** license MIT (same text in all three repos), deb `Section: education`, `.desktop` categories include `Education`.
 
 ## Architecture
 
