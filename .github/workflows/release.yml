@@ -1,4 +1,5 @@
 # Linux (.deb, AppImage) ve Windows (.exe) paketlerini üretip GitHub sürümüne yükler.
+# drAW, drAW2D ve drAW3D aynı dosyayı kullanır; uygulama adı ve sürüm package.json'dan okunur.
 # - "v0.0.4" gibi bir etiket gönderilince o sürüm oluşturulur (package.json sürümüyle aynı olmalı).
 # - Actions sekmesindeki "Run workflow" düğmesi, package.json'daki sürümün paketlerini yeniden
 #   üretip mevcut sürümdeki dosyaların yerine koyar (sürüm yoksa oluşturur).
@@ -39,9 +40,9 @@ jobs:
             target: --win
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@v7
         with:
           node-version: 22
           cache: npm
@@ -60,7 +61,10 @@ jobs:
 
       - name: Testler
         if: runner.os == 'Linux'
-        run: npm test
+        run: |
+          # Playwright testleri olan projelerde tarayıcı kurulur.
+          if [ -f playwright.config.ts ]; then npx playwright install --with-deps chromium; fi
+          npm test
 
       - name: Paketleri üret
         shell: bash
@@ -69,7 +73,7 @@ jobs:
         env:
           CSC_IDENTITY_AUTO_DISCOVERY: "false"
 
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@v7
         with:
           name: paket-${{ matrix.name }}
           path: |
@@ -85,9 +89,9 @@ jobs:
     if: github.event_name == 'push' || inputs.yayinla
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
 
-      - uses: actions/download-artifact@v4
+      - uses: actions/download-artifact@v8
         with:
           path: paketler
           merge-multiple: true
@@ -99,14 +103,15 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
         run: |
+          name="$(node -p "const p = require('./package.json'); p.build?.productName ?? p.productName")"
           version="$(node -p "require('./package.json').version")"
           tag="v$version"
-          files=(paketler/drAW-linux-x86_64.AppImage paketler/drAW-linux-amd64.deb paketler/drAW-win-x64.exe paketler/SHA256SUMS.txt)
+          files=(paketler/"$name"-linux-x86_64.AppImage paketler/"$name"-linux-amd64.deb paketler/"$name"-win-x64.exe paketler/SHA256SUMS.txt)
           if gh release view "$tag" > /dev/null 2>&1; then
             gh release edit "$tag" --notes-file paketler/RELEASE_NOTES.md
             gh release upload "$tag" "${files[@]}" --clobber
           else
             gh release create "$tag" "${files[@]}" --target "$GITHUB_SHA" \
-              --title "drAW $tag — Linux & Windows" --notes-file paketler/RELEASE_NOTES.md
+              --title "$name $tag — Linux & Windows" --notes-file paketler/RELEASE_NOTES.md
           fi
           echo "Sürüm: $(gh release view "$tag" --json url --jq .url)" >> "$GITHUB_STEP_SUMMARY"

@@ -1,6 +1,8 @@
 // GitHub sürümü için SHA256SUMS.txt ve RELEASE_NOTES.md üretir.
 // Dosya adlarında sürüm yoktur; releases/latest/download/<ad> bağlantısı hep son sürümü indirir.
+// drAW, drAW2D ve drAW3D aynı dosyayı kullanır; ad, sürüm ve depo package.json'dan okunur.
 // Kullanım: node scripts/release-assets.mjs <paket-klasörü>
+import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
 import { readFile, readdir, stat, writeFile } from "node:fs/promises";
 import path from "node:path";
@@ -11,12 +13,22 @@ if (!directory) {
     process.exit(1);
 }
 
-const { version } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const manifest = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
+const name = manifest.build?.productName ?? manifest.productName;
+const { version } = manifest;
+const repository = String(manifest.repository?.url ?? manifest.repository ?? "")
+    .match(/github\.com[/:]([^/]+\/[^/.]+)/)?.[1];
+if (!name || !repository) {
+    console.error("package.json içinde productName ve GitHub repository adresi olmalı.");
+    process.exit(1);
+}
+
 const packages = [
-    { file: "drAW-linux-x86_64.AppImage", label: "AppImage", platform: "Linux x86_64" },
-    { file: "drAW-linux-amd64.deb", label: "DEB", platform: "Linux amd64" },
-    { file: "drAW-win-x64.exe", label: "exe", platform: "Windows x64" }
+    { file: `${name}-linux-x86_64.AppImage`, label: "AppImage", platform: "Linux x86_64" },
+    { file: `${name}-linux-amd64.deb`, label: "DEB", platform: "Linux amd64" },
+    { file: `${name}-win-x64.exe`, label: "exe", platform: "Windows x64" }
 ];
+const [appImage, deb, exe] = packages.map(({ file }) => file);
 
 const present = new Set(await readdir(directory));
 const missing = packages.filter(({ file }) => !present.has(file)).map(({ file }) => file);
@@ -27,17 +39,32 @@ if (missing.length > 0) {
 
 const sums = [];
 const rows = [];
+const sizes = {};
 for (const item of packages) {
     const file = path.join(directory, item.file);
     const hash = createHash("sha256").update(await readFile(file)).digest("hex");
+    sizes[item.file] = (await stat(file)).size;
     sums.push(`${hash}  ${item.file}`);
-    rows.push(`| ${item.label} | ${item.platform} | ${(await stat(file)).size.toLocaleString("tr-TR")} bayt |`);
+    rows.push(`| ${item.label} | ${item.platform} | ${sizes[item.file].toLocaleString("tr-TR")} bayt |`);
 }
 await writeFile(path.join(directory, "SHA256SUMS.txt"), `${sums.join("\n")}\n`);
 
+// Bağımlılıklar ve kurulu boyut paketin kendisinden okunur (dpkg-deb yoksa satırlar atlanır).
+function debField(field) {
+    try {
+        return execFileSync("dpkg-deb", ["--field", path.join(directory, deb), field], { encoding: "utf8" }).trim();
+    } catch {
+        return "";
+    }
+}
+const megabytes = (bytes) => Math.round(bytes / 1_000_000).toLocaleString("tr-TR");
+const depends = debField("Depends");
+const recommends = debField("Recommends");
+const installedKb = Number(debField("Installed-Size"));
 const date = new Date().toLocaleDateString("tr-TR", { day: "numeric", month: "long", year: "numeric", timeZone: "Europe/Istanbul" });
-const appImage = packages[0].file;
-const notes = `drAW ${version} — Linux ve Windows paketleri. Paketler ${date} tarihinde GitHub Actions ile hazırlandı.
+const base = `https://github.com/${repository}`;
+
+const notes = `${name} ${version} — Linux ve Windows paketleri. Paketler ${date} tarihinde GitHub Actions ile hazırlandı.
 
 | Paket | Platform / mimari | Dosya boyutu |
 | --- | --- | --- |
@@ -47,19 +74,18 @@ ${rows.join("\n")}
 
 Bu bağlantılar her zaman en son sürümü indirir:
 
-${packages.map(({ file, label }) => `- **${label}:** https://github.com/200709078/drAW/releases/latest/download/${file}`).join("\n")}
+${packages.map(({ file, label }) => `- **${label}:** ${base}/releases/latest/download/${file}`).join("\n")}
 
 ### Sistem gereksinimleri
 
-- **Windows:** Windows 10 veya 11 (64-bit). Kurulum dosyası yaklaşık 100 MB, kurulu uygulama yaklaşık 350 MB'dir; toplamda yaklaşık 450 MB boş disk alanı önerilir.
-- **Linux:** 64-bit x86_64; Debian/Ubuntu türevi dağıtım (Pardus ETAP 25 dahil). DEB kurulumu yaklaşık 330 MB, AppImage ise yaklaşık 100 MB yer kaplar.
-- **DEB bağımlılıkları:** libgtk-3-0, libnotify4, libnss3, libxss1, libxtst6, xdg-utils, libatspi2.0-0, libuuid1, libsecret-1-0 (önerilen: libappindicator3-1). Paket yöneticisi bunları otomatik kurar.
-- **AppImage:** FUSE 2 gerektirir. Sistemde FUSE 2 yoksa \`./${appImage} --appimage-extract-and-run\` ile çalıştırılabilir.
+- **Windows:** Windows 10 veya 11 (64-bit). Kurulum dosyası yaklaşık ${megabytes(sizes[exe])} MB.
+- **Linux:** 64-bit x86_64; Debian/Ubuntu türevi dağıtım (Pardus gibi).${installedKb > 0 ? ` DEB kurulumu yaklaşık ${megabytes(installedKb * 1024)} MB,` : ""} AppImage yaklaşık ${megabytes(sizes[appImage])} MB yer kaplar.
+${depends ? `- **DEB bağımlılıkları:** ${depends}${recommends ? ` (önerilen: ${recommends})` : ""}. Paket yöneticisi bunları otomatik kurar.\n` : ""}- **AppImage:** FUSE 2 gerektirir. Sistemde FUSE 2 yoksa \`./${appImage} --appimage-extract-and-run\` ile çalıştırılabilir.
 
 ### Kurulum
 
 - **AppImage:** Dosyayı indirin, \`chmod +x ${appImage}\` ile çalıştırma izni verin ve açın.
-- **DEB:** \`sudo apt install ./${packages[1].file}\` komutuyla veya dosyayı çift tıklayıp paket yöneticisiyle kurun.
+- **DEB:** \`sudo apt install ./${deb}\` komutuyla veya dosyayı çift tıklayıp paket yöneticisiyle kurun.
 - **exe:** Dosyayı indirip çalıştırın; yönlendirmeli kurulum açılır. Yönetici yetkisi gerekmez, masaüstü ve başlangıç menüsü kısayolları oluşturulur. Paket dijital imzalı olmadığı için Windows SmartScreen "bilinmeyen yayıncı" uyarısı gösterebilir; **Ek bilgi > Yine de çalıştır** ile devam edin.
 
 ### Dosya bütünlüğü
@@ -67,9 +93,9 @@ ${packages.map(({ file, label }) => `- **${label}:** https://github.com/20070907
 SHA-256 değerleri \`SHA256SUMS.txt\` dosyasındadır.
 
 - **Linux:** \`sha256sum -c SHA256SUMS.txt\`
-- **Windows (PowerShell):** \`Get-FileHash .\\${packages[2].file} -Algorithm SHA256\` çıktısını \`SHA256SUMS.txt\` ile karşılaştırın.
+- **Windows (PowerShell):** \`Get-FileHash .\\${exe} -Algorithm SHA256\` çıktısını \`SHA256SUMS.txt\` ile karşılaştırın.
 
-**Full Changelog**: https://github.com/200709078/drAW/commits/v${version}
+**Full Changelog**: ${base}/commits/v${version}
 `;
 await writeFile(path.join(directory, "RELEASE_NOTES.md"), notes);
-console.log(`drAW ${version}: ${packages.length} paket, SHA256SUMS.txt ve RELEASE_NOTES.md hazır.`);
+console.log(`${name} ${version}: ${packages.length} paket, SHA256SUMS.txt ve RELEASE_NOTES.md hazır.`);
