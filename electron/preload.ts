@@ -8,6 +8,7 @@ contextBridge.exposeInMainWorld("drAWDesktop", {
     },
     quickCapture: {
         take: (mode: "screen" | "area"): Promise<unknown> => ipcRenderer.invoke("quick-capture:take", mode),
+        prepare: (): void => { ipcRenderer.send("quick-capture:prepare"); },
         cancel: (): void => { ipcRenderer.send("quick-capture:cancel"); }
     },
     storage: {

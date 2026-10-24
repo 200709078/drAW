@@ -3,7 +3,8 @@
 Node.js testlerini proje dizininden çalıştırın:
 
 ```sh
-node --test tests/*.test.cjs
+npm test            # node --test tests/*.test.cjs
+npm run typecheck   # src ve electron için strict tip denetimi
 ```
 
 Arayüz kontrolü için `npm run dev` komutunu çalıştırıp Vite adresinde
@@ -51,8 +52,11 @@ ve [Onboard](https://github.com/onboard-osk/onboard/blob/main/Onboard/OnboardGtk
 Kılavuzlar için `/tests/guides-ui.html` ve `/tests/guides-ui.html?tahta=1`:
 gerçek tuval piksellerinde kareli/yatay/dikey çizgilerin görünürlüğü, zoom,
 kesirli kaydırma ve Yeni Çizim sonrası palet sıfırlaması kontrol edilir.
-Bu sayfa masaüstü başlık çubuğunun tuval ofsetini de kullanır; farklı pencere
-boyutları ve piksel yoğunluklarıyla çalıştırılabilir.
+Ayrıca kılavuz paletinin açılıp kapanmasını ve drAW düğmesiyle araç çubuğunun
+katlanıp açılmasını sınar. Araç çubuğu konumu pencere genişliğinden gelir:
+alt konum için geniş (ör. 1600px), sol konum için dar (ör. 760px) pencerede
+açın. Bu sayfa masaüstü başlık çubuğunun tuval ofsetini de kullanır; farklı
+pencere boyutları ve piksel yoğunluklarıyla çalıştırılabilir.
 
 Ekran alıntısını sınamak için Vite sunucusu açıkken:
 
@@ -81,6 +85,10 @@ akıllı tahta doğrulaması yerine geçmez.
 Alıntı testleri, tek ekranlı Linux'ta farklı ekran kimliklerini ve JavaScript'in
 kesin temsil aralığını aşan kimlikleri de kapsar. Tam Ekran/Alan için 4K kaynak,
 ikinci ekran, değişen hedef ekran, boş görüntü ve düşük çözünürlük sınanır.
+
+Ana süreç testleri ayrıca tek PNG kodlamasını, seçim penceresine ikili veri
+gönderimini, paletle hazırlanan gizli pencerenin yeniden kullanılmasını ve
+süresi dolunca/ekran değişince/pencere kapanınca atılmasını sınar.
 
 Gerçek Electron ve masaüstü yakalaması için:
 

@@ -12,7 +12,9 @@
   "author": "mADEMatik <madematik@madematik.com> (https://www.madematik.com)",
   "scripts": {
     "dev": "vite",
-    "build": "tsc && node scripts/build-preloads.mjs && vite build",
+    "typecheck": "tsc && tsc -p tsconfig.electron.json",
+    "build": "npm run typecheck && node scripts/build-preloads.mjs && vite build",
+    "test": "node --test tests/*.test.cjs",
     "preview": "vite preview",
     "electron": "electron electron/main.ts",
     "dist": "npm run build && electron-builder"
@@ -47,8 +49,17 @@
       ],
       "syncDesktopName": true,
       "icon": "electron/assets/app-icons",
-      "category": "Graphics",
-      "executableName": "drAW"
+      "category": "Education",
+      "executableName": "drAW",
+      "synopsis": "Interactive whiteboard and drawing application",
+      "desktop": {
+        "entry": {
+          "Comment[tr]": "Etkileşimli tahta ve çizim uygulaması"
+        }
+      }
+    },
+    "deb": {
+      "packageCategory": "education"
     },
     "win": {
       "target": "nsis",

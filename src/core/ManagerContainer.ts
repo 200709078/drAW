@@ -18,7 +18,6 @@ import { ShapesTool } from "../tools/ShapesTool";
 import { HistoryManager } from "./HistoryManager";
 import { QuickCaptureController } from "../capture/QuickCaptureController";
 import { getQuickCaptureBridge } from "../capture/QuickCaptureBridge";
-import { isDesktopAvailable } from "../platform/DesktopEnvironment";
 import { AutoSaveManager } from "../autosave/AutoSaveManager";
 import { ThumbnailGenerator } from "../autosave/ThumbnailGenerator";
 import { DrawingRepository } from "../storage/DrawingRepository";
@@ -41,7 +40,6 @@ export class ManagerContainer {
     private readonly shapesTool: ShapesTool;
     private readonly historyManager: HistoryManager;
     private readonly quickCapture: QuickCaptureController;
-    private readonly desktopAvailable: boolean;
     private readonly autoSaveManager: AutoSaveManager;
     private readonly drawingRepository: DrawingRepository;
     private readonly linkedPhotoManager: LinkedPhotoManager;
@@ -156,7 +154,6 @@ export class ManagerContainer {
             this.selectionTool,
             getQuickCaptureBridge()
         );
-        this.desktopAvailable = isDesktopAvailable();
         this.shapesTool = new ShapesTool(
             this.drawingContext,
             this.document,
@@ -173,6 +170,7 @@ export class ManagerContainer {
             this.documentRenderer,
             () => this.autoSaveManager.markDirty()
         );
+        this.linkedPhotoManager.setActiveDrawingSource(() => this.autoSaveManager.getActiveDocument()?.getId() ?? null);
         this.linkedPhotoManager.setSelectionTool(this.selectionTool);
         this.linkedPhotoManager.setToolManager(this.toolManager);
         this.linkedPhotoManager.setHistoryManager(this.historyManager);
@@ -269,12 +267,6 @@ export class ManagerContainer {
     public getQuickCapture(): QuickCaptureController {
 
         return this.quickCapture;
-
-    }
-
-    public getDesktopAvailable(): boolean {
-
-        return this.desktopAvailable;
 
     }
 

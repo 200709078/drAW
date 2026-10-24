@@ -98,10 +98,22 @@ window.addEventListener("DOMContentLoaded", () => {
     window.addEventListener("blur", reset);
     window.addEventListener("resize", reset);
     window.addEventListener("contextmenu", (event) => event.preventDefault());
-    electron_1.ipcRenderer.once("quick-capture:image", (_event, dataUrl) => {
-        snapshot.onload = () => { ready = true; electron_1.ipcRenderer.send("quick-capture:shown"); };
-        snapshot.onerror = () => electron_1.ipcRenderer.send("quick-capture:failed");
-        snapshot.src = dataUrl;
+    electron_1.ipcRenderer.once("quick-capture:image", async (_event, png) => {
+        snapshot.src = URL.createObjectURL(new Blob([png], { type: "image/png" }));
+        try {
+            await snapshot.decode();
+        }
+        catch {
+            electron_1.ipcRenderer.send("quick-capture:failed");
+            return;
+        }
+        // Görüntü boyanmadan gösterilen pencere bir an beyaz kalır. Gizli pencerede kare
+        // üretilmezse kısa süre sonra yine de gösterilir.
+        await Promise.race([
+            new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve))),
+            new Promise((resolve) => setTimeout(resolve, 100))
+        ]);
+        ready = true;
+        electron_1.ipcRenderer.send("quick-capture:shown");
     });
-    electron_1.ipcRenderer.send("quick-capture:ready");
 });

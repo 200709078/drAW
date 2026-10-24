@@ -46,10 +46,6 @@ import columnsIcon from "../assets/icons/columns.svg";
 import type { LinkedPhotoManager } from "../photos/LinkedPhotoManager";
 import type { GuideLineType } from "../renderers/DocumentRenderer";
 
-// Kılavuz çizgi seçici kapalı: kod duruyor, ileride true yapılarak
-// bütün platformlarda yeniden aktif edilebilir.
-const GUIDELINES_ENABLED = false;
-
 export class ToolbarPanel {
 
     private readonly newDrawButton: HTMLButtonElement;
@@ -83,8 +79,7 @@ export class ToolbarPanel {
         _canvas: HTMLCanvasElement,
         photoLinkManager: LinkedPhotoManager | null = null,
         textTool: TextTool,
-        quickCapture: QuickCaptureController,
-        desktopAvailable: boolean
+        quickCapture: QuickCaptureController
     ) {
 
         const sidebar = document.createElement("aside");
@@ -93,12 +88,6 @@ export class ToolbarPanel {
 
         const toolbar = document.createElement("div");
         toolbar.className = "sidebar__toolbar";
-
-        const mobileLayout = window.matchMedia("(max-width: 767px), (hover: none) and (pointer: coarse)");
-        const portraitLayout = window.matchMedia("(orientation: portrait)");
-        const isFixedMobileToolbar = (): boolean => {
-            return !desktopAvailable && getLineProfile() !== "smartboard" && mobileLayout.matches;
-        };
 
         const handle = document.createElement("button");
         handle.type = "button";
@@ -112,30 +101,27 @@ export class ToolbarPanel {
 
         toolbar.appendChild(handle);
 
-        handle.addEventListener("dblclick", () => {
-            if (isFixedMobileToolbar()) {
+        handle.setAttribute("aria-expanded", "true");
+        // Açık çubuk çift tıklamayla/dokunuşla katlanır, katlı çubuk tek dokunuşla açılır.
+        // Dokunmatik tahtada dblclick olayı güvenilir olmadığından tıklamalar süreyle sayılır.
+        const DOUBLE_TAP_MS = 400;
+        let lastHandleClick = -Infinity;
+        handle.addEventListener("click", (event) => {
+            if (collapsed) {
+                // Açan dokunuş yeni bir çift dokunuşun ilki sayılmaz.
+                lastHandleClick = -Infinity;
+                setCollapsed(false);
                 return;
             }
 
-            closeAllFlyouts();
-            const body = document.body;
-            let dock: "bottom" | "left" | "top" = "bottom";
-
-            if (body.classList.contains("dock-left")) {
-                body.classList.remove("dock-left");
-                body.classList.add("dock-top");
-                dock = "top";
-            } else if (body.classList.contains("dock-top")) {
-                body.classList.remove("dock-top");
+            // Klavyeyle (Enter/Boşluk) etkinleştirme doğrudan katlar.
+            const now = event.timeStamp;
+            if (event.detail === 0 || now - lastHandleClick <= DOUBLE_TAP_MS) {
+                lastHandleClick = -Infinity;
+                setCollapsed(true);
             } else {
-                body.classList.add("dock-left");
-                dock = "left";
+                lastHandleClick = now;
             }
-
-            sidebar.classList.remove("dock-in-bottom", "dock-in-left", "dock-in-top");
-            void sidebar.offsetWidth;
-            sidebar.classList.add(`dock-in-${dock}`);
-            updateToolbarVars();
         });
 
         this.drawingsPanel = new DrawingsPanel({
@@ -186,7 +172,7 @@ export class ToolbarPanel {
         ] as const) {
             const button = this.createIconButton(label, icon, { className: "sidebar__capture-option" });
             button.addEventListener("click", async () => {
-                closeAllFlyouts();
+                closeFlyouts();
                 captureButton.disabled = true;
                 try { await quickCapture.take(mode as CaptureMode); }
                 finally { captureButton.disabled = false; }
@@ -195,9 +181,8 @@ export class ToolbarPanel {
         }
         captureButton.addEventListener("click", () => {
             if (!quickCapture.isAvailable()) return;
-            guidePalette.hidden = true;
-            guideButton.setAttribute("aria-expanded", "false");
             toggleFlyout(captureButton, capturePalette);
+            if (!capturePalette.hidden) quickCapture.prepare();
         });
 
         const guideControl = document.createElement("div");
@@ -206,6 +191,7 @@ export class ToolbarPanel {
         const guideButton = this.createIconButton("Çizgisiz", squareIcon, {
             className: "sidebar__tool"
         });
+        guideButton.setAttribute("aria-label", "Kılavuz Çizgileri: Çizgisiz");
         guideButton.setAttribute("aria-expanded", "false");
 
         const guidePalette = document.createElement("div");
@@ -255,8 +241,7 @@ export class ToolbarPanel {
                 button.setAttribute("aria-pressed", String(isSelected));
             }
 
-            guidePalette.hidden = true;
-            guideButton.setAttribute("aria-expanded", "false");
+            closeFlyouts();
         };
 
         for (const option of guideOptions) {
@@ -273,30 +258,7 @@ export class ToolbarPanel {
             guideButtons.push(guideOptionButton);
         }
 
-        guideButton.addEventListener("click", () => {
-            if (guidePalette.hidden) {
-                closeFlyouts();
-                placeFlyout(guideButton, guidePalette, true, true);
-            } else {
-                guidePalette.hidden = true;
-                guideButton.setAttribute("aria-expanded", "false");
-            }
-        });
-
-        document.addEventListener("pointerdown", (event) => {
-            const target = event.target;
-
-            if (!(target instanceof Node)) {
-                return;
-            }
-
-            if (guideControl.contains(target) || guidePalette.contains(target)) {
-                return;
-            }
-
-            guidePalette.hidden = true;
-            guideButton.setAttribute("aria-expanded", "false");
-        });
+        guideButton.addEventListener("click", () => toggleFlyout(guideButton, guidePalette));
 
         const undoButton = this.createIconButton("Geri Al", undoIcon, {
             className: "sidebar__history"
@@ -437,7 +399,7 @@ export class ToolbarPanel {
         shapesControl.append(shapesButton, shapesPalette);
 
         const colorControl = document.createElement("div");
-        colorControl.className = "sidebar__control sidebar__control--colors";
+        colorControl.className = "sidebar__control";
 
         const colors = [
             { name: "Kırmızı", value: "#ff0000" },
@@ -474,10 +436,13 @@ export class ToolbarPanel {
         colorPalette.setAttribute("role", "group");
         colorPalette.setAttribute("aria-label", "Kalem rengi");
 
-        // Önceki renk rozeti: tek dokunuşla son iki renk arası geçiş.
+        // Önceki renk rozeti: ayrı düğme, tek dokunuşla son iki renk arası geçiş.
         const prevColorButton = document.createElement("button");
         prevColorButton.type = "button";
-        prevColorButton.className = "sidebar__prev-color";
+        prevColorButton.className = "sidebar__tool sidebar__prev-color";
+        const prevColorSwatch = document.createElement("span");
+        prevColorSwatch.className = "sidebar__prev-color-swatch";
+        prevColorButton.appendChild(prevColorSwatch);
 
         const renderColorUi = (): void => {
             const current = colors[currentColorIndex];
@@ -485,9 +450,9 @@ export class ToolbarPanel {
             colorPreview.style.backgroundColor = current.value;
             colorButton.setAttribute("aria-label", `Renk: ${current.name}`);
             colorButton.title = current.name;
-            prevColorButton.style.backgroundColor = previous.value;
-            prevColorButton.title = previous.name;
-            prevColorButton.setAttribute("aria-label", previous.name);
+            prevColorSwatch.style.backgroundColor = previous.value;
+            prevColorButton.title = `Önceki Renk: ${previous.name}`;
+            prevColorButton.setAttribute("aria-label", `Önceki renk: ${previous.name}`);
 
             for (const [index, button] of colorPalette.querySelectorAll("button").entries()) {
                 const isCurrent = index === currentColorIndex;
@@ -513,7 +478,7 @@ export class ToolbarPanel {
             applyColorIndex(previousColorIndex);
         });
 
-        colorControl.append(colorButton, prevColorButton, colorPalette);
+        colorControl.append(colorButton, colorPalette);
 
         const widthControl = document.createElement("div");
         widthControl.className = "sidebar__control";
@@ -645,12 +610,13 @@ export class ToolbarPanel {
         });
 
         const flyouts = [
-            { button: captureButton, panel: capturePalette, bottomAlign: false },
-            { button: penButton, panel: penPalette, bottomAlign: false },
-            { button: eraserButton, panel: eraserPalette, bottomAlign: false },
-            { button: shapesButton, panel: shapesPalette, bottomAlign: true },
-            { button: colorButton, panel: colorPalette, bottomAlign: false },
-            { button: widthButton, panel: widthPalette, bottomAlign: false }
+            { button: captureButton, panel: capturePalette, bottomAlign: false, lastItemAlign: false },
+            { button: penButton, panel: penPalette, bottomAlign: false, lastItemAlign: false },
+            { button: eraserButton, panel: eraserPalette, bottomAlign: false, lastItemAlign: false },
+            { button: shapesButton, panel: shapesPalette, bottomAlign: true, lastItemAlign: false },
+            { button: colorButton, panel: colorPalette, bottomAlign: false, lastItemAlign: false },
+            { button: widthButton, panel: widthPalette, bottomAlign: false, lastItemAlign: false },
+            { button: guideButton, panel: guidePalette, bottomAlign: true, lastItemAlign: true }
         ];
 
         const closeFlyouts = (): void => {
@@ -683,23 +649,10 @@ export class ToolbarPanel {
             return Number.isFinite(measured) && measured > 0 ? measured : 1;
         };
 
-        const currentDock = (): "bottom" | "left" | "top" => {
-            if (document.body.classList.contains("dock-left")) {
-                return "left";
-            }
-
-            if (document.body.classList.contains("dock-top")) {
-                return "top";
-            }
-
-            return "bottom";
+        const currentDock = (): "bottom" | "left" => {
+            return document.body.classList.contains("dock-left") ? "left" : "bottom";
         };
 
-        const closeAllFlyouts = (): void => {
-            closeFlyouts();
-            guidePalette.hidden = true;
-            guideButton.setAttribute("aria-expanded", "false");
-        };
 
         const placeFlyout = (
             button: HTMLButtonElement,
@@ -727,10 +680,13 @@ export class ToolbarPanel {
 
                 if (bottomAlign) {
                     // Kılavuzda son öğenin altı buton altıyla hizalanır (+8 iç boşluk payı).
+                    // Sınırlar ekran pikselinden çubuğun büyütülmemiş koordinatına çevrilir.
                     const shift = lastItemAlign ? 8 / zoom : 0;
+                    const minTop = (8 - sidebarBounds.top) / zoom;
+                    const maxTop = (window.innerHeight - 8 - sidebarBounds.top) / zoom - panel.offsetHeight;
                     panel.style.top = `${Math.min(
-                        Math.max(8 / zoom, (buttonBounds.bottom - sidebarBounds.top) / zoom - panel.offsetHeight + shift),
-                        window.innerHeight - panel.offsetHeight - 8
+                        Math.max(minTop, (buttonBounds.bottom - sidebarBounds.top) / zoom - panel.offsetHeight + shift),
+                        maxTop
                     )}px`;
                 } else {
                     const maxTop = Math.max(8, sidebarBounds.height / zoom - panel.offsetHeight - 8);
@@ -744,11 +700,7 @@ export class ToolbarPanel {
                 const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
                 panel.style.left = `${Math.min(Math.max(8, buttonBounds.left / zoom), maxLeft)}px`;
 
-                if (dock === "top") {
-                    panel.style.top = `${buttonBounds.bottom / zoom + 16 / zoom}px`;
-                } else {
-                    panel.style.top = `${Math.max(8 / zoom, buttonBounds.top / zoom - panel.offsetHeight - 16 / zoom)}px`;
-                }
+                panel.style.top = `${Math.max(8 / zoom, buttonBounds.top / zoom - panel.offsetHeight - 16 / zoom)}px`;
             }
         };
 
@@ -762,7 +714,7 @@ export class ToolbarPanel {
 
             if (shouldOpen) {
                 const entry = flyouts.find((flyout) => flyout.panel === panel);
-                placeFlyout(button, panel, entry?.bottomAlign ?? false);
+                placeFlyout(button, panel, entry?.bottomAlign ?? false, entry?.lastItemAlign ?? false);
             }
         };
 
@@ -1118,6 +1070,7 @@ export class ToolbarPanel {
         widthControl.append(widthButton, widthPalette);
         toolbar.append(
             colorControl,
+            prevColorButton,
             widthControl,
             undoButton,
             redoButton,
@@ -1131,7 +1084,7 @@ export class ToolbarPanel {
             shapesControl,
             textButton,
             ...(quickCapture.isAvailable() ? [captureControl] : []),
-            ...(GUIDELINES_ENABLED ? [guideControl] : [])
+            guideControl
         );
         sidebar.appendChild(toolbar);
         document.body.appendChild(sidebar);
@@ -1139,47 +1092,128 @@ export class ToolbarPanel {
         const updateToolbarVars = (): void => {
             for (const flyout of flyouts) {
                 if (!flyout.panel.hidden) {
-                    placeFlyout(flyout.button, flyout.panel, flyout.bottomAlign);
+                    placeFlyout(flyout.button, flyout.panel, flyout.bottomAlign, flyout.lastItemAlign);
                 }
-            }
-
-            if (!guidePalette.hidden) {
-                placeFlyout(guideButton, guidePalette, true, true);
             }
         };
 
-        const updateMobileToolbar = (): void => {
-            const fixed = isFixedMobileToolbar();
-            document.body.classList.toggle("mobile-toolbar-fixed", fixed);
-            handle.disabled = fixed;
-            handle.setAttribute("aria-label", fixed
-                ? "Araç çubuğu"
-                : "Araç çubuğu konumu (değiştirmek için çift tıkla)");
-            handle.title = fixed ? "drAW" : "Çift tıkla: konumu değiştir (alt / sol / üst)";
+        // Konum sabittir: doğal genişliğiyle ekrana sığıyorsa altta, sığmıyorsa solda.
+        // drAW düğmesi yerinde kalır; çubuk ona doğru katlanır ve yeniden açılır.
+        let collapsed = false;
+        let layout = { dock: "bottom" as "bottom" | "left", expanded: 0, folded: 0, left: 0, width: 0 };
 
-            if (fixed) {
-                document.body.classList.remove("dock-top");
-                document.body.classList.toggle("dock-left", portraitLayout.matches);
-                sidebar.classList.remove("dock-in-bottom", "dock-in-left", "dock-in-top");
-                document.body.style.setProperty("--mobile-toolbar-height", `${sidebar.getBoundingClientRect().height}px`);
+        const toolbarItems = (): HTMLElement[] => [...toolbar.children].filter(
+            (item): item is HTMLElement => item instanceof HTMLElement && item !== handle && item !== zoomProbe
+        );
+
+        const applyToolbarSize = (): void => {
+            const size = `${collapsed ? layout.folded : layout.expanded}px`;
+            toolbar.style.maxWidth = layout.dock === "bottom" ? size : "";
+            toolbar.style.maxHeight = layout.dock === "left" ? size : "";
+        };
+
+        const updateToolbarLayout = (): void => {
+            const body = document.body;
+            const wasLeft = body.classList.contains("dock-left");
+            const wasCollapsed = collapsed;
+            sidebar.classList.add("sidebar--measuring");
+            sidebar.classList.remove("sidebar--collapsed");
+            toolbar.style.maxWidth = toolbar.style.maxHeight = "none";
+
+            // Ölçümler ekran pikselidir; stil değerleri çubuğun büyütmesine (tahta) bölünür.
+            const zoom = toolbarZoom();
+            body.classList.remove("dock-left");
+            const row = toolbar.getBoundingClientRect();
+            body.classList.add("dock-left");
+            const columnHeight = toolbar.getBoundingClientRect().height;
+            body.classList.toggle("dock-left", wasLeft);
+            const handleBounds = handle.getBoundingClientRect();
+            const frame = (toolbar.offsetWidth - toolbar.clientWidth) + 2 * parseFloat(getComputedStyle(toolbar).paddingLeft);
+
+            const titlebarHeight = body.classList.contains("has-custom-titlebar") ? 36 : 0;
+            const dock = row.width + 32 <= window.innerWidth ? "bottom" : "left";
+            body.classList.toggle("dock-left", dock === "left");
+            sidebar.classList.toggle("sidebar--collapsed", wasCollapsed);
+
+            if (dock === "bottom") {
+                const left = Math.max(16, (window.innerWidth - row.width) / 2);
+                sidebar.style.left = `${left / zoom}px`;
+                sidebar.style.top = "";
+                layout = { dock, expanded: row.width / zoom, folded: handleBounds.width / zoom + frame, left, width: row.width };
+                body.style.setProperty("--toolbar-height", `${row.height}px`);
             } else {
-                document.body.style.removeProperty("--mobile-toolbar-height");
+                const available = window.innerHeight - titlebarHeight - 32;
+                const height = Math.min(columnHeight, available);
+                const top = titlebarHeight + 16 + Math.max(0, (available - height) / 2);
+                sidebar.style.left = `${16 / zoom}px`;
+                sidebar.style.top = `${top / zoom}px`;
+                layout = { dock, expanded: height / zoom, folded: handleBounds.height / zoom + frame, left: 16, width: row.height };
+                body.style.removeProperty("--toolbar-height");
             }
 
+            updateZoomPlacement();
+            applyToolbarSize();
+            void toolbar.offsetWidth;
+            sidebar.classList.remove("sidebar--measuring");
             updateToolbarVars();
         };
 
-        updateMobileToolbar();
-        mobileLayout.addEventListener("change", () => {
-            closeAllFlyouts();
-            updateMobileToolbar();
+        // Alttaki çubuk yakınlaştırma düğmeleriyle çakışıyorsa düğmeler çubuğun üstüne çıkar.
+        // Düğmeler çizimler paneliyle birlikte kayar; hedef konum panelin durumundan hesaplanır.
+        const updateZoomPlacement = (): void => {
+            const body = document.body;
+            const zoomControls = document.querySelector<HTMLElement>(".zoom-controls");
+            let above = false;
+
+            if (layout.dock === "bottom" && zoomControls !== null) {
+                const panel = body.classList.contains("drawings-closed")
+                    ? 0 : document.querySelector(".drawings-panel")?.getBoundingClientRect().width ?? 0;
+                const zoomLeft = window.innerWidth - panel - 16 - zoomControls.offsetWidth;
+                above = zoomLeft < layout.left + layout.width;
+            }
+
+            if (body.classList.contains("zoom-above-toolbar") !== above) {
+                body.classList.toggle("zoom-above-toolbar", above);
+            }
+        };
+        new MutationObserver(updateZoomPlacement).observe(document.body, { attributes: true, attributeFilter: ["class"] });
+
+        const setCollapsed = (value: boolean): void => {
+            if (value === collapsed) {
+                return;
+            }
+
+            collapsed = value;
+            closeFlyouts();
+            toolbar.scrollTo({ left: 0, top: 0 });
+            // Katlanmış düğmeler odak ve dokunma almaz.
+            for (const item of toolbarItems()) {
+                item.inert = value;
+            }
+            sidebar.classList.toggle("sidebar--collapsed", value);
+            handle.setAttribute("aria-expanded", String(!value));
+            handle.setAttribute("aria-label", value ? "Araç çubuğunu aç" : "Araç çubuğunu kapat");
+            handle.title = value ? "Araç çubuğunu aç" : "Çift tıkla: araç çubuğunu kapat";
+            applyToolbarSize();
+        };
+
+        handle.setAttribute("aria-label", "Araç çubuğunu kapat");
+        handle.title = "Çift tıkla: araç çubuğunu kapat";
+        updateToolbarLayout();
+
+        let layoutFrame = 0;
+        window.addEventListener("resize", () => {
+            cancelAnimationFrame(layoutFrame);
+            layoutFrame = requestAnimationFrame(() => {
+                closeFlyouts();
+                updateToolbarLayout();
+            });
         });
         toolbar.addEventListener("scroll", () => {
-            if (isFixedMobileToolbar()) {
-                closeAllFlyouts();
+            if (layout.dock === "left") {
+                closeFlyouts();
             }
         }, { passive: true });
-        window.addEventListener("resize", updateMobileToolbar);
 
         new EraserIdleReturn(toolManager, [eraserTool, partialEraserTool], () => {
             selectPen(penTool, normalPenButton);

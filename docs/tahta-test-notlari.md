@@ -12,6 +12,11 @@ bekliyor. Beyaz ekran bulgusu için henüz değişiklik yapılmadı.
 - **Bekleyen bulgu — Alan seçimine geçiş:** Beyaz ekran, Tam Ekran alıntısına
   göre belirgin biçimde daha uzun görünüyor. Süre ölçülmedi; nedeni henüz
   doğrulanmadı. Geçişteki beyaz ekranın azaltılması incelenecek.
+- **24 Ekim 2026 — Uygulandı, tahtada doğrulama bekliyor:** Windows'ta Alan
+  penceresinin 4–5 sn geç gelmesi bildirildi. Seçim penceresi artık kamera
+  paleti açılınca gizli hazırlanıyor, görüntü bir kez kodlanıyor ve pencere
+  görüntü boyanmadan gösterilmiyor. Bu değişiklik tahtadaki uzun beyaz geçişi de
+  kısaltabilir. Süreler `~/.config/drAW/logs/quick-capture.log` dosyasında.
 - Kullanıcı ekran alıntısında başka sorun olmadığını bildirdi. Önceki
   ekran eşleştirme hatasının tekrarladığına ilişkin bildirim yok.
 
@@ -48,6 +53,8 @@ bekliyor. Beyaz ekran bulgusu için henüz değişiklik yapılmadı.
 - Kullanıcı kılavuz düğmesini önceden gizlediğini ve şu an bu özelliğe
   ihtiyaç olmadığını belirtti. Kılavuz kontrolü test kapsamından çıkarıldı;
   düğmenin yeniden gösterilmesi istenmedi.
+- **24 Ekim 2026:** Kullanıcının isteğiyle kılavuz paleti yeniden gösteriliyor;
+  tahtada görünürlük ve palet konumu yeniden kontrol edilmeli.
 
 ### Tamamlanan kontroller
 

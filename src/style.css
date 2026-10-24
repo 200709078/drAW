@@ -511,134 +511,57 @@ body.has-custom-titlebar .modal-backdrop {
     }
 }
 
+/* Araç çubuğu konumu sabittir: ekrana yatay sığıyorsa altta, sığmıyorsa solda.
+   Sol/üst kenar ve azami boyut ToolbarPanel tarafından piksel olarak verilir;
+   drAW düğmesi çubuğu kendi içine katlar. */
 .sidebar {
     position: fixed;
-    top: auto;
-    right: 0;
     bottom: 16px;
-    left: 0;
-    width: max-content;
-    margin: 0 auto;
     z-index: 1;
     font-family: system-ui, sans-serif;
-    transition: transform 0.36s ease;
 }
 
 body.dock-left .sidebar {
-    top: 50%;
-    right: auto;
     bottom: auto;
-    left: 16px;
-    margin: 0;
-    transform: translateY(-50%);
-}
-
-body.dock-top .sidebar {
-    top: 16px;
-    bottom: auto;
-}
-
-body.has-custom-titlebar.dock-top .sidebar {
-    top: 52px;
+    /* Dönüşüm, sabit konumlu paletlerin çubuğa göre yerleşmesini sağlar. */
+    transform: translateY(0);
 }
 
 body.dock-left .sidebar__toolbar {
     flex-direction: column;
-    max-height: calc(100vh - 32px);
     overflow-y: auto;
-}
-
-@keyframes dock-in-bottom {
-    from { transform: translateY(40px); opacity: 0; }
-    to { transform: none; opacity: 1; }
-}
-
-@keyframes dock-in-top {
-    from { transform: translateY(-40px); opacity: 0; }
-    to { transform: none; opacity: 1; }
-}
-
-@keyframes dock-in-left {
-    from { transform: translate(-40px, -50%); opacity: 0; }
-    to { transform: translateY(-50%); opacity: 1; }
-}
-
-.sidebar.dock-in-bottom {
-    animation: dock-in-bottom 0.36s ease;
-}
-
-.sidebar.dock-in-top {
-    animation: dock-in-top 0.36s ease;
-}
-
-.sidebar.dock-in-left {
-    animation: dock-in-left 0.36s ease;
+    scrollbar-width: thin;
 }
 
 .sidebar__toolbar {
     display: flex;
     flex-direction: row;
     align-items: center;
+    box-sizing: border-box;
     gap: 8px;
     padding: 8px;
     border: 1px solid #d1d5db;
     border-radius: 12px;
     background: rgb(255 255 255 / 92%);
     box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
+    transition: max-width 0.28s ease, max-height 0.28s ease;
 }
 
-@media (max-width: 767px) {
-    .sidebar {
-        width: max-content;
-        max-width: 100%;
-        overflow: hidden;
-        box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
-    }
-
-    .sidebar__toolbar {
-        width: max-content;
-        flex-wrap: nowrap;
-        box-shadow: none;
-    }
-
-    .sidebar__handle {
-        position: sticky;
-        left: 0;
-        z-index: 1;
-        touch-action: pan-x;
-        box-shadow: 1px 0 0 #d1d5db;
-    }
-}
-
-body.mobile-toolbar-fixed .sidebar {
-    max-width: calc(100vw - 32px);
-    overflow: visible;
-}
-
-body.mobile-toolbar-fixed .sidebar__toolbar {
-    box-sizing: border-box;
-    max-width: 100%;
-}
-
-body.mobile-toolbar-fixed .sidebar__toolbar > * {
+.sidebar__toolbar > * {
     flex-shrink: 0;
 }
 
-body.mobile-toolbar-fixed:not(.dock-left) .sidebar__toolbar {
-    overflow-x: auto;
+/* Soldaki kaydırılabilir çubuğun kuralını da geçersiz kılar. */
+body .sidebar.sidebar--collapsed .sidebar__toolbar {
+    overflow: hidden;
 }
 
-body.mobile-toolbar-fixed:not(.dock-left) .zoom-controls {
-    bottom: calc(var(--mobile-toolbar-height, 65px) + 24px);
+.sidebar--measuring .sidebar__toolbar {
+    transition: none;
 }
 
-body.mobile-toolbar-fixed .sidebar__handle {
-    cursor: default;
-    touch-action: pan-x;
-}
-
-body.mobile-toolbar-fixed.dock-left .sidebar__handle {
-    touch-action: pan-y;
+body.zoom-above-toolbar .zoom-controls {
+    bottom: calc(var(--toolbar-height, 65px) + 24px);
 }
 
 .sidebar__tool {
@@ -707,8 +630,13 @@ body.mobile-toolbar-fixed.dock-left .sidebar__handle {
     font-size: 18px;
     font-weight: 700;
     letter-spacing: 0.01em;
-    touch-action: none;
+    touch-action: manipulation;
     user-select: none;
+    /* Kaydırılan çubukta drAW düğmesi hep erişilebilir kalır. */
+    position: sticky;
+    top: 0;
+    left: 0;
+    z-index: 1;
 }
 
 .sidebar__brand-accent {
@@ -729,23 +657,12 @@ body.mobile-toolbar-fixed.dock-left .sidebar__handle {
     position: relative;
 }
 
-.sidebar__control--colors {
-    display: flex;
-    align-items: center;
-    gap: 8px;
-}
-
-.sidebar__prev-color {
-    position: absolute;
-    left: 3.5px;
-    top: 3.5px;
-    width: 40px;
-    height: 40px;
-    padding: 0;
-    border: 0;
-    border-radius: 6px;
-    cursor: pointer;
-    clip-path: polygon(100% 0, 100% 100%, -1px calc(100% + 1px));
+.sidebar__prev-color-swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 1px solid rgb(0 0 0 / 18%);
+    pointer-events: none;
 }
 
 .sidebar__color-trigger,
@@ -782,7 +699,6 @@ body.mobile-toolbar-fixed.dock-left .sidebar__handle {
     border: 1px solid rgb(0 0 0 / 12%);
     background: #111827;
     pointer-events: none;
-    clip-path: polygon(0 0, 100% 0, 0 100%);
 }
 
 .sidebar__width-trigger {
@@ -1085,7 +1001,7 @@ body.mobile-toolbar-fixed.dock-left .sidebar__handle {
 }
 
 /* Akıllı tahta modu: uzaktan okunabilir yazılar,
-   parmakla tutulabilir hedefler. (Araç çubuğu tüm modlarda altta.) */
+   parmakla tutulabilir hedefler. */
 body.board-mode .sidebar {
     zoom: 1.2;
 }

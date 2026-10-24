@@ -79,19 +79,24 @@ app.whenReady().then(async () => {
             owner.webContents.sendInputEvent({ type: "mouseUp", x, y, button: "left", clickCount: 1 });
             await delay(100);
         }
+        const extraWindows = () => BrowserWindow.getAllWindows().filter((w) => w !== owner);
+        let prepared;
         for (const mode of ["screen", "area"]) {
             const before = calls;
             await click('button[aria-label="Ekran Alıntısı"]');
+            assert.equal(extraWindows().length, 1, "opening the palette must prepare one hidden selection window");
+            assert(!prepared || extraWindows()[0] === prepared, "reopening the palette must reuse the prepared window");
+            prepared = extraWindows()[0];
             assert.equal(await evaluate('document.querySelector(".sidebar__capture-palette").hidden'), false);
             assert.equal(calls, before, "clicking capture icon must only open palette");
             console.log("PASS: real Electron mouse click opens palette without capture");
             await click(`.sidebar__capture-palette button[aria-label="${mode === "screen" ? "Tam Ekran" : "Alan"}"]`);
             if (mode === "area") {
                 let overlay;
-                await until(() => {
-                    overlay = BrowserWindow.getAllWindows().find((w) => w !== owner);
-                    return overlay?.isVisible();
-                }, "visible selection overlay");
+                // Linux'ta gizli tam ekran pencere de isVisible() true döndürür; gösterim show olayıyla izlenir.
+                await until(() => trace.some((t) => t.window === prepared.id && t.event === "show"), "visible selection overlay");
+                overlay = prepared;
+                assert.deepEqual(extraWindows(), [prepared], "area capture must use the prepared window");
                 overlay.focus();
                 await until(() => overlay.isFocused(), "selection focus");
                 await delay(500);
@@ -109,6 +114,8 @@ app.whenReady().then(async () => {
             assert.equal(await evaluate('Boolean(document.querySelector(".modal"))'), false);
             assert.equal(await evaluate('document.querySelector(\'button[aria-label="Geri Al"]\').disabled'), false);
             assert.equal(owner.isVisible(), true);
+            assert.equal(extraWindows().length, mode === "screen" ? 1 : 0,
+                mode === "screen" ? "full screen keeps the prepared window" : "used selection window must be destroyed");
             const display = screen.getDisplayMatching(owner.getBounds());
             const scale = display.scaleFactor;
             assert.deepEqual(results.at(-1), mode === "screen"

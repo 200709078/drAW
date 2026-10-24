@@ -47,6 +47,11 @@ export class QuickCaptureController {
 
     public isAvailable(): boolean { return this.bridge !== null; }
 
+    // Alan seçimi penceresini kullanıcı türü seçerken hazırlatır; Tam Ekran'ı etkilemez.
+    public prepare(): void {
+        if (!this.busy) this.bridge?.prepare();
+    }
+
     public async take(mode: CaptureMode): Promise<void> {
         if (!this.bridge || this.busy) return;
         closeTextEditor();
@@ -63,8 +68,7 @@ export class QuickCaptureController {
                 throw new Error("Alıntı görüntüsü okunamadı. Yeniden deneyin.");
             }
             const viewport = this.context.getViewport();
-            const dock = window.document.body.classList.contains("dock-left") ? "left"
-                : window.document.body.classList.contains("dock-top") ? "top" : "bottom";
+            const dock = window.document.body.classList.contains("dock-left") ? "left" : "bottom";
             const placement = mode === "screen"
                 ? fitScreenCapture(width, height, this.context.getCanvas().getBoundingClientRect(),
                     window.document.querySelector(".sidebar")?.getBoundingClientRect() ?? null,

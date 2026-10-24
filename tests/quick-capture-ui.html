@@ -12,11 +12,13 @@ const records = new Map();
 const requests = [];
 let pending;
 let cancellations = 0;
+let preparations = 0;
 if (mode !== "web") {
     window.drAWDesktop = {
         platform: params.get("platform") || "linux",
         quickCapture: {
             take(value) { requests.push(value); return new Promise((resolve) => { pending = resolve; }); },
+            prepare() { preparations++; },
             cancel() { cancellations++; }
         },
         storage: {
@@ -89,17 +91,22 @@ if (available) {
         assert(!palette.hidden && capture.getAttribute("aria-expanded") === "true", "palette did not open");
         assert(palette.querySelectorAll("button").length === 2, "palette must have two options");
         const full = palette.querySelector('button[aria-label="Tam Ekran"]');
-        assert(full?.title === "Tam Ekran" && full.textContent === "Tam Ekran", "full-screen title differs from requested text");
+        // Seçenekler yalnız simgedir; ad, ipucu ve erişilebilir etiket olarak verilir.
+        assert(full?.title === "Tam Ekran" && full.textContent.trim() === "", "full-screen option must be an icon titled Tam Ekran");
         assert(tools.getActiveTool() === active && requests.length === 0, "opening palette started capture or changed tool");
+        assert(preparations === 1, "opening palette must prepare the area window once");
         capture.click();
         assert(palette.hidden, "second click did not close palette");
+        assert(preparations === 1, "closing palette must not prepare again");
     });
-    await check("palette stays visible and touch targets fit at every toolbar position", async () => {
-        for (const dock of ["bottom", "left", "top"]) {
-            document.body.classList.toggle("dock-left", dock === "left");
-            document.body.classList.toggle("dock-top", dock === "top");
-            window.dispatchEvent(new Event("resize"));
-            await delay(400); // Toolbarın mevcut konum değiştirme animasyonu bitsin.
+    // Konum ekran genişliğinden gelir; çalıştırıcı geniş (alt) ve dar (sol) pencere açar.
+    const dock = document.body.classList.contains("dock-left") ? "left" : "bottom";
+    await check(`toolbar is fixed at the ${dock} for this window width`, () => {
+        const expected = params.get("dock");
+        assert(!expected || expected === dock, `expected ${expected} toolbar, got ${dock}`);
+    });
+    await check("palette stays visible and touch targets fit at the toolbar position", async () => {
+        {
             capture.scrollIntoView({ block: "nearest" });
             capture.click();
             await delay(30);
@@ -108,13 +115,10 @@ if (available) {
                 `${dock}: palette outside viewport ${JSON.stringify(rect)}`);
             for (const option of palette.querySelectorAll("button")) {
                 const b = option.getBoundingClientRect();
-                assert(b.width >= 44 && b.height >= 44, `${dock}: touch target too small`);
+                assert(b.width >= 44 && b.height >= 44, `${dock}: touch target too small ${b.width}x${b.height}`);
             }
             capture.click();
         }
-        document.body.classList.remove("dock-left", "dock-top");
-        await delay(400);
-        window.dispatchEvent(new Event("resize"));
     });
     await check("other tool closes capture palette", () => {
         capture.click(); button("Metin").click();
@@ -150,11 +154,8 @@ if (available) {
             });
         }
     }
-    for (const dock of ["left", "top", "bottom"]) {
+    {
         await check(`full screen avoids ${dock} toolbar and keeps handles reachable`, async () => {
-            document.body.classList.toggle("dock-left", dock === "left");
-            document.body.classList.toggle("dock-top", dock === "top");
-            window.dispatchEvent(new Event("resize")); await delay(400);
             capture.scrollIntoView({ block: "nearest" });
             drawing.clearCurrentPage(); history.reset(); viewport.reset();
             const source = image(1080, 1920);
@@ -210,7 +211,7 @@ if (available) {
 window.__quickCaptureResult.done = true;
 document.getElementById("result").textContent = JSON.stringify(window.__quickCaptureResult);
 
-function assertFullScreenPlacement(image, source, dock = "bottom") {
+function assertFullScreenPlacement(image, source, dock = document.body.classList.contains("dock-left") ? "left" : "bottom") {
     const canvas = m.getCanvasManager().getCanvas().getBoundingClientRect();
     const toolbar = document.querySelector(".sidebar").getBoundingClientRect();
     const margin = mode === "board" ? 32 : 24;
@@ -222,7 +223,6 @@ function assertFullScreenPlacement(image, source, dock = "bottom") {
     assert(left >= canvas.left + margin - .01 && top >= canvas.top + margin - .01, "top/left handles have no margin");
     assert(right <= canvas.right - margin + .01 && bottom <= canvas.bottom - margin + .01, "image exceeds canvas");
     if (dock === "bottom") assert(bottom <= toolbar.top - margin + .01, "image hidden under bottom toolbar");
-    if (dock === "top") assert(top >= toolbar.bottom + margin - .01, "image hidden under top toolbar");
     if (dock === "left") assert(left >= toolbar.right + margin - .01, "image hidden under left toolbar");
 }
 </script></body></html>

@@ -8,6 +8,7 @@ export type CaptureReply =
 
 export interface QuickCaptureBridge {
     take(mode: CaptureMode): Promise<CaptureReply>;
+    prepare(): void;
     cancel(): void;
 }
 
@@ -16,5 +17,6 @@ export function getQuickCaptureBridge(): QuickCaptureBridge | null {
     const mobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent);
     if (mobile || !desktop || !["win32", "linux"].includes(desktop.platform ?? "")) return null;
     const bridge = desktop.quickCapture;
-    return typeof bridge?.take === "function" && typeof bridge.cancel === "function" ? bridge : null;
+    return typeof bridge?.take === "function" && typeof bridge.prepare === "function" &&
+        typeof bridge.cancel === "function" ? bridge : null;
 }

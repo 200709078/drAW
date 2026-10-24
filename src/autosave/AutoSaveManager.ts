@@ -122,7 +122,7 @@ export class AutoSaveManager {
         this.document.restoreSnapshot(snapshot);
         this.activeDocument = stored;
         this.persisted = true;
-        // Dinleyiciler açılan çizimi görmeli; önceki fotoğrafın bağı bu sırada doğrulanır.
+        // Dinleyiciler açılan çizimi görmeli; klasör bağı tutucusunu bu sırada yeniden tanır.
         this.history.reset();
         this.repository.getDirtyFlag().markClean();
 

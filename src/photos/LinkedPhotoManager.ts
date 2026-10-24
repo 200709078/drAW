@@ -58,6 +58,11 @@ export class LinkedPhotoManager {
     private holder: DocumentImage | null;
     // Tutucu bu oturumda hiç eklendiyse true; geri yüklenen bağda false başlar.
     private holderEverAdded: boolean;
+    // Tutucunun bulunduğu kayıt. Başka kayıt açıkken tutucu "ayrık"tır: bağ sürer,
+    // sayfada olmaması silinme sayılmaz ve Yeni Çizim sıradaki fotoğrafla devam eder.
+    private holderDrawingId: string | null;
+    private detached: boolean;
+    private activeDrawingId: () => string | null;
     private busy: boolean;
     // Önceki bağ veya sayfa için başlamış dosya işlemlerini geçersiz kılar.
     private linkRevision: number;
@@ -86,6 +91,9 @@ export class LinkedPhotoManager {
         this.fileName = null;
         this.holder = null;
         this.holderEverAdded = false;
+        this.holderDrawingId = null;
+        this.detached = false;
+        this.activeDrawingId = () => null;
         this.busy = false;
         this.linkRevision = 0;
         this.preparedNewDrawingRevision = null;
@@ -106,9 +114,15 @@ export class LinkedPhotoManager {
 
     }
 
+    public setActiveDrawingSource(activeDrawingId: () => string | null): void {
+
+        this.activeDrawingId = activeDrawingId;
+
+    }
+
     public setHistoryManager(historyManager: HistoryManager): void {
 
-        // Tutucu silinince bağı sessizce kopar (buton eski haline döner).
+        // Tutucu kendi çiziminde silinince bağı sessizce kopar (buton eski haline döner).
         // Geri yüklenmiş ama bu oturumda hiç tutucu eklenmemiş bağa dokunulmaz.
         historyManager.addChangeListener((change) => {
             if (change === "reset") {
@@ -119,12 +133,53 @@ export class LinkedPhotoManager {
                 return;
             }
 
-            if (change === "undo" || change === "redo") {
+            if (change === "reset") {
+                // Yeni Çizim sırasında tutucuyu placePreparedPhoto yerleştirir.
+                if (!this.suppressValidation) {
+                    this.reattachHolder();
+                }
+            } else if (this.detached) {
+                return;
+            } else if (change === "undo" || change === "redo") {
                 this.restoreHolderAfterHistory();
             } else if (!this.suppressValidation && !this.holderOnPage()) {
                 this.unlink();
             }
         });
+
+    }
+
+    // Başka kayıt açılınca bağ korunur; tutucunun kaydına dönülünce fotoğraf yeniden tanınır.
+    private reattachHolder(): void {
+
+        const holder = this.holder;
+
+        if (holder === null || this.holderOnPage()) {
+            this.detached = false;
+            return;
+        }
+
+        const drawingId = this.activeDrawingId();
+        const restored = drawingId !== null && drawingId === this.holderDrawingId
+            ? this.drawingDocument.getCurrentPage().getImages()
+                .find((image) => image.getDataUrl() === holder.getDataUrl())
+            : undefined;
+
+        if (restored === undefined) {
+            this.detached = true;
+        } else {
+            this.holder = restored;
+            this.detached = false;
+        }
+
+        this.selectionTool?.refreshOverlays();
+
+    }
+
+    // Tutucu kendi çiziminde değilse silinmiş sayılır.
+    private holderDeleted(): boolean {
+
+        return this.holderEverAdded && !this.detached && !this.holderOnPage();
 
     }
 
@@ -162,6 +217,10 @@ export class LinkedPhotoManager {
 
     // direction: -1 önceki fotoğraf, +1 sonraki fotoğraf.
     public canStepPhoto(direction: 1 | -1): boolean {
+
+        if (this.detached) {
+            return false;
+        }
 
         return direction === 1 ? this.navState.next : this.navState.prev;
 
@@ -252,8 +311,8 @@ export class LinkedPhotoManager {
     // yükleyip döndürür. null: fotoğrafsız devam et; undefined: geçiş iptal edildi.
     public async prepareNewDrawing(): Promise<PreparedLinkedPhoto | null | undefined> {
 
-        // Bu oturumda tutucu eklendiyse yokluğu silinme sayılır.
-        if (this.holderEverAdded && !this.holderOnPage()) {
+        // Bu oturumda tutucu kendi çizimine eklendiyse yokluğu silinme sayılır.
+        if (this.holderDeleted()) {
             this.unlink();
         }
 
@@ -345,7 +404,7 @@ export class LinkedPhotoManager {
     private isPreparedNewDrawingCurrent(revision = this.preparedNewDrawingRevision): boolean {
 
         return revision !== null && revision === this.preparedNewDrawingRevision &&
-            revision === this.linkRevision && (!this.holderEverAdded || this.holderOnPage());
+            revision === this.linkRevision && !this.holderDeleted();
 
     }
 
@@ -354,7 +413,7 @@ export class LinkedPhotoManager {
         this.preparedNewDrawingRevision = null;
         this.suppressValidation = false;
 
-        if (this.holderEverAdded && !this.holderOnPage()) {
+        if (this.holderDeleted()) {
             this.unlink();
         }
 
@@ -445,6 +504,8 @@ export class LinkedPhotoManager {
         this.folderPath = null;
         this.fileName = null;
         this.holderEverAdded = false;
+        this.holderDrawingId = null;
+        this.detached = false;
         this.suppressValidation = false;
         this.clearStoredLink();
         this.navState = { prev: false, next: false };
@@ -455,11 +516,11 @@ export class LinkedPhotoManager {
 
     private async stepPhoto(direction: 1 | -1): Promise<void> {
 
-        if (this.busy || !this.isLinked() || this.folderPath === null || this.fileName === null) {
+        if (this.busy || !this.isLinked() || this.detached || this.folderPath === null || this.fileName === null) {
             return;
         }
 
-        if (this.holderEverAdded && !this.holderOnPage()) {
+        if (this.holderDeleted()) {
             this.unlink();
 
             return;
@@ -549,7 +610,10 @@ export class LinkedPhotoManager {
         this.drawingDocument.getCurrentPage().addImage(image);
         this.holder = image;
         this.holderEverAdded = true;
+        this.detached = false;
+        // markDirty gerekiyorsa kaydı oluşturur; kimlik ondan sonra okunur.
         this.onDocumentChanged();
+        this.holderDrawingId = this.activeDrawingId();
         this.documentRenderer.render();
 
         if (selectAfterAdd && this.selectionTool !== null) {

@@ -52,6 +52,7 @@ function fixture(t) {
     const auto = new AutoSaveManager(new DrawingRepository(storage), document, history);
     const photos = new LinkedPhotoManager(document, { render() {} }, () => auto.markDirty());
     photos.setHistoryManager(history);
+    photos.setActiveDrawingSource(() => auto.getActiveDocument()?.getId() ?? null);
     t.after(() => {
         auto.stopAutoSave();
         for (const [key, descriptor] of Object.entries(globals)) {
@@ -181,12 +182,13 @@ test("normal erasing can remove a photo after its folder is manually unlinked", 
 });
 
 for (const withIdenticalPhoto of [false, true]) {
-    test(`opening another drawing ${withIdenticalPhoto ? "with an identical photo" : "without photos"} clears the old link and remembers its folder`, async (t) => {
+    test(`opening another drawing ${withIdenticalPhoto ? "with an identical photo" : "without photos"} keeps the folder link without adopting its images`, async (t) => {
         const f = fixture(t);
         const stored = await storeOtherDrawing(f, withIdenticalPhoto);
         await f.photos.toggle();
         f.draw();
         const previousId = f.auto.getActiveDocument().getId();
+        const link = f.local.get("draw:photo-link");
         const resetViews = [];
         f.history.addChangeListener((change) => {
             if (change === "reset") {
@@ -199,11 +201,10 @@ for (const withIdenticalPhoto of [false, true]) {
 
         await f.auto.openDrawing(stored);
 
-        assert.equal(f.photos.isLinked(), false, "the previous drawing's photo link remained active");
-        assert.equal(f.local.has("draw:photo-link"), false);
-        assert.equal(f.local.get("draw:photo-last-folder"), "/photos");
+        assert.equal(f.photos.isLinked(), true, "opening another drawing broke the folder link");
+        assert.equal(f.local.get("draw:photo-link"), link);
         assert.equal(f.photos.canStepPhoto(-1), false);
-        assert.equal(f.photos.canStepPhoto(1), false);
+        assert.equal(f.photos.canStepPhoto(1), false, "arrows belong to the drawing that holds the photo");
         assert.equal(f.history.canUndo(), false);
         assert.equal(f.auto.isDirty(), false);
         assert.deepEqual(resetViews, [{ id: stored.getId(), images: withIdenticalPhoto ? 1 : 0 }]);
@@ -211,17 +212,78 @@ for (const withIdenticalPhoto of [false, true]) {
         assert.equal(f.records.get(previousId).getCanvasState().getData().strokes.length, 1);
         const images = f.document.getCurrentPage().getImages();
         assert.equal(images.length, withIdenticalPhoto ? 1 : 0);
-        assert.equal(images.some((image) => f.photos.isLinkedHolder(image)), false);
+        assert.equal(images.some((image) => f.photos.isLinkedHolder(image)), false,
+            "an identical photo in another record must not become the holder");
         await f.step(1);
         assert.equal(images.length, withIdenticalPhoto ? 1 : 0, "old photo navigation changed the opened drawing");
+        assert.equal(f.linkedName(), "1.png");
 
-        const picker = t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto");
-        await f.photos.toggle();
-        assert.equal(picker.mock.callCount(), 1, "the first reconnect click only cleared a stale link");
-        assert.equal(picker.mock.calls[0].arguments[0], "/photos");
+        // Bu kayıtta yazılanlar fotoğrafı silmiş sayılmaz.
+        f.draw();
         assert.equal(f.photos.isLinked(), true);
+        f.history.undo();
+        assert.equal(f.document.getCurrentPage().getImages().length, withIdenticalPhoto ? 1 : 0, "undo restored the holder into another drawing");
     });
 }
+
+test("returning to the linked drawing restores its holder, arrows and navigation", async (t) => {
+    const f = fixture(t);
+    const other = await storeOtherDrawing(f);
+    await f.photos.toggle();
+    f.draw();
+    await f.auto.saveIfNeeded();
+    const linked = f.records.get(f.auto.getActiveDocument().getId());
+    await f.auto.openDrawing(other);
+    await f.auto.openDrawing(linked);
+
+    const holder = f.document.getCurrentPage().getImages()[0];
+    assert.equal(f.photos.isLinkedHolder(holder), true);
+    assert.equal(f.photos.canStepPhoto(1), true);
+    await f.step(1);
+    assert.equal(f.linkedName(), "2.png");
+    assert.equal(f.document.getCurrentPage().getImages()[0].getDataUrl(), "data:image/png;base64,2.png");
+    assert.equal(f.document.getCurrentPage().getStrokes().length, 1, "navigation must keep the writing");
+
+    // Geri dönülen çizimde fotoğrafı silmek bağı yine koparır.
+    f.history.begin();
+    f.document.getCurrentPage().removeImage(f.document.getCurrentPage().getImages()[0]);
+    f.history.commit();
+    assert.equal(f.photos.isLinked(), false);
+});
+
+test("new drawing from another record continues with the photo after the linked one", async (t) => {
+    const f = fixture(t);
+    const other = await storeOtherDrawing(f);
+    await f.photos.toggle();
+    f.draw();
+    await f.auto.openDrawing(other);
+
+    const prepared = await f.photos.prepareNewDrawing();
+    assert.equal(prepared.fileName, "2.png");
+    await f.auto.newDrawing();
+    assert.equal(f.photos.beginPreparedNewDrawing(), true);
+    f.document.clearCurrentPage();
+    f.history.reset();
+    f.auto.resetActiveDocument();
+    f.photos.placePreparedPhoto(prepared);
+
+    const holder = f.document.getCurrentPage().getImages()[0];
+    assert.equal(f.photos.isLinkedHolder(holder), true);
+    assert.equal(f.linkedName(), "2.png");
+    await f.auto.saveIfNeeded();
+    assert.equal(f.storedPhoto(), "data:image/png;base64,2.png");
+});
+
+test("deleting the active linked drawing keeps the folder link for the next drawing", async (t) => {
+    const f = fixture(t);
+    await f.photos.toggle();
+    await f.auto.saveIfNeeded();
+    f.document.clearCurrentPage();
+    f.history.reset();
+    f.auto.resetActiveDocument();
+    assert.equal(f.photos.isLinked(), true);
+    assert.equal((await f.photos.prepareNewDrawing()).fileName, "2.png");
+});
 
 for (const failure of ["save", "deserialize"]) {
     test(`failed ${failure} while opening another drawing preserves the current photo link and allows retry`, async (t) => {
@@ -248,7 +310,8 @@ for (const failure of ["save", "deserialize"]) {
         failingMethod.mock.restore();
         await f.auto.openDrawing(stored);
         assert.equal(f.auto.getActiveDocument().getId(), stored.getId());
-        assert.equal(f.photos.isLinked(), false);
+        assert.equal(f.photos.isLinked(), true);
+        assert.equal(f.photos.isLinkedHolder(f.document.getCurrentPage().getImages()[0]), false);
     });
 }
 
@@ -298,7 +361,8 @@ for (const phase of ["listPhotos", "readPhoto"]) {
                     f.auto.resetActiveDocument();
                     f.photos.placePreparedPhoto(null);
                 }
-                assert.equal(f.photos.isLinked(), false);
+                const keepsLink = change === "open drawing";
+                assert.equal(f.photos.isLinked(), keepsLink);
                 const before = f.document.createSnapshot();
                 const activeId = f.auto.getActiveDocument().getId();
                 const dirty = f.auto.isDirty();
@@ -308,7 +372,8 @@ for (const phase of ["listPhotos", "readPhoto"]) {
                     "a late photo result changed a different drawing");
                 assert.equal(f.auto.getActiveDocument().getId(), activeId);
                 assert.equal(f.auto.isDirty(), dirty);
-                assert.equal(f.local.has("draw:photo-link"), false);
+                assert.equal(f.local.has("draw:photo-link"), keepsLink);
+                if (keepsLink) assert.equal(f.linkedName(), "1.png", "a late result advanced the link");
                 assert.equal(notice.mock.callCount(), 0, "an obsolete operation showed a misleading error");
             } finally {
                 release();
@@ -541,7 +606,7 @@ for (const phase of ["listPhotos", "readPhoto"]) {
             if (phase === "readPhoto") await new Promise(setImmediate);
             try {
                 await f.auto.openDrawing(stored);
-                assert.equal(f.photos.isLinked(), false, "opening a record left the old photo link active during preparation");
+                assert.equal(f.photos.isLinked(), true, "opening a record broke the folder link");
                 const opened = f.document.createSnapshot();
                 release();
                 assert.equal(await preparing, undefined, "obsolete preparation must cancel the new drawing");
@@ -549,7 +614,7 @@ for (const phase of ["listPhotos", "readPhoto"]) {
                 assert.equal(f.auto.getActiveDocument().getId(), stored.getId());
                 assert.equal(f.auto.isDirty(), false);
                 assert.equal(f.history.canUndo(), false);
-                assert.equal(f.local.has("draw:photo-link"), false);
+                assert.equal(f.linkedName(), "1.png", "an obsolete preparation advanced the link");
                 assert.equal(f.local.get("draw:photo-last-folder"), "/photos");
                 assert.equal(notice.mock.callCount(), 0, "obsolete preparation showed a misleading error");
                 assert.equal(f.records.get(previousId).getCanvasState().getData().strokes.length, 1);
@@ -601,8 +666,8 @@ for (const mode of ["next photo", "last photo", "unlinked"]) {
             assert.equal(f.auto.getActiveDocument().getId(), stored.getId());
             assert.equal(f.auto.isDirty(), false);
             assert.equal(f.history.canUndo(), false);
-            assert.equal(f.photos.isLinked(), false);
-            assert.equal(f.local.has("draw:photo-link"), false);
+            assert.equal(f.photos.isLinked(), mode !== "unlinked", "opening a record must keep an existing link");
+            assert.equal(f.local.has("draw:photo-link"), mode !== "unlinked");
             assert.equal(f.records.get(previousId).getCanvasState().getData().strokes.length, 1);
             if (mode !== "unlinked") assert.equal(f.local.get("draw:photo-last-folder"), "/photos");
         } finally {
@@ -704,8 +769,9 @@ test("a failed new drawing save does not advance the prepared photo", async (t) 
     assert.equal(f.document.getCurrentPage().getImages()[0].getDataUrl(), "data:image/png;base64,1.png");
     assert.equal(f.auto.isDirty(), true);
     // Cancellation also restores normal detection when the holder is removed.
-    f.document.clearCurrentPage();
-    f.history.reset();
+    f.history.begin();
+    f.document.getCurrentPage().removeImage(f.document.getCurrentPage().getImages()[0]);
+    f.history.commit();
     assert.equal(f.photos.isLinked(), false);
 });
 
@@ -811,8 +877,9 @@ test("a fresh photo manager reads the folder persisted by a previous instance", 
 test("automatic unlink and a cancelled picker keep the remembered folder", async (t) => {
     const f = fixture(t);
     await f.photos.toggle();
-    f.document.clearCurrentPage();
-    f.history.reset();
+    f.history.begin();
+    f.document.getCurrentPage().removeImage(f.document.getCurrentPage().getImages()[0]);
+    f.history.commit();
     assert.equal(f.photos.isLinked(), false);
     const picker = t.mock.method(window.drAWDesktop.photoFolder, "selectPhoto", async () => null);
     await f.photos.toggle();
@@ -870,8 +937,9 @@ test("failed photo reading cancels preparation and restores holder validation", 
     assert.equal(await f.photos.prepareNewDrawing(), undefined);
     assert.equal(f.photos.isLinked(), true);
     assert.equal(f.linkedName(), "1.png");
-    f.document.clearCurrentPage();
-    f.history.reset();
+    f.history.begin();
+    f.document.getCurrentPage().removeImage(f.document.getCurrentPage().getImages()[0]);
+    f.history.commit();
     assert.equal(f.photos.isLinked(), false, "failed preparation left validation suspended");
 });
 
@@ -882,8 +950,9 @@ test("failed directory listing restores holder validation", async (t) => {
     t.mock.method(window.drAWDesktop.photoFolder, "listPhotos", async () => null);
     assert.equal(await f.photos.prepareNewDrawing(), undefined);
     assert.equal(f.photos.isLinked(), true);
-    f.document.clearCurrentPage();
-    f.history.reset();
+    f.history.begin();
+    f.document.getCurrentPage().removeImage(f.document.getCurrentPage().getImages()[0]);
+    f.history.commit();
     assert.equal(f.photos.isLinked(), false, "failed preparation left validation suspended");
 });
 

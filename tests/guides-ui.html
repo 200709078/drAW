@@ -90,11 +90,96 @@ try {
         "guide trigger retained its old label after New Drawing");
     checks++;
 
+    // Kılavuz düğmesi toolbarda görünür; paleti diğer paletlerle aynı biçimde açılıp kapanır.
+    const trigger = () => document.querySelector('.sidebar__toolbar button[aria-label^="Kılavuz Çizgileri:"]');
+    const guidePalette = document.querySelector(".sidebar__guideline-palette");
+    const colorTrigger = document.querySelector(".sidebar__color-trigger");
+    const colorPalette = document.querySelector(".sidebar__color-palette");
+    // Konum pencere genişliğinden gelir: geniş pencerede alt, dar pencerede (ör. 760px) sol sınanır.
+    {
+        const dock = document.body.classList.contains("dock-left") ? "left" : "bottom";
+        const button = trigger();
+        const buttonBounds = button?.getBoundingClientRect();
+        assert(buttonBounds && buttonBounds.width >= 44 && buttonBounds.height >= 44, `${dock}: guide button is hidden or too small`);
+        button.click();
+        assert(!guidePalette.hidden && button.getAttribute("aria-expanded") === "true", `${dock}: guide palette did not open`);
+        const rect = guidePalette.getBoundingClientRect();
+        assert(rect.left >= -1 && rect.top >= -1 && rect.right <= innerWidth + 1 && rect.bottom <= innerHeight + 1,
+            `${dock}: guide palette outside viewport ${JSON.stringify(rect)}`);
+        for (const option of guidePalette.querySelectorAll("button")) {
+            const b = option.getBoundingClientRect();
+            assert(b.width >= 44 && b.height >= 44, `${dock}: guide option too small ${b.width}x${b.height}`);
+        }
+        colorTrigger.click();
+        assert(guidePalette.hidden && !colorPalette.hidden && button.getAttribute("aria-expanded") === "false",
+            `${dock}: opening the color palette left the guide palette open`);
+        button.click();
+        assert(colorPalette.hidden && !guidePalette.hidden, `${dock}: opening guides left the color palette open`);
+        document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
+        assert(guidePalette.hidden, `${dock}: tapping outside did not close the guide palette`);
+        button.click();
+        guidePalette.querySelector('button[aria-label="Yatay Çizgili"]').click();
+        assert(guidePalette.hidden && renderer.getGuideLines() === "rows", `${dock}: selecting a guide did not apply and close`);
+        assert(trigger().getAttribute("aria-label") === "Kılavuz Çizgileri: Yatay Çizgili", `${dock}: trigger label not updated`);
+        checks++;
+    }
+
+    // drAW düğmesi konumu değiştirmez; çift tıklama çubuğu kendi içine katlar, tek dokunuş açar.
+    {
+        const tap = () => handle.dispatchEvent(new MouseEvent("click", { bubbles: true, detail: 1 }));
+        const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+        const handle = document.querySelector(".sidebar__handle");
+        const toolbar = document.querySelector(".sidebar__toolbar");
+        const dock = document.body.classList.contains("dock-left") ? "left" : "bottom";
+        const before = handle.getBoundingClientRect();
+        const expanded = toolbar.getBoundingClientRect();
+        handle.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
+        assert(document.body.classList.contains("dock-left") === (dock === "left"), "double click still moves the toolbar");
+        trigger().click();
+        tap();
+        await delay(450);
+        tap();
+        assert(handle.getAttribute("aria-expanded") === "true", "two slow taps collapsed the toolbar");
+        await delay(450);
+        tap();
+        await delay(150);
+        tap();
+        await delay(400); // Katlanma animasyonu bitsin.
+        const folded = toolbar.getBoundingClientRect();
+        const after = handle.getBoundingClientRect();
+        assert(guidePalette.hidden, "collapsing left a palette open");
+        assert(handle.getAttribute("aria-expanded") === "false" && handle.getAttribute("aria-label") === "Araç çubuğunu aç",
+            "collapsed handle does not offer to open the toolbar");
+        assert(Math.abs(after.left - before.left) < 1 && Math.abs(after.top - before.top) < 1, "drAW button moved while collapsing");
+        assert(dock === "bottom" ? folded.width < before.width * 2 && folded.left === expanded.left
+            : folded.height < before.height * 2 && folded.top === expanded.top, `toolbar did not fold into drAW (${JSON.stringify(folded)})`);
+        assert([...toolbar.children].filter((item) => item !== handle && item.getAttribute("aria-hidden") !== "true").every((item) => item.inert),
+            "folded tools still accept focus or touches");
+        const hit = document.elementFromPoint(expanded.right - 20, expanded.bottom - 20);
+        assert(!toolbar.contains(hit), "a folded tool still receives touches");
+        assert(document.body.classList.contains("dock-left") === (dock === "left"), "collapsing moved the toolbar");
+        tap();
+        await delay(150);
+        tap(); // Çift dokunuşla açmanın ikinci dokunuşu çubuğu yeniden katlamaz.
+        await delay(400);
+        assert(handle.getAttribute("aria-expanded") === "true", "the second tap of an opening double tap collapsed the toolbar");
+        const reopened = toolbar.getBoundingClientRect();
+        assert(Math.abs(reopened.width - expanded.width) < 1 && Math.abs(reopened.height - expanded.height) < 1,
+            "toolbar did not reopen to its full size");
+        assert(!trigger().inert, "reopened tools are still disabled");
+        handle.click(); // Klavye/program etkinleştirmesi (detail 0) tek seferde katlar.
+        assert(handle.getAttribute("aria-expanded") === "false", "keyboard activation did not collapse");
+        handle.click();
+        await delay(400);
+        checks++;
+    }
+
     document.querySelector('.sidebar__guideline-palette button[aria-label="Kareli"]').click();
     const bounds = canvas.getBoundingClientRect();
     assert(document.elementFromPoint(bounds.left + canvas.clientWidth / 3, bounds.top + canvas.clientHeight / 3) === canvas,
         "another element covers the empty canvas");
-    result.textContent = `PASS: ${checks} guide checks (${getLineProfile()}, DPR ${ratio}, ${canvas.clientWidth}x${canvas.clientHeight})`;
+    const dockName = document.body.classList.contains("dock-left") ? "left" : "bottom";
+    result.textContent = `PASS: ${checks} guide checks (${getLineProfile()}, DPR ${ratio}, ${canvas.clientWidth}x${canvas.clientHeight}, toolbar ${dockName})`;
 } catch (error) {
     result.textContent = `FAIL: ${error.stack ?? error}`;
 }

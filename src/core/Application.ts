@@ -24,6 +24,8 @@ export class Application {
 
         new TitleBar();
         this.managers = new ManagerContainer();
+        // Toolbar yerleşimi yakınlaştırma düğmeleriyle çakışmayı ölçer; önce onlar oluşur.
+        new ZoomControls(this.managers.getDrawingContext().getViewport());
         new ToolbarPanel(
             this.managers.getToolManager(),
             this.managers.getPenTool(),
@@ -40,11 +42,8 @@ export class Application {
             this.managers.getCanvasManager().getCanvas(),
             this.managers.getPhotoLinkManager(),
             this.managers.getTextTool(),
-            this.managers.getQuickCapture(),
-            this.managers.getDesktopAvailable()
+            this.managers.getQuickCapture()
         );
-
-        new ZoomControls(this.managers.getDrawingContext().getViewport());
 
         registerShutdownHandlers(this.managers.getAutoSaveManager(), closeTextEditor);
 

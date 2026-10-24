@@ -1,4 +1,5 @@
 import path from "node:path";
+import { appendFile, mkdir, rename, stat } from "node:fs/promises";
 import { createRequire } from "node:module";
 import { QuickCaptureService } from "./quick-capture/service.ts";
 import { registerPhotoFolderHandlers } from "./photo-folder.ts";
@@ -20,7 +21,8 @@ if (!app.isPackaged) {
     app.setName("drAW");
     app.commandLine.appendSwitch("class", "drAW");
 }
-const quickCaptureService = new QuickCaptureService(getAppPath("electron", "quick-capture"));
+const quickCaptureService = new QuickCaptureService(getAppPath("electron", "quick-capture"),
+    (line) => appendLog("quick-capture.log", line));
 const storageService = new ElectronStorageService();
 const screenKeyboardService = new ScreenKeyboardService();
 
@@ -83,6 +85,18 @@ function registerStorageHandlers(): void {
         return await runStorageOperation(() => storageService.list());
     });
 
+}
+
+// Sahada (ör. Windows'ta) yavaşlayan adımı görmek için kısa süre kaydı; 64 KB'yi aşınca bir önceki dosyaya taşınır.
+let logQueue = Promise.resolve();
+function appendLog(name: string, line: string): void {
+    logQueue = logQueue.then(async () => {
+        const file = path.join(app.getPath("logs"), name);
+        await mkdir(path.dirname(file), { recursive: true });
+        const size = await stat(file).then((info) => info.size, () => 0);
+        if (size > 64 * 1024) await rename(file, `${file}.old`);
+        await appendFile(file, `${line}\n`, "utf8");
+    }).catch(() => {});
 }
 
 function getBasePath(): string {

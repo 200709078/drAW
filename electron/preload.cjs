@@ -10,6 +10,7 @@ electron_1.contextBridge.exposeInMainWorld("drAWDesktop", {
     },
     quickCapture: {
         take: (mode) => electron_1.ipcRenderer.invoke("quick-capture:take", mode),
+        prepare: () => { electron_1.ipcRenderer.send("quick-capture:prepare"); },
         cancel: () => { electron_1.ipcRenderer.send("quick-capture:cancel"); }
     },
     storage: {

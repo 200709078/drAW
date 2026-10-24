@@ -33,8 +33,14 @@ async function main() {
             (function(require, exports) { ${preload}\n })(() => ({ ipcRenderer }), {});
             window.dispatchEvent(new Event("DOMContentLoaded"));
             document.getElementById("surface").addEventListener("pointerdown", event => window.lastPointer = event.pointerId);
-            const svg = '<svg xmlns="http://www.w3.org/2000/svg" width="${sourceWidth}" height="${sourceHeight}"><rect width="100%" height="100%" fill="#edf2f7"/><rect width="80" height="80" fill="#2563eb"/></svg>';
-            window.receivers["quick-capture:image"]({}, "data:image/svg+xml;base64," + btoa(svg));
+            // Ana süreç, yakalanan ekranın PNG baytlarını gönderir.
+            const canvas = new OffscreenCanvas(${sourceWidth}, ${sourceHeight});
+            const context = canvas.getContext("2d");
+            context.fillStyle = "#edf2f7"; context.fillRect(0, 0, ${sourceWidth}, ${sourceHeight});
+            context.fillStyle = "#2563eb"; context.fillRect(0, 0, 80, 80);
+            return canvas.convertToBlob({ type: "image/png" }).then(async (blob) => {
+                window.receivers["quick-capture:image"]({}, new Uint8Array(await blob.arrayBuffer()));
+            });
         })()`);
         await b.until('window.sent.some(event => event.name === "quick-capture:shown")');
         await b.evaluate('new Promise(resolve => requestAnimationFrame(() => requestAnimationFrame(resolve)))');
@@ -123,26 +129,28 @@ async function main() {
         }
 
         for (const configuration of [
-            { mode: "pc", platform: "win32", width: 1280, height: 900, dpr: 1 },
-            { mode: "board", platform: "linux", width: 1920, height: 1080, dpr: 2, tahta: 1 },
+            { mode: "pc", platform: "win32", width: 1280, height: 900, dpr: 1, dock: "bottom" },
+            { mode: "pc", platform: "win32", width: 760, height: 900, dpr: 1, dock: "left" },
+            { mode: "board", platform: "linux", width: 1920, height: 1080, dpr: 2, tahta: 1, dock: "bottom" },
+            { mode: "board", platform: "linux", width: 900, height: 1080, dpr: 1, tahta: 1, dock: "left" },
             { mode: "web", width: 1280, height: 900, dpr: 1 },
             { mode: "web", width: 1920, height: 1080, dpr: 1, tahta: 1 },
             { mode: "mobile", platform: "linux", width: 390, height: 844, dpr: 2 }
         ]) {
-            const { mode, width, height, dpr, platform = "linux", tahta = 0 } = configuration;
+            const { mode, width, height, dpr, platform = "linux", tahta = 0, dock = "" } = configuration;
             await b.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: dpr, mobile: mode === "mobile" });
             await b.send("Emulation.setUserAgentOverride", { userAgent: mode === "mobile"
                 ? "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36"
                 : "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36" });
-            await b.goto(`${base}/tests/quick-capture-ui.html?mode=${mode}&platform=${platform}&tahta=${tahta}`);
+            await b.goto(`${base}/tests/quick-capture-ui.html?mode=${mode}&platform=${platform}&tahta=${tahta}&dock=${dock}`);
             await b.until("window.__quickCaptureResult?.done === true");
             const result = await b.evaluate("window.__quickCaptureResult");
             assert.deepEqual(result.errors, [], `${mode}: ${JSON.stringify(result.errors)}`);
             passed += result.checks.length;
-            console.log(`PASS: ${mode}/${platform}/tahta=${tahta}: ${result.checks.length} UI checks`);
+            console.log(`PASS: ${mode}/${platform}/tahta=${tahta}/${width}px: ${result.checks.length} UI checks`);
             if (mode === "pc" || mode === "board") {
                 const png = await b.send("Page.captureScreenshot", { format: "png" });
-                await writeFile(`/tmp/draw-quick-capture-${mode}.png`, Buffer.from(png.data, "base64"));
+                await writeFile(`/tmp/draw-quick-capture-${mode}-${dock}.png`, Buffer.from(png.data, "base64"));
             }
         }
         console.log(`PASS: ${passed} quick capture browser checks`);
