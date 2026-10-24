@@ -1,4 +1,5 @@
 // GitHub sürümü için SHA256SUMS.txt ve RELEASE_NOTES.md üretir.
+// Dosya adlarında sürüm yoktur; releases/latest/download/<ad> bağlantısı hep son sürümü indirir.
 // Kullanım: node scripts/release-assets.mjs <paket-klasörü>
 import { createHash } from "node:crypto";
 import { readFile, readdir, stat, writeFile } from "node:fs/promises";
@@ -12,9 +13,9 @@ if (!directory) {
 
 const { version } = JSON.parse(await readFile(new URL("../package.json", import.meta.url), "utf8"));
 const packages = [
-    { file: `drAW-${version}-linux-x86_64.AppImage`, label: "AppImage", platform: "Linux x86_64" },
-    { file: `drAW-${version}-linux-amd64.deb`, label: "DEB", platform: "Linux amd64" },
-    { file: `drAW-${version}-win-x64.exe`, label: "exe", platform: "Windows x64" }
+    { file: "drAW-linux-x86_64.AppImage", label: "AppImage", platform: "Linux x86_64" },
+    { file: "drAW-linux-amd64.deb", label: "DEB", platform: "Linux amd64" },
+    { file: "drAW-win-x64.exe", label: "exe", platform: "Windows x64" }
 ];
 
 const present = new Set(await readdir(directory));
@@ -41,6 +42,12 @@ const notes = `drAW ${version} — Linux ve Windows paketleri. Paketler ${date} 
 | Paket | Platform / mimari | Dosya boyutu |
 | --- | --- | --- |
 ${rows.join("\n")}
+
+### Kalıcı indirme bağlantıları
+
+Bu bağlantılar her zaman en son sürümü indirir:
+
+${packages.map(({ file, label }) => `- **${label}:** https://github.com/200709078/drAW/releases/latest/download/${file}`).join("\n")}
 
 ### Sistem gereksinimleri
 

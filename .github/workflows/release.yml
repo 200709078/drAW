@@ -101,7 +101,7 @@ jobs:
         run: |
           version="$(node -p "require('./package.json').version")"
           tag="v$version"
-          files=(paketler/drAW-"$version"-* paketler/SHA256SUMS.txt)
+          files=(paketler/drAW-linux-x86_64.AppImage paketler/drAW-linux-amd64.deb paketler/drAW-win-x64.exe paketler/SHA256SUMS.txt)
           if gh release view "$tag" > /dev/null 2>&1; then
             gh release edit "$tag" --notes-file paketler/RELEASE_NOTES.md
             gh release upload "$tag" "${files[@]}" --clobber

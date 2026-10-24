@@ -34,7 +34,7 @@
     "directories": {
       "output": "release"
     },
-    "artifactName": "${productName}-${version}-${os}-${arch}.${ext}",
+    "artifactName": "${productName}-${os}-${arch}.${ext}",
     "compression": "maximum",
     "files": [
       "dist/**/*",
