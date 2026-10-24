@@ -12,6 +12,8 @@ const HIDE_SETTLE = 200;
 
 type Overlay = {
     window: WindowType;
+    // Pencere yok edildikten sonra window.webContents okunamaz; dinleyiciler bu kopyadan çıkarılır.
+    contents: Electron.WebContents;
     displayId: number;
     bounds: Rectangle;
     loaded: Promise<boolean>;
@@ -69,8 +71,11 @@ export class QuickCaptureService {
             session.shown = true;
             session.mark("görünme");
             session.prepared();
-            session.overlay!.window.show();
-            session.overlay!.window.focus();
+            // Tam ekran yalnızca gösterirken açılır: Linux'ta tam ekran oluşturulan gizli pencere görünür olur.
+            const window = session.overlay!.window;
+            window.setFullScreen(true);
+            window.show();
+            window.focus();
         });
         ipc.on("quick-capture:selection", (event, value: unknown) => {
             const session = this.fromOverlay(event);
@@ -103,13 +108,13 @@ export class QuickCaptureService {
     }
 
     private fromOverlay(event: { sender: Electron.WebContents; senderFrame: Electron.WebFrameMain | null }): CaptureSession | null {
-        return this.active?.overlay?.window.webContents === event.sender && event.senderFrame === event.sender.mainFrame
+        return this.active?.overlay?.contents === event.sender && event.senderFrame === event.sender.mainFrame
             ? this.active : null;
     }
 
     private createOverlay(display: Display): Overlay {
         const window = new BrowserWindow({
-            ...display.bounds, show: false, frame: false, fullscreen: true,
+            ...display.bounds, show: false, frame: false, fullscreen: false,
             // Linux pencere yöneticisi tam ekrana geçerken boyutlandırabilmeli.
             alwaysOnTop: true, skipTaskbar: true, resizable: process.platform === "linux", movable: false,
             minimizable: false, maximizable: false, autoHideMenuBar: true, backgroundColor: "#ffffff",
@@ -124,7 +129,7 @@ export class QuickCaptureService {
         window.webContents.on("will-navigate", (event) => event.preventDefault());
         // loadFile, önyükleme betiğinin görüntü dinleyicisini kurduğu DOMContentLoaded sonrasında tamamlanır.
         const loaded = window.loadFile(path.join(this.directory, "selection.html")).then(() => true, () => false);
-        return { window, displayId: display.id, bounds: { ...display.bounds }, loaded };
+        return { window, contents: window.webContents, displayId: display.id, bounds: { ...display.bounds }, loaded };
     }
 
     private fits(overlay: Overlay, display: Display): boolean {
@@ -142,14 +147,14 @@ export class QuickCaptureService {
         const discard = () => { if (this.spare?.overlay === overlay) this.discardSpare(); };
         const timer = setTimeout(discard, SPARE_LIFETIME);
         overlay.window.once("closed", discard);
-        overlay.window.webContents.once("render-process-gone", discard);
+        overlay.contents.once("render-process-gone", discard);
         owner.once("closed", discard);
         screen.on("display-metrics-changed", discard);
         screen.on("display-removed", discard);
         this.spare = { owner, overlay, release: () => {
             clearTimeout(timer);
             overlay.window.removeListener("closed", discard);
-            overlay.window.webContents.removeListener("render-process-gone", discard);
+            overlay.contents.removeListener("render-process-gone", discard);
             owner.removeListener("closed", discard);
             screen.removeListener("display-metrics-changed", discard);
             screen.removeListener("display-removed", discard);
@@ -185,6 +190,8 @@ export class QuickCaptureService {
 
         return new Promise<CaptureReply>((resolve) => {
             const wasVisible = owner.isVisible();
+            // drAW kapanınca ("closed") owner.webContents artık okunamaz.
+            const ownerContents = owner.webContents;
             const started = performance.now();
             const marks: string[] = [];
             const session: CaptureSession = {
@@ -196,8 +203,8 @@ export class QuickCaptureService {
                     this.active = null;
                     clearTimeout(timer);
                     owner.removeListener("closed", cancelled);
-                    owner.webContents.removeListener("render-process-gone", cancelled);
-                    owner.webContents.removeListener("did-start-navigation", navigating);
+                    ownerContents.removeListener("render-process-gone", cancelled);
+                    ownerContents.removeListener("did-start-navigation", navigating);
                     screen.removeListener("display-metrics-changed", cancelled);
                     screen.removeListener("display-removed", cancelled);
                     if (session.overlay && !session.overlay.window.isDestroyed()) session.overlay.window.destroy();
@@ -218,8 +225,8 @@ export class QuickCaptureService {
             }), 30000);
             this.active = session;
             owner.once("closed", cancelled);
-            owner.webContents.once("render-process-gone", cancelled);
-            owner.webContents.on("did-start-navigation", navigating);
+            ownerContents.once("render-process-gone", cancelled);
+            ownerContents.on("did-start-navigation", navigating);
             screen.on("display-metrics-changed", cancelled);
             screen.on("display-removed", cancelled);
             void this.prepare(session).catch((error: unknown) => {
@@ -291,7 +298,7 @@ export class QuickCaptureService {
         if (this.active !== session) return;
         session.mark("yüklendi");
         session.sent = true;
-        overlay.window.webContents.send("quick-capture:image", png);
+        overlay.contents.send("quick-capture:image", png);
     }
 
     private watchOverlay(session: CaptureSession, window: WindowType): void {

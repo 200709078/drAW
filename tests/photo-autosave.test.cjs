@@ -29,6 +29,7 @@ function fixture(t) {
     const globals = { window: Object.getOwnPropertyDescriptor(global, "window"), document: Object.getOwnPropertyDescriptor(global, "document") };
     global.document = { createElement: () => ({}), body: { appendChild() {} } };
     global.window = {
+        innerWidth: 1280,
         innerHeight: 800,
         localStorage: {
             getItem: (key) => local.get(key) ?? null,
@@ -1148,4 +1149,52 @@ test("undo cannot reactivate a manually disconnected photo link", async (t) => {
     assert.equal(f.photos.isLinked(), false);
     f.history.redo();
     assert.equal(f.photos.isLinked(), false);
+});
+
+function photoSizes(t, sizes) {
+    t.mock.method(window.drAWDesktop.photoFolder, "readPhoto", async (_folder, name) => ({
+        dataUrl: `data:image/png;base64,${name}`, ...sizes[name]
+    }));
+}
+
+test("a linked photo wider than the screen is scaled down to the screen width with its aspect ratio", async (t) => {
+    const f = fixture(t);
+    photoSizes(t, { "1.png": { width: 4000, height: 500 }, "2.png": { width: 100, height: 100 } });
+    await f.photos.toggle();
+    const holder = f.document.getCurrentPage().getImages()[0];
+    // Ekran 1280px, iki yanda 16px pay: en fazla 1248px; oran 8:1.
+    assert.equal(holder.getWidth(), 1248);
+    assert.equal(holder.getHeight(), 156);
+    assert.equal(holder.getX() + holder.getWidth(), 1280 - 16);
+    // Dar fotoğraf yine ekran yüksekliğinin yarısıyla gelir.
+    await f.step(1);
+    const next = f.document.getCurrentPage().getImages()[0];
+    assert.equal(next.getHeight(), 400, "the photo after a panorama must return to the normal height");
+    assert.equal(next.getWidth(), 400);
+});
+
+test("navigating to a panorama keeps it within the screen width", async (t) => {
+    const f = fixture(t);
+    photoSizes(t, { "1.png": { width: 100, height: 100 }, "2.png": { width: 6000, height: 1000 } });
+    await f.photos.toggle();
+    await f.step(1);
+    const holder = f.document.getCurrentPage().getImages()[0];
+    assert.equal(holder.getWidth(), 1248);
+    assert.equal(holder.getHeight(), 208);
+});
+
+test("a photo the user resized keeps the user's height but still fits the screen width", async (t) => {
+    const f = fixture(t);
+    photoSizes(t, { "1.png": { width: 100, height: 100 }, "2.png": { width: 200, height: 100 }, "3.png": { width: 4000, height: 500 } });
+    await f.photos.toggle();
+    const first = f.document.getCurrentPage().getImages()[0];
+    first.setGeometry(first.getX(), first.getY(), 300, 300);
+    await f.step(1);
+    const second = f.document.getCurrentPage().getImages()[0];
+    assert.equal(second.getHeight(), 300, "the user's height was lost");
+    assert.equal(second.getWidth(), 600);
+    await f.step(1);
+    const third = f.document.getCurrentPage().getImages()[0];
+    assert.equal(third.getWidth(), 1248);
+    assert.equal(third.getHeight(), 156);
 });

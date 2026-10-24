@@ -82,15 +82,23 @@ function fixture({ scale = 1, platform = "linux", displayId = 7, bounds = { x: 0
             super();
             this.options = options;
             this.destroyed = false;
-            this.visible = options.show !== false;
-            this.webContents = Object.assign(new EventEmitter(), {
+            // Gerçek Electron gibi: Linux'ta fullscreen ile oluşturulan pencere show:false olsa da görünür.
+            this.visible = options.show !== false || (options.fullscreen === true && platform === "linux");
+            this.fullscreen = options.fullscreen === true;
+            this.contents = Object.assign(new EventEmitter(), {
                 id: windows.length + 1, mainFrame: {},
                 send: (name, value) => actions.push(["send", name, value]),
                 setWindowOpenHandler: () => {}
             });
             windows.push(this);
         }
-        static fromWebContents(sender) { return windows.find((w) => w.webContents === sender) ?? null; }
+        // Gerçek Electron gibi: yok edilen pencerenin webContents'i okunamaz.
+        get webContents() {
+            if (this.destroyed) throw new TypeError("Object has been destroyed");
+            return this.contents;
+        }
+        static fromWebContents(sender) { return windows.find((w) => w.contents === sender) ?? null; }
+        setFullScreen(value) { this.fullscreen = value; actions.push(["fullscreen", this, value]); }
         getBounds() { return bounds; }
         isVisible() { return this.visible; }
         isDestroyed() { return this.destroyed; }
@@ -123,7 +131,7 @@ function fixture({ scale = 1, platform = "linux", displayId = 7, bounds = { x: 0
     service.register({ handle: (key, handler) => handlers.set(key, handler), on: (key, handler) => handlers.set(key, handler) });
     const owner = new Window();
     service.allowWindow(owner);
-    const event = (window = owner) => ({ sender: window.webContents, senderFrame: window.webContents.mainFrame });
+    const event = (window = owner) => ({ sender: window.contents, senderFrame: window.contents.mainFrame });
     const send = (name, value, window = windows[1]) => handlers.get(`quick-capture:${name}`)(event(window), value);
     return {
         owner, windows, screen, displays, actions, timers, service, image, event, handlers, logs,
@@ -500,4 +508,48 @@ test("prepare ignores unknown senders, subframes, active captures and unsupporte
     const mac = fixture({ platform: "darwin" });
     mac.prepare();
     assert.equal(mac.windows.length, 1);
+});
+
+for (const platform of ["linux", "win32"]) {
+    test(`${platform}: the prepared selection window stays hidden until its image is shown, then goes full screen`, async () => {
+        const f = fixture({ platform });
+        f.prepare();
+        const prepared = f.windows[1];
+        assert.equal(prepared.options.fullscreen, false, "a full-screen window would be visible on Linux even with show:false");
+        assert.equal(prepared.visible, false, "opening the palette must not show the selection window");
+        const promise = f.start("area");
+        await f.advance();
+        assert.equal(prepared.visible, false, "selection window appeared before its image was ready");
+        f.ready(prepared);
+        const order = f.actions.filter((a) => a[1] === prepared && (a[0] === "fullscreen" || a[0] === "show")).map((a) => a[0]);
+        assert.deepEqual(order, ["fullscreen", "show"], "selection must enter full screen before it is shown");
+        f.send("abort", undefined, prepared);
+        assert.equal((await promise).status, "cancelled");
+    });
+}
+
+test("closing the prepared selection window from outside does not crash the main process", async () => {
+    // Pardus'ta görülen hata: kapanan pencerenin webContents'ine erişim ("Object has been destroyed").
+    const f = fixture();
+    f.prepare();
+    const prepared = f.windows[1];
+    assert.doesNotThrow(() => prepared.destroy());
+    assert.equal(f.timers.size, 0);
+    assert.equal(f.screen.listenerCount("display-metrics-changed"), 0);
+    const promise = f.start("area");
+    await f.advance();
+    const overlay = f.windows.at(-1);
+    assert.notEqual(overlay, prepared, "a destroyed window must not be reused");
+    f.ready(overlay);
+    f.send("selection", { left: 0, top: 0, right: .5, bottom: .5 }, overlay);
+    assert.equal((await promise).status, "ok");
+});
+
+test("closing drAW during a capture does not touch its destroyed webContents", async () => {
+    const f = fixture();
+    const promise = f.start("area");
+    await f.advance();
+    f.ready();
+    assert.doesNotThrow(() => f.owner.destroy());
+    assert.equal((await promise).status, "cancelled");
 });

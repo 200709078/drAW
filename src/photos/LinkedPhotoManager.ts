@@ -61,6 +61,9 @@ export class LinkedPhotoManager {
     // Tutucunun bulunduğu kayıt. Başka kayıt açıkken tutucu "ayrık"tır: bağ sürer,
     // sayfada olmaması silinme sayılmaz ve Yeni Çizim sıradaki fotoğrafla devam eder.
     private holderDrawingId: string | null;
+    // Genişlik sınırı yüzünden küçültülen fotoğraftan sonra gelen fotoğraf asıl yüksekliğe döner;
+    // kullanıcı boyutlandırdıysa onun seçtiği yükseklik korunur.
+    private holderHeight: { intended: number; applied: number } | null;
     private detached: boolean;
     private activeDrawingId: () => string | null;
     private busy: boolean;
@@ -92,6 +95,7 @@ export class LinkedPhotoManager {
         this.holder = null;
         this.holderEverAdded = false;
         this.holderDrawingId = null;
+        this.holderHeight = null;
         this.detached = false;
         this.activeDrawingId = () => null;
         this.busy = false;
@@ -594,16 +598,13 @@ export class LinkedPhotoManager {
     private addHolder(photo: LinkedPhotoData, selectAfterAdd: boolean): void {
 
         this.linkRevision++;
-        const height = window.innerHeight / 2;
-        const aspect = photo.width > 0 && photo.height > 0
-            ? photo.width / photo.height
-            : 1;
+        const size = this.holderSize(photo, window.innerHeight / 2);
         const image = new DocumentImage(
             photo.dataUrl,
             HOLDER_MARGIN,
             HOLDER_MARGIN,
-            height * aspect,
-            height
+            size.width,
+            size.height
         );
 
         // Fotoğraf değişimi geçmişe yazılmaz (karar B).
@@ -633,16 +634,14 @@ export class LinkedPhotoManager {
             return;
         }
 
-        const height = previous.getHeight();
-        const aspect = photo.width > 0 && photo.height > 0
-            ? photo.width / photo.height
-            : 1;
+        const resized = this.holderHeight === null || previous.getHeight() !== this.holderHeight.applied;
+        const size = this.holderSize(photo, resized ? previous.getHeight() : this.holderHeight!.intended);
         const image = new DocumentImage(
             photo.dataUrl,
             previous.getX(),
             previous.getY(),
-            height * aspect,
-            height,
+            size.width,
+            size.height,
             previous.getId()
         );
 
@@ -657,6 +656,22 @@ export class LinkedPhotoManager {
         if (this.selectionTool !== null) {
             this.selectionTool.selectImage(image);
         }
+
+    }
+
+    // Fotoğraf en-boy oranını korur; genişliği ekran genişliğini (iki yanda kenar payıyla) aşamaz.
+    private holderSize(photo: LinkedPhotoData, height: number): { width: number; height: number } {
+
+        const aspect = photo.width > 0 && photo.height > 0
+            ? photo.width / photo.height
+            : 1;
+        const maxWidth = Math.max(1, window.innerWidth - 2 * HOLDER_MARGIN);
+        const size = height * aspect <= maxWidth
+            ? { width: height * aspect, height }
+            : { width: maxWidth, height: maxWidth / aspect };
+        this.holderHeight = { intended: height, applied: size.height };
+
+        return size;
 
     }
 

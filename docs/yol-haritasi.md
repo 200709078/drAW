@@ -11,11 +11,11 @@ kullanıcı açıkça istemeden uygulanmaz. Yeni istekler tarihle eklenir.
   bağlı; önce tahtada parmak/avuç/iki parmak temas boyutları günlüğe yazılıp
   ölçülmeli. Avucun birden çok nokta gibi gelmesi iki parmakla yakınlaştırmayla
   karışmamalı. Tahta boyut bildirmiyorsa güvenilir yol yok.
-- **Palet renkleri (24 Ekim 2026):** Saf sarı (`#ffff00`) ve saf yeşil (`#00ff00`)
-  beyaz zeminde zayıf; koyu tonlar önerildi, kullanıcı cevap vermedi.
 - **Geliştirme önerileri (24 Ekim 2026):**
-  - GitHub Actions: her push'ta `npm run typecheck` + `npm test`; Windows
-    runner'da `.exe` otomatik üretimi (Windows makinesi gerekmez).
+  - GitHub Actions: her push'ta `npm run typecheck` + `npm test` (henüz yok).
+    Sürüm paketleri için iş akışı eklendi (24 Ekim 2026, `.github/workflows/release.yml`):
+    Linux ve Windows paketleri GitHub'da üretilip sürüme yüklenir; ilk gerçek
+    çalıştırma bekliyor.
   - Tek test komutu: tarayıcı testleri elle Vite başlatmayı gerektiriyor;
     etiket değişikliklerinden sonra `storage-ui` ve `quick-capture-ui` sessizce
     bozulmuştu. drAW2D/3D gibi Playwright ile `npm test` her şeyi çalıştırmalı.
@@ -56,6 +56,13 @@ kullanıcıya sormadan değiştirilmez; kullanıcının sistemine izinsiz paket 
   "KULLANICIDAN BİLGİ GEREKİYOR" olarak işaretlenir); paket açıklamasının
   Türkçeleştirilmesi/genişletilmesi; `.deb` `postinst/postrm` betiklerinin
   incelenmesi.
+
+## Yapıldı
+
+- **Palet renkleri (24 Ekim 2026):** Beyaz tahtada zor görülen sarı `#ffff00` →
+  `#d4ac00` (beyaza karşı kontrast 1,07 → 2,16; turuncudan ayrık kalsın diye daha
+  koyu değil), yeşil `#00ff00` → `#00a000` (1,37 → 3,48). Tahtada görünürlüğü
+  doğrulanacak.
 
 ## Fiziksel tahtada / Windows'ta doğrulanacaklar
 

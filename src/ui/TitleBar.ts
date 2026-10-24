@@ -65,7 +65,7 @@ export class TitleBar {
     private isFullscreen = false;
 
     constructor() {
-        const appTitle = `drAW v_${__APP_VERSION__} | mADEMatik`;
+        const appTitle = "drAW | mADEMatik";
         document.title = appTitle;
 
         const controls = window.drAWDesktop?.windowControls;

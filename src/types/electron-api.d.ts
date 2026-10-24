@@ -50,7 +50,6 @@ export type ElectronPhotoFolder = {
 };
 
 declare global {
-    const __APP_VERSION__: string;
     interface Window {
         drAWDesktop?: {
             platform?: string;

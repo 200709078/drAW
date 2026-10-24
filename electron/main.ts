@@ -169,7 +169,7 @@ function createWindow(): void {
     const window = new BrowserWindow({
         width: 1280,
         height: 800,
-        title: `drAW v_${app.getVersion()} | mADEMatik`,
+        title: "drAW | mADEMatik",
         minWidth: 800,
         minHeight: 600,
         autoHideMenuBar: true,

@@ -406,8 +406,8 @@ export class ToolbarPanel {
             { name: "Mavi", value: "#0000ff" },
             { name: "Siyah", value: "#000000" },
             { name: "Turuncu", value: "#ff8000" },
-            { name: "Sarı", value: "#ffff00" },
-            { name: "Yeşil", value: "#00ff00" },
+            { name: "Sarı", value: "#d4ac00" },
+            { name: "Yeşil", value: "#00a000" },
             { name: "Lacivert", value: "#000080" },
             { name: "Mor", value: "#800080" }
         ];

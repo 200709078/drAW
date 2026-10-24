@@ -87,14 +87,17 @@ app.whenReady().then(async () => {
             assert.equal(extraWindows().length, 1, "opening the palette must prepare one hidden selection window");
             assert(!prepared || extraWindows()[0] === prepared, "reopening the palette must reuse the prepared window");
             prepared = extraWindows()[0];
+            // Palet açıkken seçim penceresi ekranda görünmemeli (Pardus'ta beyaz pencere açılıyordu).
+            await delay(500);
+            assert.equal(prepared.isVisible(), false, "opening the palette showed the selection window");
             assert.equal(await evaluate('document.querySelector(".sidebar__capture-palette").hidden'), false);
             assert.equal(calls, before, "clicking capture icon must only open palette");
             console.log("PASS: real Electron mouse click opens palette without capture");
             await click(`.sidebar__capture-palette button[aria-label="${mode === "screen" ? "Tam Ekran" : "Alan"}"]`);
             if (mode === "area") {
                 let overlay;
-                // Linux'ta gizli tam ekran pencere de isVisible() true döndürür; gösterim show olayıyla izlenir.
-                await until(() => trace.some((t) => t.window === prepared.id && t.event === "show"), "visible selection overlay");
+                await until(() => prepared.isVisible(), "visible selection overlay");
+                await until(() => prepared.isFullScreen(), "full-screen selection overlay");
                 overlay = prepared;
                 assert.deepEqual(extraWindows(), [prepared], "area capture must use the prepared window");
                 overlay.focus();
