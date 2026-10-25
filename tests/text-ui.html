@@ -244,6 +244,35 @@ await check("text anchor and editor follow zoom", () => {
     }
 });
 
+await check("editor sits on the canvas text and fits its contents", () => {
+    // Varsayılan textarea iki satırdı: tek satırlık yazı tuvaldekinin yarım satır üstünde,
+    // uzun yazı ise kutunun dışında kalıyordu (Android telefonda görüldü).
+    for (const scale of [0.5, 1, 2]) {
+        viewport.reset();
+        viewport.zoomAt(0, 0, scale);
+        for (const value of ["Kısa", "Bu daha uzun bir satırdır", "İki\nsatır"]) {
+            const editor = beginText(value);
+            const object = drawing.getCurrentPage().getTexts().at(-1);
+            const lines = value.split("\n").length;
+            const fontSize = object.getFontSize() * scale;
+            const style = getComputedStyle(editor);
+            const frame = parseFloat(style.paddingTop) + parseFloat(style.paddingBottom) +
+                parseFloat(style.borderTopWidth) + parseFloat(style.borderBottomWidth);
+            const rect = editor.getBoundingClientRect();
+            // Uygulamada tuval ekranın üstüne sabittir (bu sayfa stil dosyasını yüklemez);
+            // düzenleyici çapayı ekran koordinatında ortalar.
+            const anchor = viewport.worldToScreenY(object.getY());
+            assert(Math.abs(rect.height - (lines * fontSize * 1.2 + frame)) <= 2,
+                `${scale}/${lines} satır: editor height ${rect.height} is not ${lines} line(s) (font ${style.fontSize}, expected ${fontSize}px, frame ${frame})`);
+            // Konum style.top'tan okunur: bu sayfada kutu sabit konumlu değildir (zoom testi gibi).
+            const centre = parseFloat(editor.style.top) + rect.height / 2;
+            assert(Math.abs(centre - anchor) <= 1.5,
+                `${scale}: editor is not centred on the text anchor (${centre} vs ${anchor})`);
+            assert(editor.scrollWidth <= editor.clientWidth + 1, `${scale}: "${value}" is clipped by the editor`);
+            closeTextEditor();
+        }
+    }
+});
 await check("editor replacement during finish", () => {
     let finished = 0;
     openTextEditor(new TextObject("First"), () => {

@@ -20,11 +20,14 @@ export function openTextEditor(
 
 }
 
-export function closeTextEditor(): void {
+// Açık düzenleyiciyi bitirir; açık bir düzenleyici varsa true.
+export function closeTextEditor(): boolean {
 
     const editor = activeTextEditor;
     activeTextEditor = null;
     editor?.close();
+
+    return editor !== null;
 
 }
 
@@ -55,6 +58,16 @@ class TextEditor {
 
         this.textarea = document.createElement("textarea");
         this.textarea.className = "text-editor";
+        // Varsayılan textarea iki satır yüksekliğinde ve sabit genişliktedir: tek satırlık yazı
+        // tuvaldeki yazının yarım satır üstünde kalıyor, dar ekranda sağdan taşıyordu.
+        this.textarea.rows = 1;
+        // Satırlar yalnız Enter ile bölünür (tuvaldeki gibi); wrap="off" olmadan Chromium
+        // dar kutuda yazıyı kırar ve ölçüler yanlış çıkar.
+        this.textarea.wrap = "off";
+        // Ölçü hesabı (handleInput) kenarlık dahil, kaydırma çubuksuz kutuya göredir;
+        // bunlar stil dosyasına bırakılmaz.
+        this.textarea.style.boxSizing = "border-box";
+        this.textarea.style.overflow = "hidden";
         this.textarea.value = textObject.getText();
         this.textarea.spellcheck = false;
         this.textarea.inputMode = "text";
@@ -139,8 +152,13 @@ class TextEditor {
 
     private handleInput = (): void => {
 
+        // Önce genişlik: dar kutuda textarea yazıyı alt satıra kırar ve yükseklik yanlış ölçülür.
+        // Ölçüler kenarlık dahildir (box-sizing: border-box); scrollWidth/Height iç boşluğu
+        // içerir, kenarlığı (2px) içermez. Genişliğe satır sonundaki imleç için 2px eklenir.
+        this.textarea.style.width = "0";
+        this.textarea.style.width = `${this.textarea.scrollWidth + 4}px`;
         this.textarea.style.height = "auto";
-        this.textarea.style.height = `${this.textarea.scrollHeight}px`;
+        this.textarea.style.height = `${this.textarea.scrollHeight + 2}px`;
         this.centerVertically();
 
     };
@@ -169,7 +187,8 @@ class TextEditor {
         this.textarea.style.fontSize = `${fontSize}px`;
         this.textarea.style.lineHeight = `${TEXT_LINE_HEIGHT}`;
         this.textarea.style.color = this.textObject.getColor();
-        this.centerVertically();
+        // Yakınlaştırma yazı boyutunu değiştirir; kutu ölçüsü yeniden hesaplanır.
+        this.handleInput();
 
     };
 

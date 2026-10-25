@@ -159,11 +159,11 @@ function registerWindowControls(): void {
 
 function createWindow(): void {
 
+    // Simge, web çıktısıyla pakete giren dist/img/app-icon.png (kaynak: public/img/app-icon.svg).
     const iconPath = getAppPath(
-        "electron",
-        "assets",
-        "app-icons",
-        "draw.png"
+        "dist",
+        "img",
+        "app-icon.png"
     );
 
     const window = new BrowserWindow({

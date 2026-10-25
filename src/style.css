@@ -509,6 +509,12 @@ body.has-custom-titlebar .modal-backdrop {
     :root {
         --drawings-panel-width: 60vw;
     }
+
+    /* Dar ekranda panel genişken düğmeler kayınca ekrandan taşıp araç çubuğuna biniyordu;
+       yerinde kalırlar, açık panel onları örter. */
+    .zoom-controls {
+        right: 16px;
+    }
 }
 
 /* Araç çubuğu konumu sabittir: ekrana yatay sığıyorsa altta, sığmıyorsa solda.
@@ -531,6 +537,13 @@ body.dock-left .sidebar__toolbar {
     flex-direction: column;
     overflow-y: auto;
     scrollbar-width: thin;
+}
+
+/* Altta sığmayan çubuk (ör. yatay telefon) yana kaydırılır. Kaydırma çubuğu gizlidir:
+   katlanınca kaybolup çubuğu alçaltır ve drAW düğmesini kaydırırdı (tekerlek ToolbarPanel'de). */
+body:not(.dock-left) .sidebar__toolbar {
+    overflow-x: auto;
+    scrollbar-width: none;
 }
 
 .sidebar__toolbar {

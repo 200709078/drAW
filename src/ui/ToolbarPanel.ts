@@ -50,6 +50,7 @@ export class ToolbarPanel {
 
     private readonly newDrawButton: HTMLButtonElement;
     private readonly drawingsPanel: DrawingsPanel;
+    private closePalette: () => boolean = () => false;
 
     public getNewDrawButton(): HTMLButtonElement {
 
@@ -60,6 +61,22 @@ export class ToolbarPanel {
     public getDrawingsPanel(): DrawingsPanel {
 
         return this.drawingsPanel;
+
+    }
+
+    // Android geri tuşu: önce açık palet, sonra çizimler paneli kapanır; açık bir şey yoksa false.
+    public closeOpenPanel(): boolean {
+
+        if (this.closePalette()) {
+            return true;
+        }
+
+        if (this.drawingsPanel.isOpen()) {
+            this.drawingsPanel.close();
+            return true;
+        }
+
+        return false;
 
     }
 
@@ -625,6 +642,11 @@ export class ToolbarPanel {
                 flyout.button.setAttribute("aria-expanded", "false");
             }
         };
+        this.closePalette = () => {
+            const open = flyouts.some((flyout) => !flyout.panel.hidden);
+            closeFlyouts();
+            return open;
+        };
 
         // Zoom'lu atanın içindeki sabit konumlu paletlerde tarayıcı
         // offset'leri ölçeklenmemiş uzayda yorumlayıp öyle çiziyor.
@@ -1131,18 +1153,24 @@ export class ToolbarPanel {
             const frame = (toolbar.offsetWidth - toolbar.clientWidth) + 2 * parseFloat(getComputedStyle(toolbar).paddingLeft);
 
             const titlebarHeight = body.classList.contains("has-custom-titlebar") ? 36 : 0;
-            const dock = row.width + 32 <= window.innerWidth ? "bottom" : "left";
+            const availableWidth = window.innerWidth - 32;
+            const availableHeight = window.innerHeight - titlebarHeight - 32;
+            // Sığıyorsa altta; sığmıyorsa düğmelerin daha büyük kısmının göründüğü kenar
+            // (dikey telefon solda, yatay telefon altta; ikisinde de çubuk kaydırılır).
+            const dock = row.width <= availableWidth || availableWidth / row.width > availableHeight / columnHeight
+                ? "bottom" : "left";
             body.classList.toggle("dock-left", dock === "left");
             sidebar.classList.toggle("sidebar--collapsed", wasCollapsed);
 
             if (dock === "bottom") {
-                const left = Math.max(16, (window.innerWidth - row.width) / 2);
+                const width = Math.min(row.width, availableWidth);
+                const left = Math.max(16, (window.innerWidth - width) / 2);
                 sidebar.style.left = `${left / zoom}px`;
                 sidebar.style.top = "";
-                layout = { dock, expanded: row.width / zoom, folded: handleBounds.width / zoom + frame, left, width: row.width };
+                layout = { dock, expanded: width / zoom, folded: handleBounds.width / zoom + frame, left, width };
                 body.style.setProperty("--toolbar-height", `${row.height}px`);
             } else {
-                const available = window.innerHeight - titlebarHeight - 32;
+                const available = availableHeight;
                 const height = Math.min(columnHeight, available);
                 const top = titlebarHeight + 16 + Math.max(0, (available - height) / 2);
                 sidebar.style.left = `${16 / zoom}px`;
@@ -1209,11 +1237,16 @@ export class ToolbarPanel {
                 updateToolbarLayout();
             });
         });
-        toolbar.addEventListener("scroll", () => {
-            if (layout.dock === "left") {
-                closeFlyouts();
+        // Kaydırılan çubukta açık palet düğmesinden ayrılmasın.
+        toolbar.addEventListener("scroll", closeFlyouts, { passive: true });
+        // Alttaki çubuğun kaydırma çubuğu gizli; fare tekerleği onu yana kaydırır.
+        toolbar.addEventListener("wheel", (event) => {
+            if (layout.dock !== "bottom" || event.deltaX !== 0 || toolbar.scrollWidth <= toolbar.clientWidth) {
+                return;
             }
-        }, { passive: true });
+            toolbar.scrollLeft += event.deltaY;
+            event.preventDefault();
+        }, { passive: false });
 
         new EraserIdleReturn(toolManager, [eraserTool, partialEraserTool], () => {
             selectPen(penTool, normalPenButton);

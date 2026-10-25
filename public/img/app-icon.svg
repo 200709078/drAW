@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <title>drAW</title>
+  <rect width="512" height="512" rx="96" fill="#ffffff"/>
+  <!-- Kağıt -->
+  <rect x="64" y="84" width="320" height="372" rx="22" fill="#ffffff" stroke="#1f2937" stroke-width="12"/>
+  <!-- Kağıt çizgileri, çok hafif -->
+  <path d="M96 168H352M96 232H352M96 296H352M96 360H352M96 424H352" stroke="#dbe4f0" stroke-width="5"/>
+  <!-- Elle yazılmış A ve W -->
+  <g fill="none" stroke-width="16" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M104 372C116 322 132 268 150 204C166 266 182 320 196 372M124 310C140 304 162 304 178 308" stroke="#2563eb"/>
+    <path d="M214 218C220 270 228 322 238 368C250 330 262 296 272 268C282 296 294 330 306 368C318 322 326 270 334 218" stroke="#e11d48"/>
+  </g>
+  <!-- Kalem: ucu W'nin son çizgisinin bitişinde -->
+  <g transform="translate(334 218) rotate(-52)" stroke="#1f2937" stroke-width="10" stroke-linejoin="round">
+    <path d="M0 0L30 -18V18Z" fill="#f3d2a2"/>
+    <path d="M0 0L11 -6.6V6.6Z" fill="#1f2937"/>
+    <rect x="30" y="-18" width="118" height="36" fill="#fbbf24"/>
+    <rect x="148" y="-18" width="18" height="36" fill="#9ca3af"/>
+    <path d="M166 -18h8a18 18 0 0 1 0 36h-8z" fill="#f9a8b4"/>
+  </g>
+</svg>

@@ -512,6 +512,19 @@ export class SelectionTool extends Tool {
 
     }
 
+    // Android geri tuşu: seçili nesne varsa seçimi kaldırır; yoksa false.
+    public dropSelection(): boolean {
+
+        if (this.selectedStrokes.size + this.selectedImages.size + this.selectedTexts.size === 0) {
+            return false;
+        }
+
+        this.cancel();
+
+        return true;
+
+    }
+
     private clearSelection(): void {
 
         this.selectedStrokes.clear();

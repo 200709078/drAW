@@ -85,7 +85,7 @@ export class TitleBar {
 
         const icon = document.createElement("img");
         icon.className = "titlebar__icon";
-        icon.src = "./app-icon.png";
+        icon.src = "./img/app-icon.png";
         icon.alt = "";
         icon.draggable = false;
 

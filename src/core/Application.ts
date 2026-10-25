@@ -5,6 +5,7 @@ import { ZoomControls } from "../ui/ZoomControls";
 import { isSmartBoard } from "../platform/DeviceProfile";
 import { registerShutdownHandlers } from "./ShutdownHandlers";
 import { closeTextEditor } from "../ui/TextEditor";
+import { bindAndroid } from "../platform/AndroidApp";
 
 export class Application {
 
@@ -26,7 +27,7 @@ export class Application {
         this.managers = new ManagerContainer();
         // Toolbar yerleşimi yakınlaştırma düğmeleriyle çakışmayı ölçer; önce onlar oluşur.
         new ZoomControls(this.managers.getDrawingContext().getViewport());
-        new ToolbarPanel(
+        const toolbar = new ToolbarPanel(
             this.managers.getToolManager(),
             this.managers.getPenTool(),
             this.managers.getEraserTool(),
@@ -46,6 +47,24 @@ export class Application {
         );
 
         registerShutdownHandlers(this.managers.getAutoSaveManager(), closeTextEditor);
+
+        const autoSave = this.managers.getAutoSaveManager();
+        bindAndroid({
+            // Sıra: üstteki pencere (Kapat düğmesi), metin düzenleyici, palet, çizimler paneli, seçim.
+            back: () => {
+                const dialogs = document.querySelectorAll<HTMLButtonElement>(".modal-backdrop .modal__close");
+                const dialog = dialogs[dialogs.length - 1];
+                if (dialog !== undefined) {
+                    dialog.click();
+                    return true;
+                }
+                return closeTextEditor() || toolbar.closeOpenPanel() || this.managers.getSelectionTool().dropSelection();
+            },
+            pause: () => {
+                closeTextEditor();
+                void autoSave.saveIfNeeded().catch(() => undefined);
+            }
+        });
 
     }
 

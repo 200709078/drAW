@@ -17,9 +17,12 @@
     "test": "node --test tests/*.test.cjs",
     "preview": "vite preview",
     "electron": "electron electron/main.ts",
-    "dist": "npm run build && electron-builder"
+    "dist": "npm run build && electron-builder",
+    "android:sync": "npm run build && cap sync android",
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleRelease"
   },
   "devDependencies": {
+    "@capacitor/cli": "8.5.3",
     "basic-ftp": "^6.0.2",
     "concurrently": "^10.0.4",
     "dotenv": "^17.4.2",
@@ -32,7 +35,8 @@
     "appId": "com.madematik.draw",
     "productName": "drAW",
     "directories": {
-      "output": "release"
+      "output": "release",
+      "buildResources": "build"
     },
     "artifactName": "${productName}-${os}-${arch}.${ext}",
     "compression": "maximum",
@@ -48,7 +52,7 @@
         "deb"
       ],
       "syncDesktopName": true,
-      "icon": "electron/assets/app-icons",
+      "icon": "build/icons",
       "category": "Education",
       "executableName": "drAW",
       "synopsis": "Interactive whiteboard and drawing application",
@@ -63,7 +67,7 @@
     },
     "win": {
       "target": "nsis",
-      "icon": "electron/assets/app-icons/draw.ico"
+      "icon": "build/icon.ico"
     },
     "nsis": {
       "oneClick": false,
@@ -74,11 +78,15 @@
     },
     "mac": {
       "target": "dmg",
-      "icon": "electron/assets/app-icons/draw.icns",
+      "icon": "build/icon.icns",
       "category": "public.app-category.education"
     }
   },
-  "dependencies": {},
+  "dependencies": {
+    "@capacitor/android": "8.5.3",
+    "@capacitor/app": "8.1.2",
+    "@capacitor/core": "8.5.3"
+  },
   "repository": {
     "type": "git",
     "url": "git+https://github.com/200709078/drAW.git"

@@ -5,6 +5,9 @@ kullanıcı açıkça istemeden uygulanmaz. Yeni istekler tarihle eklenir.
 
 ## Kullanıcı kararı / isteği bekleyenler
 
+- **Dosya uzantısı (24 Ekim 2026, beklemede):** drAW çizim dosyaları ileride `.drw`
+  uzantısını alacak (şu an `.draw.json`; eski dosyalar açılmaya devam etmeli). Ailenin
+  kuralı: drAW `.drw`, drAW2D `.drw2`, drAW3D `.drw3`.
 - **Avuçla silme (24 Ekim 2026, beklemede):** Silgi seçmeden avuçla silme. Plan:
   büyük temas (ör. >3 cm, `PointerEvent.width/height`) temas süresince geniş silgi
   gibi çalışır, bırakınca önceki araca dönülür. Tahtanın temas boyutu bildirmesine
@@ -58,6 +61,33 @@ kullanıcıya sormadan değiştirilmez; kullanıcının sistemine izinsiz paket 
   incelenmesi.
 
 ## Yapıldı
+
+- **Yeni logo ve Android sürümü (25 Ekim 2026, kullanıcı isteği):** Logo kalemin yerine
+  çizgili kağıda elle yazılmış mavi A ve kırmızı W ile sade bir kalem; drAW2D/drAW3D'nin
+  simge ailesiyle aynı zemin, renk ve çizgi kalınlığı. Bütün simgeler
+  `public/img/app-icon.svg`'den `scripts/icons.sh` ile üretilir. Android sürümü
+  drAW2D/drAW3D'deki Capacitor projesiyle aynı yapıda (`com.madematik.draw`, Android
+  7.0+); kullanıcı kararıyla kaydetme/açma/dışa aktarma yok, uygulama web sürümündeki
+  gibi çalışır (çizimler cihazda kalır). Geri tuşu açık olanı kapatır, arka plana
+  geçerken çizim kaydedilir. Yerelde test anahtarıyla imzalı APK derlendi ve denetlendi.
+  **Telefonda deneme (25 Ekim 2026, Xiaomi 2201116TG, Android 13, MIUI 14, test
+  anahtarlı APK, USB ile):** çizim, geri tuşu (palet → panel → seçim → arka plan),
+  arka plana geçince kayıt ve kapatıp açınca kaydın kayıtlar panelinde açılması, metin
+  aracı ve Türkçe klavye, drAW çift dokunuşla katlama, yatay ekran, iki parmakla
+  yakınlaştırma çalıştı. Bulunup düzeltilenler: sistem yazı ölçeği (1,5×) bütün
+  yazıları büyütüyordu (WebView `textZoom` 100); metin kutusu iki satır ve sabit
+  genişlikti, tuvaldeki yazının yarım satır üstünde kalıyor, sağdan taşıyordu (masaüstünde
+  de vardı); dar ekranda panel açılınca yakınlaştırma düğmeleri ekrandan taşıyordu;
+  yatay telefonda toolbar solda yalnız 4–5 düğme gösteriyordu (artık altta, kaydırılır);
+  geri tuşu seçimi kaldırmıyordu.
+  **Bekleyen:** imza secret'ları girildi (kullanıcı, 25 Ekim 2026); ilk gerçek Android
+  derlemesi (`yayinla=false`) ile parolalar doğrulanacak. Sürüm yükseltme ve yayımlama
+  kardeşlerle birlikte (kullanıcı kararı). Telefondaki test sürümü test anahtarıyla
+  imzalı: gerçek APK kurulmadan önce kaldırılmalı.
+- **Kılavuz testi sınırı (25 Ekim 2026):** `tests/guides-ui.html` çok kısa pencerede
+  (ör. 840×380) %400 yakınlaştırmada çizgiyi tuvalin dışında arıyor ve başarısız oluyor;
+  değişiklik öncesi kodda da aynı. Uygulamayla ilgisi yok; test örnek noktaları kısa
+  tuvale göre seçilmeli.
 
 - **Palet renkleri (24 Ekim 2026):** Beyaz tahtada zor görülen sarı `#ffff00` →
   `#d4ac00` (beyaza karşı kontrast 1,07 → 2,16; turuncudan ayrık kalsın diye daha

@@ -27,3 +27,8 @@ dist-ssr
 release/
 # Local AI / coding-agent instruction files
 [Aa][Gg][Ee][Nn][Tt][Ss]*.md
+
+# Android imza anahtarı asla depoya girmez (bkz. CLAUDE.md, Releases)
+*.jks
+*.keystore
+*.p12
