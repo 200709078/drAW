@@ -16,7 +16,7 @@ npm run electron         # Electron against dist/ (run build first)
 npm run dist             # build + electron-builder; on Linux → release/*.deb, *.AppImage
 npm run android:sync     # build + copy dist/ into android/ (Capacitor)
 npm run android:apk      # release APK; signed when ANDROID_KEYSTORE, ANDROID_KEYSTORE_PASSWORD, ANDROID_KEY_ALIAS, ANDROID_KEY_PASSWORD are set
-npm run deploy           # build + upload dist/ to madematik.com/public/drAW over FTPS (scripts/deploy-ftp.mjs, .env; the host has no TLS yet, so .env sets FTP_SECURE=false); add `-- --dry-run` to only list changes. Live site: the user runs it, never run it unasked
+npm run deploy           # build + upload dist/ to public_html/public/drAW (https://madematik.com/drAW/) over FTPS (scripts/deploy-ftp.mjs, .env; the host has no TLS yet, so .env sets FTP_SECURE=false); add `-- --dry-run` to only list changes. Live site: the user runs it, never run it unasked
 bash scripts/icons.sh    # regenerate every icon from public/img/app-icon.svg: web, build/icons, build/icon.ico/.icns, Android (Inkscape + ImageMagick)
 ```
 
