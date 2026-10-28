@@ -1,11 +1,23 @@
 export type LineProfile = "standard" | "smartboard";
 
 export const STANDARD_LINE_WIDTHS = [1, 2, 4, 6, 10, 16, 24, 32];
-export const SMARTBOARD_LINE_WIDTHS = [24, 30, 36, 42, 50, 56, 70, 90];
+// Tahtada 24–90 (varsayılan 42) kalem çok kalındı (28 Ekim 2026, tahtada); parmak 0,5 basınçla
+// çizdiği için varsayılan 16 tahtada yaklaşık 8 px'lik çizgi verir.
+export const SMARTBOARD_LINE_WIDTHS = [6, 8, 12, 16, 20, 28, 40, 56];
 export const STANDARD_DEFAULT_LINE_WIDTH = 6;
-export const SMARTBOARD_DEFAULT_LINE_WIDTH = 42;
+export const SMARTBOARD_DEFAULT_LINE_WIDTH = 16;
 
-// Tahtada metin boyu kalem genişliğine eşitlenir, bu aralıkta tutulur.
+// Tahtada silgi ve metin boyu kalemle incelmez: paletin her sırası eski boyunu korur
+// (kullanıcı kararı, 28 Ekim 2026: "silgi boyutu aynı kalsın, kalem boyutu düşebilir").
+const SMARTBOARD_SIZE_STEPS = [24, 30, 36, 42, 50, 56, 70, 90];
+
+/** The board size a palette width stands for: its former value at the same position. */
+function boardSizeStep(lineWidth: number): number {
+    const index = SMARTBOARD_LINE_WIDTHS.indexOf(lineWidth);
+    return index >= 0 ? SMARTBOARD_SIZE_STEPS[index]! : lineWidth;
+}
+
+// Tahtada metin boyu paletin boy değerine eşitlenir, bu aralıkta tutulur.
 export const BOARD_MIN_TEXT_FONT_SIZE = 32;
 export const BOARD_MAX_TEXT_FONT_SIZE = 64;
 
@@ -82,8 +94,10 @@ export function shapeLineWidthForProfile(lineWidth: number, profile: LineProfile
 
 export function eraserRadiusForProfile(lineWidth: number, profile: LineProfile): number {
 
-    // Tahtada silgi çapı palet değerinden %10 büyüktür.
-    const radius = Math.max(4, lineWidth * (profile === "smartboard" ? 0.5 : 2));
+    // Tahtada silgi çapı paletin eski boy değerinden %10 büyüktür.
+    const radius = profile === "smartboard"
+        ? Math.max(4, boardSizeStep(lineWidth) * 0.5)
+        : Math.max(4, lineWidth * 2);
 
     return profile === "smartboard" ? radius * 1.1 : radius;
 
@@ -103,7 +117,7 @@ export function textFontSizeForProfile(lineWidth: number, profile: LineProfile):
         return 8 + lineWidth * 4;
     }
 
-    const clamped = Math.min(Math.max(lineWidth, BOARD_MIN_TEXT_FONT_SIZE), BOARD_MAX_TEXT_FONT_SIZE);
+    const clamped = Math.min(Math.max(boardSizeStep(lineWidth), BOARD_MIN_TEXT_FONT_SIZE), BOARD_MAX_TEXT_FONT_SIZE);
 
     return clamped;
 

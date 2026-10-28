@@ -35,7 +35,11 @@ kullanıcı açıkça istemeden uygulanmaz. Yeni istekler tarihle eklenir.
   Yol 1'deki izlenim yanıltıcıdır; 1080p ise değerler düşürülmeli.
 - **Öneri:** 1080p çıkarsa `[12, 16, 20, 24, 30, 36, 44, 56]`, varsayılan 20 (bugünkünün
   yaklaşık yarısı); en ince iki değer el yazısı, kalınlar vurgu için. Daha doğrusu,
-  kalınlığı ekranın fiziksel boyutuna göre hesaplamak. Kullanıcı onayı bekliyor.
+  kalınlığı ekranın fiziksel boyutuna göre hesaplamak.
+- **Kullanıcı kararı ve uygulama (2026-10-28):** masaüstündeki 6 px tahtada iyi göründü; "42 fazla,
+  düşür; silgi boyutu aynı kalsın". Tahta kalemi `[6, 8, 12, 16, 20, 28, 40, 56]`, varsayılan 16
+  (parmakla ≈ 8 px). Silgi ve metin boyu paletteki sıraya göre eski değerleri (24–90) korur
+  (`DeviceProfile.ts` `boardSizeStep`); `tests/pointer-eraser.test.cjs`.
 
 ## Mobilde yatay kullanım (2026-10-28)
 
