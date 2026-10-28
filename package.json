@@ -4,7 +4,7 @@
   "desktopName": "drAW",
   "homepage": "https://www.madematik.com",
   "private": true,
-  "version": "0.0.5",
+  "version": "0.0.6",
   "type": "module",
   "main": "electron/main.ts",
   "description": "drAW - Interactive whiteboard and drawing application",
