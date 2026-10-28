@@ -37,6 +37,16 @@ kullanıcı açıkça istemeden uygulanmaz. Yeni istekler tarihle eklenir.
   yaklaşık yarısı); en ince iki değer el yazısı, kalınlar vurgu için. Daha doğrusu,
   kalınlığı ekranın fiziksel boyutuna göre hesaplamak. Kullanıcı onayı bekliyor.
 
+## Mobilde yatay kullanım (2026-10-28)
+
+**Kullanıcı isteği (2026-10-28, yalnız not):** mobilde yatay kullanıma izin vermesek nasıl olur?
+Değerlendirme (öneri): Android'de yön `MainActivity` / manifestte `screenOrientation` ile
+kilitlenebilir; ama kilit yalnız **telefonlara** uygulanmalı (en küçük ekran genişliği < 600 dp).
+Tabletler ve Android'li akıllı tahtalar yatay ekranlıdır, dikeye kilitlemek onları bozar. Web'de
+yön ancak tam ekranda kilitlenebilir (`screen.orientation.lock`); kilitsiz yatayda bir "telefonu
+dik tutun" uyarısı alternatif. Açık sorular: yalnız telefonda mı, yalnız Android paketinde mi,
+web'de de mi? Kullanıcı kararı bekliyor.
+
 ## Çizim gecikmesi (tahta)
 
 - Belirti: Tahtadaki kurulu programda yazı/çizgi parmağın gerisinden geliyor; PC'de
