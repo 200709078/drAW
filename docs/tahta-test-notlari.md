@@ -1,5 +1,26 @@
 # Akıllı tahta test notları
 
+## 28 Ekim 2026 — Yol 1: dizüstü bilgisayar HDMI ile, 1920×1080
+
+Tahta, Pardus 25 dizüstünün ikinci ekranı (HDMI-1, 1920×1080). Uygulama tahta ekranında
+Chrome'da, güncel kodla (`npm run dev`, `?tahta=1`) açıldı; kullanıcı fareyle denedi ve
+sınıfın arkasından baktı. Gözlemler kullanıcınındır.
+
+- **Kalem kalınlıkları:** "Çizgiler çok kalın bile." Tahta modu `SMARTBOARD_LINE_WIDTHS`
+  24–90 px, varsayılan 42. Dikkat: bu düzende tahta 1920×1080 görüntü alıyor; tahtanın kendi
+  bilgisayarı 4K çalışıyorsa aynı çizgi orada fiziksel olarak yarı kalınlıktadır. Bkz.
+  yol haritası "Tahta modu kalem kalınlıkları".
+- **Palet renkleri:** iyi (24 Ekim'de koyulaştırılan sarı ve yeşil dahil).
+- **Kılavuz çizgileri:** iyi.
+- **Metin yazı boyutları:** iyi.
+- **Dokunmatik bu düzende çalışmadı:** tahtanın dokunmatik USB çıkışı (tek USB-B girişi)
+  bilgisayarda `2621:4501` kimliğiyle, HID değil "Vendor Specific" sınıfında görünüyor
+  (64 baytlık kesme paketleri); Linux sürücü bağlamıyor. Tahtanın menüsünde dokunmatik
+  kipi ayarı yok (yalnız ses, parlaklık, HDMI-VGA, güç). Dokunma testleri tahtanın kendi
+  bilgisayarında (Yol 2, Yol 3) yapılacak.
+- **Düzeltildi:** sayfa `lang="en"` idi; Chrome Türkçe arayüzü çevirmeyi öneriyordu
+  (`0725502`, canlıya bir sonraki yayınla çıkar).
+
 ## 16 Ekim 2026 — Pardus ETAP, tek ekran
 
 Kullanıcı fiziksel tahtadaki temel testleri tamamladı. Aşağıdaki test sonuçları

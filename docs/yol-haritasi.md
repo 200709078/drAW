@@ -25,6 +25,18 @@ kullanıcı açıkça istemeden uygulanmaz. Yeni istekler tarihle eklenir.
   - Çizim gecikmesi için önce tahtada kare süresi ölçümü, sonra optimizasyon.
   - `ToolbarPanel.ts` bölünmeli; renk kontrolü ayrı modüle alınabilir.
 
+## Tahta modu kalem kalınlıkları (2026-10-28)
+
+- **Bulgu (kullanıcı, Yol 1, 1920×1080):** tahta modunda çizgiler çok kalın. Şu an
+  `SMARTBOARD_LINE_WIDTHS = [24, 30, 36, 42, 50, 56, 70, 90]`, varsayılan 42
+  (`src/platform/DeviceProfile.ts`); normal mod 1–32, varsayılan 6.
+- **Açık soru:** tahtanın kendi bilgisayarının çözünürlüğü (test kılavuzundaki bilgi
+  komutu, `xrandr | grep '*'`). 4K ise aynı değerler orada yarı kalınlıkta görünür ve
+  Yol 1'deki izlenim yanıltıcıdır; 1080p ise değerler düşürülmeli.
+- **Öneri:** 1080p çıkarsa `[12, 16, 20, 24, 30, 36, 44, 56]`, varsayılan 20 (bugünkünün
+  yaklaşık yarısı); en ince iki değer el yazısı, kalınlar vurgu için. Daha doğrusu,
+  kalınlığı ekranın fiziksel boyutuna göre hesaplamak. Kullanıcı onayı bekliyor.
+
 ## Çizim gecikmesi (tahta)
 
 - Belirti: Tahtadaki kurulu programda yazı/çizgi parmağın gerisinden geliyor; PC'de
