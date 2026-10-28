@@ -18,6 +18,17 @@ sınıfın arkasından baktı. Gözlemler kullanıcınındır.
   (64 baytlık kesme paketleri); Linux sürücü bağlamıyor. Tahtanın menüsünde dokunmatik
   kipi ayarı yok (yalnız ses, parlaklık, HDMI-VGA, güç). Dokunma testleri tahtanın kendi
   bilgisayarında (Yol 2, Yol 3) yapılacak.
+- **Ekran alıntısı (masaüstü sürüm, drAW tahta ekranındayken):** kullanıcı alıntı aracının
+  ikinci ekranla sorun çıkardığını bildirdi ("normalde çalışıyordu"). Günlükte
+  (`~/.config/drAW/logs/quick-capture.log`) `area 0x0 hazır-pencere=5ms kaynak=349ms hata=401ms`:
+  görüntü kaynakları geldi, ama drAW'ın ekranına ait kaynak bulunamadı ya da ölçüsü tutmadı.
+  Yanlış ekranın görüntüsü eklenmedi; işlem hata vererek durdu. Dizüstü tek başına:
+  ekran kimliği 64 bit, kaynak kimliği kısaltılmış (`65`), bu eşleşme çalışıyor.
+  **Uygulandı (28 Ekim, tahta bağlı değilken):** Linux'ta her ekrana bir kaynak düşüyorsa öbür
+  ekranların kaynakları elenir; tek bir "bütün masaüstü" kaynağı gelirse masaüstü özgün
+  ölçüsünde yeniden alınıp drAW'ın ekranı ondan kesilir; eşleşme yine olmazsa günlüğe ekranların
+  ve kaynakların kimlikleri, konumları ve ölçüleri yazılır. **Tahtada doğrulanacak:** sorun
+  sürerse günlüğün son satırı gerekli.
 - **Düzeltildi:** sayfa `lang="en"` idi; Chrome Türkçe arayüzü çevirmeyi öneriyordu
   (`0725502`, canlıya bir sonraki yayınla çıkar).
 

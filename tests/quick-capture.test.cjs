@@ -265,6 +265,63 @@ for (const issue of ["windows", "unrelated", "ambiguous", "empty-image"]) {
     });
 }
 
+test("Linux: with one source per display, the source left after the other displays' IDs is drAW's", async () => {
+    const f = fixture({ displayId: 7 });
+    f.displays.push({ ...f.displays[0], id: 1881264395124801, bounds: { x: 1920, y: 0, width: 1920, height: 1080 } });
+    const target = f.image(1920, 1080);
+    f.capture(async () => [{ display_id: "65", thumbnail: f.image(1920, 1080) }, { display_id: "3", thumbnail: target }]);
+    const promise = f.start();
+    await f.advance();
+    assert.equal((await promise).status, "ok");
+    assert(f.actions.some((a) => a[0] === "encode"), "the remaining source is encoded");
+    const ambiguous = fixture({ displayId: 7 });
+    ambiguous.displays.push({ ...ambiguous.displays[0], id: 8 });
+    ambiguous.capture(async () => [{ display_id: "3", thumbnail: ambiguous.image(1920, 1080) }, { display_id: "4", thumbnail: ambiguous.image(1920, 1080) }]);
+    const failed = ambiguous.start();
+    await ambiguous.advance();
+    assert.equal((await failed).status, "error");
+});
+
+for (const mode of ["screen", "area"]) {
+    test(`Linux ${mode}: a single whole-desktop source is captured at full size and drAW's display is cut out`, async () => {
+        const bounds = { x: 1536, y: 0, width: 1536, height: 864 };
+        const f = fixture({ displayId: 7, scale: 1.25, bounds });
+        f.displays.push({ ...f.displays[0], id: 8, bounds: { x: 0, y: 0, width: 1536, height: 864 } });
+        f.capture(async () => {
+            const { width, height } = f.requested().thumbnailSize;
+            // The capturer letterboxes the whole 3840x1080 desktop into the requested box.
+            const scale = Math.min(width / 3840, height / 1080);
+            return [{ display_id: "", thumbnail: f.image(Math.round(3840 * scale), Math.round(1080 * scale)) }];
+        });
+        const promise = f.start(mode);
+        await f.advance();
+        if (mode === "area") {
+            f.ready();
+            f.send("selection", { left: 0, top: 0, right: 1, bottom: 1 });
+        }
+        const reply = await promise;
+        assert.equal(reply.status, "ok", reply.message);
+        assert.deepEqual(f.requested().thumbnailSize, { width: 3840, height: 1080 });
+        assert.deepEqual(f.actions.find((a) => a[0] === "crop")[1], { x: 1920, y: 0, width: 1920, height: 1080 });
+        assert.equal(reply.image.width, 1920);
+        assert.equal(reply.image.height, 1080);
+        assert.match(f.logs.at(-1), /masaüstü=/);
+    });
+}
+
+test("an unmatched source is reported with the displays and sources in the capture log", async () => {
+    const f = fixture({ displayId: 7 });
+    f.displays.push({ ...f.displays[0], id: 8, bounds: { x: 1920, y: 0, width: 1920, height: 1080 } });
+    // A single source that is neither display nor the whole desktop.
+    f.capture(async () => [{ display_id: "", thumbnail: f.image(1280, 1024) }]);
+    const promise = f.start();
+    await f.advance();
+    const reply = await promise;
+    assert.equal(reply.status, "error");
+    assert.match(reply.message, /eşleştirilemedi/);
+    assert.match(f.logs.at(-1), / ekran=7 ekranlar=7@0,0,1920x1080x1;8@1920,0,1920x1080x1 kaynaklar=-:1280x1024$/);
+});
+
 test("area capture uses a separate ready window, original bitmap and correct multi-monitor coordinates", async () => {
     const f = fixture({ scale: 2, bounds: { x: -1920, y: 120, width: 1920, height: 1080 } });
     const promise = f.start("area");

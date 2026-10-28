@@ -131,6 +131,9 @@ kullanıcıya sormadan değiştirilmez; kullanıcının sistemine izinsiz paket 
   çizgilerinin görünürlüğü; silgi boyutlarının hissi; klasör bağında dokunma,
   silgi, yeniden bağlama ve dosya seçicinin önceki konumu hatırlaması; tek ekranlı
   sistemde alıntı ekran eşleştirmesi; PipeWire/portal izin istemi.
+- İki ekranlı Linux (dizüstü + tahta HDMI): drAW tahta ekranındayken Tam Ekran ve Alan
+  alıntısı (28 Ekim'de hata verdi; eleme ve bütün masaüstünden kesme eklendi, bkz.
+  `docs/tahta-test-notlari.md`). Hata sürerse `quick-capture.log` son satırı.
 
 ## Akıllı tahta testleri — yöntem (2026-10-26)
 

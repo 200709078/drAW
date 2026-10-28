@@ -2,7 +2,7 @@ import path from "node:path";
 import { createRequire } from "node:module";
 import type { BrowserWindow as WindowType, Display, IpcMain, IpcMainEvent, IpcMainInvokeEvent, NativeImage, Rectangle } from "electron";
 import type { CaptureMode, CaptureReply } from "../../src/capture/QuickCaptureBridge.ts";
-import { pixelSelection, pngSize } from "./geometry.ts";
+import { desktopCrop, pixelSelection, pngSize, sameAspect } from "./geometry.ts";
 
 const { BrowserWindow, desktopCapturer, nativeImage, screen } = createRequire(import.meta.url)("electron") as typeof import("electron");
 
@@ -32,6 +32,8 @@ type CaptureSession = {
     sent: boolean;
     shown: boolean;
     mark: (step: string) => void;
+    // Eşleştirme başarısız olursa günlüğe yazılan ekran ve kaynak bilgisi.
+    detail: string;
     prepared: () => void;
     finish: (reply: CaptureReply) => void;
 };
@@ -195,7 +197,7 @@ export class QuickCaptureService {
             const started = performance.now();
             const marks: string[] = [];
             const session: CaptureSession = {
-                owner, mode, overlay: null, png: null, image: null, width: 0, height: 0, sent: false, shown: false,
+                owner, mode, overlay: null, png: null, image: null, width: 0, height: 0, sent: false, shown: false, detail: "",
                 mark: (step) => marks.push(`${step}=${Math.round(performance.now() - started)}ms`),
                 prepared: () => clearTimeout(timer),
                 finish: (reply) => {
@@ -212,7 +214,7 @@ export class QuickCaptureService {
                     session.image = null;
                     if (!owner.isDestroyed() && wasVisible) { owner.show(); owner.focus(); }
                     session.mark(reply.status === "ok" ? "bitti" : reply.status === "cancelled" ? "iptal" : "hata");
-                    this.log?.(`${new Date().toISOString()} ${process.platform} ${mode} ${session.width}x${session.height} ${marks.join(" ")}`);
+                    this.log?.(`${new Date().toISOString()} ${process.platform} ${mode} ${session.width}x${session.height} ${marks.join(" ")}${session.detail}`);
                     resolve(reply);
                 }
             };
@@ -260,31 +262,25 @@ export class QuickCaptureService {
         }
         if (this.active !== session) return;
         session.mark("kaynak");
-        let source = sources.find((item) => item.display_id === String(display.id));
-        if (!source && process.platform === "linux" && Number.isSafeInteger(display.id) && display.id > 0xffffffff) {
-            // Electron'un X11 yakalayıcısı 64 bit ekran kimliğini uint32 olarak döndürebiliyor.
-            // Tam kimlik önceliklidir; kısaltılmış kimlik yalnız tek kaynakla eşleşirse kullanılır.
-            // https://github.com/electron/electron/blob/v43.2.0/shell/browser/api/electron_api_desktop_capturer.cc
-            const matches = sources.filter((item) => item.display_id === String(display.id >>> 0));
-            if (matches.length === 1) source = matches[0];
-        }
-        if (!source && process.platform === "linux" && sources.length === 1) {
-            // Bazı Linux sürücülerinde iki API tamamen farklı ekran kimlikleri verir.
-            // Tek ekran ve tek kaynak varsa hedef belirlidir; özgün piksel ölçüsü aşağıda doğrulanır.
-            const displays = screen.getAllDisplays();
-            if (displays.length === 1 && displays[0].id === display.id) source = sources[0];
-        }
-        source ??= sources.length === 1 && !sources[0].display_id ? sources[0] : undefined;
+        const displays = screen.getAllDisplays();
+        const source = this.pickSource(sources, display, displays);
         if (!sources.length) throw new Error("Ekran görüntüsü kaynağı bulunamadı. Ekran paylaşım iznini kontrol edip yeniden deneyin.");
-        if (!source) throw new Error("drAW'ın bulunduğu ekran, görüntü kaynağıyla eşleştirilemedi. Yeniden deneyin.");
-        if (source.thumbnail.isEmpty()) throw new Error("Ekran görüntüsü boş geldi. Yeniden deneyin.");
-        // toPNG, NativeImage'ın DPI gösterimlerinden 1x olanı tek fiziksel piksel uzayında verir.
-        // Bu PNG hem sonuç hem seçim ekranı için doğrudan kullanılır; yeniden kodlanmaz.
-        const png = source.thumbnail.toPNG();
-        const size = pngSize(png);
-        if (!size || size.width !== width || size.height !== height) {
-            throw new Error("Ekran görüntüsü özgün çözünürlükte alınamadı. drAW'ın bulunduğu ekranı seçip yeniden deneyin.");
+        let png: Buffer;
+        try {
+            png = source
+                ? this.sourcePng(source.thumbnail, width, height)
+                : await this.desktopPng(session, sources, display, displays);
+        } catch (error) {
+            session.detail = ` ekran=${display.id} ekranlar=${displays.map((item) =>
+                `${item.id}@${item.bounds.x},${item.bounds.y},${item.bounds.width}x${item.bounds.height}x${item.scaleFactor}`).join(";")
+            } kaynaklar=${sources.map((item) => {
+                const size = item.thumbnail.getSize();
+                return `${item.display_id || "-"}:${size.width}x${size.height}`;
+            }).join(";")}`;
+            throw error;
         }
+        if (this.active !== session) return;
+        const size = pngSize(png)!;
         session.mark("png");
         session.png = png;
         session.width = size.width;
@@ -299,6 +295,63 @@ export class QuickCaptureService {
         session.mark("yüklendi");
         session.sent = true;
         overlay.contents.send("quick-capture:image", png);
+    }
+
+    private pickSource(sources: Electron.DesktopCapturerSource[], display: Display, displays: Display[]): Electron.DesktopCapturerSource | undefined {
+        let source = sources.find((item) => item.display_id === String(display.id));
+        if (source || process.platform !== "linux") {
+            return source ?? (sources.length === 1 && !sources[0].display_id ? sources[0] : undefined);
+        }
+        // Electron'un X11 yakalayıcısı 64 bit ekran kimliğini uint32 olarak döndürebiliyor.
+        // Tam kimlik önceliklidir; kısaltılmış kimlik yalnız tek kaynakla eşleşirse kullanılır.
+        // https://github.com/electron/electron/blob/v43.2.0/shell/browser/api/electron_api_desktop_capturer.cc
+        const ids = (item: Display) => Number.isSafeInteger(item.id) && item.id > 0xffffffff
+            ? [String(item.id), String(item.id >>> 0)] : [String(item.id)];
+        const matches = sources.filter((item) => ids(display).includes(item.display_id));
+        if (matches.length === 1) return matches[0];
+        if (sources.length === 1) {
+            // Bazı Linux sürücülerinde iki API tamamen farklı ekran kimlikleri verir.
+            // Tek ekran ve tek kaynak varsa hedef belirlidir; özgün piksel ölçüsü aşağıda doğrulanır.
+            if (displays.length === 1 && displays[0].id === display.id) return sources[0];
+            // Kimliksiz tek kaynak: ekranlar birbirini yansıtıyorsa odur, yoksa bütün masaüstüdür (desktopPng).
+            return !sources[0].display_id && !desktopCrop(display, displays) ? sources[0] : undefined;
+        }
+        // Her ekrana bir kaynak düşüyorsa ve öbür ekranlar kendi kaynaklarıyla eşleşiyorsa geriye kalan drAW'ınkidir.
+        if (sources.length !== displays.length) return undefined;
+        const others = new Set(displays.filter((item) => item.id !== display.id).flatMap(ids));
+        const rest = sources.filter((item) => !others.has(item.display_id));
+        return rest.length === 1 ? rest[0] : undefined;
+    }
+
+    private sourcePng(image: NativeImage, width: number, height: number): Buffer {
+        if (image.isEmpty()) throw new Error("Ekran görüntüsü boş geldi. Yeniden deneyin.");
+        // toPNG, NativeImage'ın DPI gösterimlerinden 1x olanı tek fiziksel piksel uzayında verir.
+        // Bu PNG hem sonuç hem seçim ekranı için doğrudan kullanılır; yeniden kodlanmaz.
+        const png = image.toPNG();
+        const size = pngSize(png);
+        if (!size || size.width !== width || size.height !== height) {
+            throw new Error("Ekran görüntüsü özgün çözünürlükte alınamadı. drAW'ın bulunduğu ekranı seçip yeniden deneyin.");
+        }
+        return png;
+    }
+
+    // Linux'ta birden çok ekran tek bir "bütün masaüstü" kaynağı olarak gelebilir: masaüstü özgün
+    // ölçüsünde yeniden alınır ve drAW'ın ekranı ondan kesilir.
+    private async desktopPng(session: CaptureSession, sources: Electron.DesktopCapturerSource[], display: Display, displays: Display[]): Promise<Buffer> {
+        const desktop = process.platform === "linux" && sources.length === 1 ? desktopCrop(display, displays) : null;
+        if (!desktop || !sameAspect(sources[0].thumbnail.getSize(), desktop.size)) {
+            throw new Error("drAW'ın bulunduğu ekran, görüntü kaynağıyla eşleştirilemedi. Yeniden deneyin.");
+        }
+        const again = await desktopCapturer.getSources({ types: ["screen"], thumbnailSize: desktop.size });
+        session.mark("masaüstü");
+        if (again.length !== 1) throw new Error("drAW'ın bulunduğu ekran, görüntü kaynağıyla eşleştirilemedi. Yeniden deneyin.");
+        const whole = again[0].thumbnail;
+        const size = whole.getSize();
+        if (whole.isEmpty()) throw new Error("Ekran görüntüsü boş geldi. Yeniden deneyin.");
+        if (size.width !== desktop.size.width || size.height !== desktop.size.height) {
+            throw new Error("Ekran görüntüsü özgün çözünürlükte alınamadı. drAW'ın bulunduğu ekranı seçip yeniden deneyin.");
+        }
+        return this.sourcePng(whole.crop(desktop.crop), desktop.crop.width, desktop.crop.height);
     }
 
     private watchOverlay(session: CaptureSession, window: WindowType): void {
