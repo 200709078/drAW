@@ -70,16 +70,11 @@ function addStroke(document, x, y) {
 for (const ToolClass of [EraserTool, PartialEraserTool]) {
     test(`${ToolClass.name}: calibrated board footprint erases only nearby writing at every zoom`, () => {
         for (const profile of ["standard", "smartboard"]) {
-            // [palette width, size the eraser follows]: on the board each palette position keeps its
-            // former eraser size (24–90) while the pen got thinner.
-            const sizes = profile === "smartboard"
-                ? SMARTBOARD_LINE_WIDTHS.map((width, index) => [width, [24, 30, 36, 42, 50, 56, 70, 90][index]])
-                : [12, 24, 42, 90].map((width) => [width, width]);
-            for (const [lineWidth, size] of sizes) {
+            for (const lineWidth of [12, 24, 42, 90]) {
                 for (const scale of [0.25, 1, 4]) {
                     const { document, history, tool, viewport, send } = createFixture(ToolClass, profile);
                     const boardDiameterFactor = ToolClass === PartialEraserTool ? 1.21 : 1.1;
-                    const radius = profile === "smartboard" ? size / 2 * boardDiameterFactor : lineWidth * 2;
+                    const radius = profile === "smartboard" ? lineWidth / 2 * boardDiameterFactor : lineWidth * 2;
                     const strokes = [radius + 2, radius + 4].map((distance) => {
                         const stroke = new Stroke("#ff0000", 6);
                         stroke.addPoint(new Point(100 + distance, 90));
@@ -263,10 +258,9 @@ test("pinch zoom works and keeps remaining contacts away from the active tool", 
     assert.deepEqual(calls, ["down", "interrupt", "down", "up"]);
 });
 
-test("board pen widths got thinner; text sizes keep their former palette values", () => {
-    assert.deepEqual(SMARTBOARD_LINE_WIDTHS, [6, 8, 12, 16, 20, 28, 40, 56]);
-    assert.equal(SMARTBOARD_DEFAULT_LINE_WIDTH, 16);
+test("board pen widths are the user's chosen values; text sizes follow them within their range", () => {
+    assert.deepEqual(SMARTBOARD_LINE_WIDTHS, [24, 30, 36, 42, 50, 56, 70, 90]);
+    assert.equal(SMARTBOARD_DEFAULT_LINE_WIDTH, 42);
     assert.deepEqual(SMARTBOARD_LINE_WIDTHS.map((width) => textFontSizeForProfile(width, "smartboard")),
         [32, 32, 36, 42, 50, 56, 64, 64]);
-    assert.equal(textFontSizeForProfile(6, "standard"), 32);
 });

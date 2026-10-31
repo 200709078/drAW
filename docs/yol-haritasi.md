@@ -40,6 +40,10 @@ kullanıcı açıkça istemeden uygulanmaz. Yeni istekler tarihle eklenir.
   düşür; silgi boyutu aynı kalsın". Tahta kalemi `[6, 8, 12, 16, 20, 28, 40, 56]`, varsayılan 16
   (parmakla ≈ 8 px). Silgi ve metin boyu paletteki sıraya göre eski değerleri (24–90) korur
   (`DeviceProfile.ts` `boardSizeStep`); `tests/pointer-eraser.test.cjs`.
+- **Geri dönüş (kullanıcı, 2026-10-31):** 16 tahtada ince kaldı (PC ve mobilde sorun yok): "tahtada eskisi gibi olsun; biraz
+  kullandıktan sonra tekrar düşünürüm." Tahta kalemi yeniden `[24, 30, 36, 42, 50, 56, 70, 90]`, varsayılan 42; `boardSizeStep`
+  gereksiz kaldığı için silindi, silgi ve metin boyu değişmedi. Kullanıcı deneyip yeniden karar verecek; ara değer istenirse
+  16 ile 42 arası (ör. 28) düşünülebilir.
 
 ## Mobilde yatay kullanım (2026-10-28)
 
