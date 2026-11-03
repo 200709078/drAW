@@ -9,7 +9,7 @@
   "main": "electron/main.ts",
   "description": "drAW - Interactive whiteboard and drawing application",
   "license": "MIT",
-  "author": "mADEMatik <madematik@madematik.com> (https://www.madematik.com)",
+  "author": "mADEMatik <ademvarol@madematik.com> (https://www.madematik.com)",
   "scripts": {
     "dev": "vite",
     "typecheck": "tsc && tsc -p tsconfig.electron.json",
