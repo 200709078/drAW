@@ -20,7 +20,8 @@
     "electron": "electron electron/main.ts",
     "dist": "npm run build && electron-builder",
     "android:sync": "npm run build && cap sync android",
-    "android:apk": "npm run android:sync && cd android && ./gradlew assembleRelease"
+    "android:apk": "npm run android:sync && cd android && ./gradlew assembleRelease",
+    "android:aab": "npm run android:sync && cd android && ./gradlew bundleRelease"
   },
   "devDependencies": {
     "@capacitor/cli": "8.5.3",
