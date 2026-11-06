@@ -4,7 +4,7 @@
   "desktopName": "drAW",
   "homepage": "https://www.madematik.com",
   "private": true,
-  "version": "0.0.7",
+  "version": "0.0.8",
   "type": "module",
   "main": "electron/main.ts",
   "description": "drAW — Etkileşimli tahta ve çizim uygulaması",
