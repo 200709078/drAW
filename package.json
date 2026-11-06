@@ -7,7 +7,7 @@
   "version": "0.0.7",
   "type": "module",
   "main": "electron/main.ts",
-  "description": "drAW - Interactive whiteboard and drawing application",
+  "description": "drAW — Etkileşimli tahta ve çizim uygulaması",
   "license": "MIT",
   "author": "mADEMatik <ademvarol@madematik.com> (https://www.madematik.com)",
   "scripts": {
@@ -57,7 +57,6 @@
       "icon": "build/icons",
       "category": "Education",
       "executableName": "drAW",
-      "synopsis": "Interactive whiteboard and drawing application",
       "desktop": {
         "entry": {
           "Comment[tr]": "Etkileşimli tahta ve çizim uygulaması"

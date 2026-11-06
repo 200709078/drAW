@@ -3,6 +3,12 @@
 Bekleyen işler, kullanıcı istekleri ve fiziksel tahtada doğrulanacaklar. Bir madde
 kullanıcı açıkça istemeden uygulanmaz. Yeni istekler tarihle eklenir.
 
+## Paket bilgisindeki e-posta (2026-11-06, kullanıcı bildirdi)
+
+Pardus ETAP tahtada Paket Kurucu'nun Detaylar sekmesinde drAW ailesinde olmayan `madematik@madematik.com` görünüyordu,
+awPDF'te `ademvarol@madematik.com`. Kaynak 2026-11-03'te düzeltilmişti ama o tarihten sonra sürüm çıkmamıştı;
+yeni sürüm bu adresi taşır. Aynı sürümde drAW'ın paket açıklaması Türkçe oldu ("drAW — Etkileşimli tahta ve çizim uygulaması"; İngilizce `synopsis` kaldırıldı). **Yapıldı (2026-11-06).**
+
 ## Kullanıcı kararı / isteği bekleyenler
 
 - **Dosya uzantısı (24 Ekim 2026, beklemede):** drAW çizim dosyaları ileride `.drw`
