@@ -98,6 +98,12 @@ kullanıcıya sormadan değiştirilmez; kullanıcının sistemine izinsiz paket 
 
 ## Yapıldı
 
+- **Simgede büyük kalem (9 Kasım 2026, kullanıcı isteği):** Eski logoda kalem 32 pikselde bir
+  çizgiye iniyordu ve yuvarlak Android maskesinde silgi ucu kesiliyordu. Kâğıt çerçevesi
+  kalktı (yalnız soluk satır çizgileri kaldı), A ve W biraz küçüldü; kalem yaklaşık 1,5 kat
+  uzun, gövdesi üç tonlu ve ucu W'nin sağ alt köşesinde. Kalem 30° yatık, böylece W'nin son
+  çizgisini örtmüyor. Kullanıcı dört deneme arasından seçti; bütün simgeler yeniden üretildi.
+  Henüz yayınlanmadı (sürüm, canlı site, Play).
 - **Yeni logo ve Android sürümü (25 Ekim 2026, kullanıcı isteği):** Logo kalemin yerine
   çizgili kağıda elle yazılmış mavi A ve kırmızı W ile sade bir kalem; drAW2D/drAW3D'nin
   simge ailesiyle aynı zemin, renk ve çizgi kalınlığı. Bütün simgeler
