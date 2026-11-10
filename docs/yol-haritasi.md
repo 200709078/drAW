@@ -167,3 +167,51 @@ denenir:
    bağı, paket davranışı) ve sürüm öncesi son kontrol.
 - drAW'da önce "Çizim gecikmesi (tahta)" için yol 2 ile ölçüm. **Öneri:** `?olcum=1` ile köşede kare
   süresi ve gecikmeyi gösteren küçük bir ölçüm kutusu; kullanıcı onayı bekliyor.
+
+## Ortak araç çubuğu stili (2026-11-10, kullanıcı isteği; awCELL, awPDF, drAW, drAW2D, drAW3D; kodlanmadı)
+
+Kullanıcı: "Bu menü sistemini awPDF ve drAW kardeşlerde de uygulayabileceğimiz bir şey olmalı. Aynı stile çekebilmek
+için." awCELL'de araç çubuğu 39 düğmeden 13 düğmeye indirilirken kararlaştırıldı.
+
+**Ortak kurallar** (beş projenin yol haritasında aynı; birinde değişirse ötekiler de güncellenir; ayrıntılı not ve
+gerekçeler `awCELL/docs/yol-haritasi.md`'de):
+
+1. **Taşma menüsü ☰ / ✕:** Sığmayan düğmeler sondan başlayarak ☰ menüsüne geçer; açıkken düğme ✕ olur ("Menüyü aç" /
+   "Menüyü kapat"). "⋯" ve kaydırma okları kullanılmaz; pencere boyutu değişince yeniden hesaplanır. Örnek: awPDF
+   `src/ui/toolbar.ts` (`mountOverflowMenu`).
+2. **Kapanma:** ✕, dışarıya dokunma, Esc, Android geri düğmesi, menüden bir iş seçme (art arda seçim yapılan gruplar
+   hariç).
+3. **Gruplar:** Çubukta grup başına tek düğme ve ▾; tıklayınca açılır, üstüne gelince değil; aynı anda tek pencere.
+4. **Son kullanılan:** Grup düğmesi son seçilen aracı/işi gösterir (drAW2D'deki gibi).
+5. **Durum gösterimi:** Grubun içindeki etkin seçim grup düğmesinden de anlaşılır.
+6. **☰ menüsünün içi:** Grup başlıkları simge ve etiketle görünür, yerinde (akordeon gibi) açılır, aynı anda tek grup
+   açık. Herkesin tanıdığı simgeler grup içinde yalnız simge olarak yan yana; yanlış anlaşılabilecekler simge ve
+   etiketle. Tek düğmeler simge ve etiketle, doğrudan iş yapar. Gerekçe: dokunmatikte ipucu (`title`) çıkmaz.
+7. Dokunma alanları çubukta ve menüde aynı büyüklükte kalır.
+
+Ortak kod paketi yok; her proje kendi kopyasını yazar, davranış aynı tutulur. Önce awCELL'de uygulanacak; bu proje
+sonra, kullanıcı onayıyla.
+
+**drAW'a uyarlama — kullanıcı kararı (2026-11-10; kodlanmadı, kullanıcı "başla" deyince):**
+
+Kullanıcı: "drAW araç çubuğu senin önerdiğin gibi olsun." Görüşülenler: awPDF gibi üstte sabit çubuk düşünüldü; tahtada
+üst kenar yüksekte kaldığı ve çubuğa derste sık dokunulduğu için alt seçildi. Telefonu yalnız dikey ya da yalnız yatay
+çalıştırmak (yön kilidi) da konuşuldu; dikey çubuk kalkınca gerek kalmadı.
+
+- **Çubuk her zaman altta ve yatay.** Sola yaslanan dikey çubuk (`dock-left`, `updateToolbarLayout`'taki kenar seçimi)
+  tamamen kalkar; dik tutulan telefonda da çubuk altta durur. Yön kilidi yok, telefon iki yönde de çalışır.
+- **☰ / ✕ çubuğun sağ ucunda;** sığmayan düğmeler kaydırma yerine ☰ menüsüne geçer, menü yukarı doğru açılır. Kapanma
+  ortak kurallardaki gibi (✕, dışarıya dokunma, Esc, Android geri tuşu, bir iş seçme).
+- **Taşma sırası:** önce az kullanılanlar (kılavuz, Ekran Alıntısı, klasör bağlantısı, önceki/sonraki çizim, yeni
+  çizim, şekiller, metin…). Geri al, yinele, kalem, silgi ve renk hiçbir zaman ☰'ye düşmez. Kesin sıra kodlarken
+  önerilir.
+- **Değişmeyenler:** "drAW" tutamacı sol uçta, çift dokunuşla katlama sürer; paletler (kalem, silgi, şekil, renk,
+  kalınlık, kılavuz, alıntı) açılır palet olarak kalır, 3.–5. kurallara göre gözden geçirilir (tıklayınca açılma, aynı
+  anda tek palet, düğmede son seçim ve etkin durum). Yakınlaştırma düğmelerinin çubuğun üstüne çıkması sürer.
+- **Tahta / PC modu:** Çubuk iki modda da aynı (aynı düğmeler ve sıra); tahta modu bugünkü gibi yalnız 1,2 kat büyütür.
+  ☰ moda göre değil yer kalmayınca çıkar. Bugünkü çubuk (16 düğme) PC'de yaklaşık 940 px, tahtada yaklaşık 1130 px
+  (hesap, ölçülmedi); 1920 px tahtada da 1366 px dizüstünde de sığar, ☰ yalnız telefonda ve dar pencerede görünür.
+  Bugünkü farklar sürer: Ekran Alıntısı ve klasör bağlantısı yalnız masaüstü uygulamasında; kalınlık değerleri
+  tahtada büyük.
+- Tahtada ve telefonda (dikey ve yatay) denenir; Playwright'ta geniş (~1600 px) ve dar (~360 px) pencere.
+- Not: drAW2D ve drAW3D'de çubuk üstte; tahtada aynı erişim sorunu olabilir, ayrı karar (kullanıcıya önerildi).
