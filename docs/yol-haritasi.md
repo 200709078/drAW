@@ -228,3 +228,6 @@ Kullanıcı: "drAW araç çubuğu senin önerdiğin gibi olsun." Görüşülenle
   (104) ve metin (59) tarayıcı testleri; telefonun Chrome'unda gerçek dokunuşla menü, palet, çizim, geri al, renk.
   Telefon boyutundaki 4 sayfa testi (390×844 ve 844×390'da kılavuz görünürlüğü, bağlı fotoğraf) değişiklikten önce de
   aynı hatayla kırılıyordu; çubukla ilgisiz. Tahtada fiziksel deneme bekliyor.
+  Yayın (2026-11-10, kullanıcı izniyle): madematik.com/drAW canlıda (önceden commit'lenmiş yeni simgeyle birlikte),
+  GitHub sürümü v0.0.9 (apk, deb, AppImage, exe). Yükleme adımı bir kez GitHub'ın geçici 408 hatasıyla düştü,
+  yeniden çalıştırınca geçti.
