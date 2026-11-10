@@ -68,11 +68,10 @@ export class QuickCaptureController {
                 throw new Error("Alıntı görüntüsü okunamadı. Yeniden deneyin.");
             }
             const viewport = this.context.getViewport();
-            const dock = window.document.body.classList.contains("dock-left") ? "left" : "bottom";
             const placement = mode === "screen"
                 ? fitScreenCapture(width, height, this.context.getCanvas().getBoundingClientRect(),
                     window.document.querySelector(".sidebar")?.getBoundingClientRect() ?? null,
-                    dock, viewport.getScale(), isSmartBoard() ? 32 : 24)
+                    viewport.getScale(), isSmartBoard() ? 32 : 24)
                 : { x: 16, y: 16, width, height };
             // PNG özgün çözünürlükte korunur; tam ekranın yalnızca tuvaldeki geometrisi küçültülür.
             const image = new DocumentImage(dataUrl,

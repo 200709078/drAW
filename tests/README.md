@@ -53,9 +53,10 @@ Kılavuzlar için `/tests/guides-ui.html` ve `/tests/guides-ui.html?tahta=1`:
 gerçek tuval piksellerinde kareli/yatay/dikey çizgilerin görünürlüğü, zoom,
 kesirli kaydırma ve Yeni Çizim sonrası palet sıfırlaması kontrol edilir.
 Ayrıca kılavuz paletinin açılıp kapanmasını ve drAW düğmesiyle araç çubuğunun
-katlanıp açılmasını sınar. Araç çubuğu konumu pencere genişliğinden gelir:
-alt konum için geniş (ör. 1600px), sol konum için dar (ör. 760px) pencerede
-açın. Bu sayfa masaüstü başlık çubuğunun tuval ofsetini de kullanır; farklı
+katlanıp açılmasını sınar. Araç çubuğu her zaman alttadır; sığmayan düğmeler
+sağ uçtaki ☰ menüsüne geçer. Menüsüz çubuk için geniş (ör. 1600px), ☰ menüsü
+için dar (ör. 760px) pencerede açın; dar pencerede kılavuz paletinin menüde
+yerinde açılması ve menünün kapanması da sınanır. Bu sayfa masaüstü başlık çubuğunun tuval ofsetini de kullanır; farklı
 pencere boyutları ve piksel yoğunluklarıyla çalıştırılabilir.
 
 Ekran alıntısını sınamak için Vite sunucusu açıkken:

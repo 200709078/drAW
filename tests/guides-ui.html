@@ -90,14 +90,22 @@ try {
         "guide trigger retained its old label after New Drawing");
     checks++;
 
-    // Kılavuz düğmesi toolbarda görünür; paleti diğer paletlerle aynı biçimde açılıp kapanır.
-    const trigger = () => document.querySelector('.sidebar__toolbar button[aria-label^="Kılavuz Çizgileri:"]');
+    // Kılavuz düğmesi çubukta ya da (dar pencerede) ☰ menüsünde; paleti diğer paletlerle aynı biçimde açılıp kapanır.
+    const trigger = () => document.querySelector('.sidebar button[aria-label^="Kılavuz Çizgileri:"]');
+    const menuButton = document.querySelector(".sidebar__menu-button");
+    const menu = document.querySelector(".sidebar__menu");
     const guidePalette = document.querySelector(".sidebar__guideline-palette");
     const colorTrigger = document.querySelector(".sidebar__color-trigger");
     const colorPalette = document.querySelector(".sidebar__color-palette");
-    // Konum pencere genişliğinden gelir: geniş pencerede alt, dar pencerede (ör. 760px) sol sınanır.
+    // Çubuk her zaman altta: geniş pencerede kılavuz çubukta, dar pencerede (ör. 760px) ☰ menüsünde sınanır.
     {
-        const dock = document.body.classList.contains("dock-left") ? "left" : "bottom";
+        const dock = trigger().closest(".sidebar__menu") ? "menu" : "toolbar";
+        assert(!document.body.classList.contains("dock-left"), "toolbar left the bottom edge");
+        assert(menuButton.hidden === (dock === "toolbar"), `${dock}: ☰ visibility does not match`);
+        if (dock === "menu") {
+            menuButton.click();
+            assert(!menu.hidden && menuButton.getAttribute("aria-label") === "Menüyü Kapat", "☰ did not open the menu");
+        }
         const button = trigger();
         const buttonBounds = button?.getBoundingClientRect();
         assert(buttonBounds && buttonBounds.width >= 44 && buttonBounds.height >= 44, `${dock}: guide button is hidden or too small`);
@@ -113,6 +121,7 @@ try {
         colorTrigger.click();
         assert(guidePalette.hidden && !colorPalette.hidden && button.getAttribute("aria-expanded") === "false",
             `${dock}: opening the color palette left the guide palette open`);
+        assert(menu.hidden, `${dock}: opening a toolbar palette left the menu open`);
         button.click();
         assert(colorPalette.hidden && !guidePalette.hidden, `${dock}: opening guides left the color palette open`);
         document.body.dispatchEvent(new PointerEvent("pointerdown", { bubbles: true }));
@@ -120,6 +129,7 @@ try {
         button.click();
         guidePalette.querySelector('button[aria-label="Yatay Çizgili"]').click();
         assert(guidePalette.hidden && renderer.getGuideLines() === "rows", `${dock}: selecting a guide did not apply and close`);
+        assert(menu.hidden, `${dock}: selecting a guide left the menu open`);
         assert(trigger().getAttribute("aria-label") === "Kılavuz Çizgileri: Yatay Çizgili", `${dock}: trigger label not updated`);
         checks++;
     }
@@ -130,11 +140,10 @@ try {
         const delay = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
         const handle = document.querySelector(".sidebar__handle");
         const toolbar = document.querySelector(".sidebar__toolbar");
-        const dock = document.body.classList.contains("dock-left") ? "left" : "bottom";
         const before = handle.getBoundingClientRect();
         const expanded = toolbar.getBoundingClientRect();
         handle.dispatchEvent(new MouseEvent("dblclick", { bubbles: true }));
-        assert(document.body.classList.contains("dock-left") === (dock === "left"), "double click still moves the toolbar");
+        assert(!document.body.classList.contains("dock-left"), "double click still moves the toolbar");
         trigger().click();
         tap();
         await delay(450);
@@ -151,13 +160,13 @@ try {
         assert(handle.getAttribute("aria-expanded") === "false" && handle.getAttribute("aria-label") === "Araç çubuğunu aç",
             "collapsed handle does not offer to open the toolbar");
         assert(Math.abs(after.left - before.left) < 1 && Math.abs(after.top - before.top) < 1, "drAW button moved while collapsing");
-        assert(dock === "bottom" ? folded.width < before.width * 2 && folded.left === expanded.left
-            : folded.height < before.height * 2 && folded.top === expanded.top, `toolbar did not fold into drAW (${JSON.stringify(folded)})`);
+        assert(folded.width < before.width * 2 && folded.left === expanded.left, `toolbar did not fold into drAW (${JSON.stringify(folded)})`);
+        assert(menu.hidden, "collapsing left the ☰ menu open");
         assert([...toolbar.children].filter((item) => item !== handle && item.getAttribute("aria-hidden") !== "true").every((item) => item.inert),
             "folded tools still accept focus or touches");
         const hit = document.elementFromPoint(expanded.right - 20, expanded.bottom - 20);
         assert(!toolbar.contains(hit), "a folded tool still receives touches");
-        assert(document.body.classList.contains("dock-left") === (dock === "left"), "collapsing moved the toolbar");
+        assert(!document.body.classList.contains("dock-left"), "collapsing moved the toolbar");
         tap();
         await delay(150);
         tap(); // Çift dokunuşla açmanın ikinci dokunuşu çubuğu yeniden katlamaz.
@@ -178,7 +187,7 @@ try {
     const bounds = canvas.getBoundingClientRect();
     assert(document.elementFromPoint(bounds.left + canvas.clientWidth / 3, bounds.top + canvas.clientHeight / 3) === canvas,
         "another element covers the empty canvas");
-    const dockName = document.body.classList.contains("dock-left") ? "left" : "bottom";
+    const dockName = menuButton.hidden ? "bottom" : "bottom + ☰";
     result.textContent = `PASS: ${checks} guide checks (${getLineProfile()}, DPR ${ratio}, ${canvas.clientWidth}x${canvas.clientHeight}, toolbar ${dockName})`;
 } catch (error) {
     result.textContent = `FAIL: ${error.stack ?? error}`;

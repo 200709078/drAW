@@ -129,20 +129,20 @@ async function main() {
         }
 
         for (const configuration of [
-            { mode: "pc", platform: "win32", width: 1280, height: 900, dpr: 1, dock: "bottom" },
-            { mode: "pc", platform: "win32", width: 760, height: 900, dpr: 1, dock: "left" },
-            { mode: "board", platform: "linux", width: 1920, height: 1080, dpr: 2, tahta: 1, dock: "bottom" },
-            { mode: "board", platform: "linux", width: 900, height: 1080, dpr: 1, tahta: 1, dock: "left" },
+            { mode: "pc", platform: "win32", width: 1280, height: 900, dpr: 1, menu: 0 },
+            { mode: "pc", platform: "win32", width: 760, height: 900, dpr: 1, menu: 1 },
+            { mode: "board", platform: "linux", width: 1920, height: 1080, dpr: 2, tahta: 1, menu: 0 },
+            { mode: "board", platform: "linux", width: 900, height: 1080, dpr: 1, tahta: 1, menu: 1 },
             { mode: "web", width: 1280, height: 900, dpr: 1 },
             { mode: "web", width: 1920, height: 1080, dpr: 1, tahta: 1 },
             { mode: "mobile", platform: "linux", width: 390, height: 844, dpr: 2 }
         ]) {
-            const { mode, width, height, dpr, platform = "linux", tahta = 0, dock = "" } = configuration;
+            const { mode, width, height, dpr, platform = "linux", tahta = 0, menu = "" } = configuration;
             await b.send("Emulation.setDeviceMetricsOverride", { width, height, deviceScaleFactor: dpr, mobile: mode === "mobile" });
             await b.send("Emulation.setUserAgentOverride", { userAgent: mode === "mobile"
                 ? "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/130.0.0.0 Mobile Safari/537.36"
                 : "Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 Chrome/130.0.0.0 Safari/537.36" });
-            await b.goto(`${base}/tests/quick-capture-ui.html?mode=${mode}&platform=${platform}&tahta=${tahta}&dock=${dock}`);
+            await b.goto(`${base}/tests/quick-capture-ui.html?mode=${mode}&platform=${platform}&tahta=${tahta}${menu === "" ? "" : `&menu=${menu}`}`);
             await b.until("window.__quickCaptureResult?.done === true");
             const result = await b.evaluate("window.__quickCaptureResult");
             assert.deepEqual(result.errors, [], `${mode}: ${JSON.stringify(result.errors)}`);
@@ -150,7 +150,7 @@ async function main() {
             console.log(`PASS: ${mode}/${platform}/tahta=${tahta}/${width}px: ${result.checks.length} UI checks`);
             if (mode === "pc" || mode === "board") {
                 const png = await b.send("Page.captureScreenshot", { format: "png" });
-                await writeFile(`/tmp/draw-quick-capture-${mode}-${dock}.png`, Buffer.from(png.data, "base64"));
+                await writeFile(`/tmp/draw-quick-capture-${mode}-${width}.png`, Buffer.from(png.data, "base64"));
             }
         }
         console.log(`PASS: ${passed} quick capture browser checks`);

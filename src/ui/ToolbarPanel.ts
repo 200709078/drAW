@@ -627,13 +627,13 @@ export class ToolbarPanel {
         });
 
         const flyouts = [
-            { button: captureButton, panel: capturePalette, bottomAlign: false, lastItemAlign: false },
-            { button: penButton, panel: penPalette, bottomAlign: false, lastItemAlign: false },
-            { button: eraserButton, panel: eraserPalette, bottomAlign: false, lastItemAlign: false },
-            { button: shapesButton, panel: shapesPalette, bottomAlign: true, lastItemAlign: false },
-            { button: colorButton, panel: colorPalette, bottomAlign: false, lastItemAlign: false },
-            { button: widthButton, panel: widthPalette, bottomAlign: false, lastItemAlign: false },
-            { button: guideButton, panel: guidePalette, bottomAlign: true, lastItemAlign: true }
+            { button: captureButton, panel: capturePalette },
+            { button: penButton, panel: penPalette },
+            { button: eraserButton, panel: eraserPalette },
+            { button: shapesButton, panel: shapesPalette },
+            { button: colorButton, panel: colorPalette },
+            { button: widthButton, panel: widthPalette },
+            { button: guideButton, panel: guidePalette }
         ];
 
         const closeFlyouts = (): void => {
@@ -642,10 +642,19 @@ export class ToolbarPanel {
                 flyout.button.setAttribute("aria-expanded", "false");
             }
         };
+        // Android geri tuşu ve Esc: önce açık palet, sonra ☰ menüsü kapanır.
         this.closePalette = () => {
-            const open = flyouts.some((flyout) => !flyout.panel.hidden);
-            closeFlyouts();
-            return open;
+            if (flyouts.some((flyout) => !flyout.panel.hidden)) {
+                closeFlyouts();
+                return true;
+            }
+
+            if (!menu.hidden) {
+                setMenuOpen(false);
+                return true;
+            }
+
+            return false;
         };
 
         // Zoom'lu atanın içindeki sabit konumlu paletlerde tarayıcı
@@ -671,59 +680,152 @@ export class ToolbarPanel {
             return Number.isFinite(measured) && measured > 0 ? measured : 1;
         };
 
-        const currentDock = (): "bottom" | "left" => {
-            return document.body.classList.contains("dock-left") ? "left" : "bottom";
+        // Taşma menüsü (☰ / ✕): çubuğa sığmayan düğmeler buraya geçer; menü çubuğun sağ ucundan
+        // yukarı açılır. Paletli düğmelerin paleti menüde yerinde, satırın altında açılır.
+        const MENU_LABEL = "Diğer Araçlar";
+        const CLOSE_LABEL = "Menüyü Kapat";
+        const MENU_ICON = '<path d="M4 6h16"/><path d="M4 12h16"/><path d="M4 18h16"/>';
+        const CLOSE_ICON = '<path d="M6 6l12 12"/><path d="M18 6L6 18"/>';
+        const menuButton = document.createElement("button");
+        menuButton.type = "button";
+        menuButton.className = "sidebar__tool sidebar__menu-button";
+        menuButton.innerHTML = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" ' +
+            'stroke-linecap="round" aria-hidden="true"></svg>';
+        menuButton.hidden = true;
+        const menuIcon = menuButton.querySelector("svg") as SVGSVGElement;
+        const menu = document.createElement("div");
+        menu.id = "toolbar-menu";
+        menu.className = "sidebar__menu";
+        menu.hidden = true;
+        menu.setAttribute("role", "group");
+        menu.setAttribute("aria-label", MENU_LABEL);
+        menuButton.setAttribute("aria-controls", menu.id);
+
+        // Menüye geçebilen düğmeler, geçiş sırasıyla (önce az kullanılanlar). Geri al, yinele,
+        // kalem, silgi ve renk hiçbir zaman menüye geçmez.
+        const overflowOrder: Array<{ item: HTMLElement; label: () => string }> = [
+            { item: guideControl, label: () => "Kılavuz Çizgileri" },
+            ...(quickCapture.isAvailable() ? [{ item: captureControl, label: () => "Ekran Alıntısı" }] : []),
+            { item: linkButton, label: () => linkButton.title || "Klasör Bağla" },
+            { item: nextDrawingButton, label: () => "Sonraki Çizim" },
+            { item: prevDrawingButton, label: () => "Önceki Çizim" },
+            { item: newDrawButton, label: () => "Yeni Çizim" },
+            { item: textButton, label: () => "Metin" },
+            { item: shapesControl, label: () => "Şekiller" },
+            { item: selectionButton, label: () => "Seç ve Taşı" },
+            { item: widthControl, label: () => "Kalınlık" },
+            { item: prevColorButton, label: () => "Önceki Renk" }
+        ];
+        const menuRows = new Map<HTMLElement, { row: HTMLDivElement; text: HTMLSpanElement; label: () => string }>();
+
+        for (const { item, label } of overflowOrder) {
+            const row = document.createElement("div");
+            row.className = "sidebar__menu-item";
+            const text = document.createElement("span");
+            text.className = "sidebar__menu-label";
+            text.setAttribute("aria-hidden", "true");
+            // Etikete dokunmak düğmeye dokunmakla aynıdır.
+            text.addEventListener("click", () => {
+                const trigger = item instanceof HTMLButtonElement ? item : item.querySelector("button");
+                trigger?.click();
+            });
+            row.append(text);
+            menuRows.set(item, { row, text, label });
+        }
+
+        const placeMenu = (): void => {
+            // Menü çubuğun içinde (tahtada aynı büyütmeyle); ölçüler büyütmeye bölünür.
+            const zoom = toolbarZoom();
+            const bounds = sidebar.getBoundingClientRect();
+            const titlebarHeight = document.body.classList.contains("has-custom-titlebar") ? 36 : 0;
+            menu.style.maxHeight = `${Math.max(120, bounds.top - titlebarHeight - 16) / zoom}px`;
+            menu.style.maxWidth = `${Math.max(160, bounds.right - 8) / zoom}px`;
         };
 
+        const setMenuOpen = (open: boolean): void => {
+            if (open) {
+                closeFlyouts();
+
+                for (const { text, label } of menuRows.values()) {
+                    text.textContent = label();
+                }
+            } else {
+                for (const flyout of flyouts) {
+                    if (menu.contains(flyout.panel)) {
+                        flyout.panel.hidden = true;
+                        flyout.button.setAttribute("aria-expanded", "false");
+                    }
+                }
+            }
+
+            menu.hidden = !open;
+            const label = open ? CLOSE_LABEL : MENU_LABEL;
+            menuButton.title = label;
+            menuButton.setAttribute("aria-label", label);
+            menuButton.setAttribute("aria-expanded", String(open));
+            menuIcon.innerHTML = open ? CLOSE_ICON : MENU_ICON;
+
+            if (open) {
+                placeMenu();
+            }
+        };
+        setMenuOpen(false);
+
+        menuButton.addEventListener("click", () => setMenuOpen(menu.hidden === true));
+        // Düğmenin kendi işi çalıştıktan sonra buraya ulaşır: menüde palet açılmadıysa iş seçilmiştir.
+        menu.addEventListener("click", (event) => {
+            if (!(event.target instanceof Element) || event.target.closest("button") === null) {
+                return;
+            }
+
+            if (!flyouts.some((flyout) => !flyout.panel.hidden && menu.contains(flyout.panel))) {
+                setMenuOpen(false);
+            }
+        });
+        // Yakalama aşamasında: tuval basışları belgeye ulaşmadan durdurulabilir.
+        document.addEventListener("pointerdown", (event) => {
+            const target = event.target;
+
+            if (!menu.hidden && target instanceof Node && !menu.contains(target) && !menuButton.contains(target)) {
+                setMenuOpen(false);
+            }
+        }, true);
+        document.addEventListener("keydown", (event) => {
+            const target = event.target;
+
+            if (event.key !== "Escape" || (target instanceof HTMLElement &&
+                (target.isContentEditable || target.closest("input, textarea, select") !== null))) {
+                return;
+            }
+
+            if (this.closePalette()) {
+                event.preventDefault();
+            }
+        });
 
         const placeFlyout = (
             button: HTMLButtonElement,
-            panel: HTMLDivElement,
-            bottomAlign: boolean = false,
-            lastItemAlign: boolean = false
+            panel: HTMLDivElement
         ): void => {
+            panel.hidden = false;
+            button.setAttribute("aria-expanded", "true");
+
+            if (menu.contains(button)) {
+                panel.style.left = panel.style.top = panel.style.transform = "";
+                return;
+            }
+
             const buttonBounds = button.getBoundingClientRect();
             // Palet, zoom'lu araç çubuğunun içinde sabit konumlu: tarayıcı
             // offset'leri ölçeklenmemiş uzayda yorumlayıp öyle çiziyor,
             // o yüzden ölçümler zoom'a bölünerek veriliyor.
             const zoom = toolbarZoom();
-            const dock = currentDock();
-
-            panel.hidden = false;
-            button.setAttribute("aria-expanded", "true");
-            panel.classList.toggle("sidebar__flyout--vertical", dock === "left");
-
-            if (dock === "left") {
-                // Solda çubuğun kendisi dönüşümlü (translateY) olduğu için
-                // palet ona göre konumlanır.
-                const sidebarBounds = sidebar.getBoundingClientRect();
-                panel.style.transform = "none";
-                panel.style.left = `${(buttonBounds.right - sidebarBounds.left) / zoom + 16 / zoom}px`;
-
-                if (bottomAlign) {
-                    // Kılavuzda son öğenin altı buton altıyla hizalanır (+8 iç boşluk payı).
-                    // Sınırlar ekran pikselinden çubuğun büyütülmemiş koordinatına çevrilir.
-                    const shift = lastItemAlign ? 8 / zoom : 0;
-                    const minTop = (8 - sidebarBounds.top) / zoom;
-                    const maxTop = (window.innerHeight - 8 - sidebarBounds.top) / zoom - panel.offsetHeight;
-                    panel.style.top = `${Math.min(
-                        Math.max(minTop, (buttonBounds.bottom - sidebarBounds.top) / zoom - panel.offsetHeight + shift),
-                        maxTop
-                    )}px`;
-                } else {
-                    const maxTop = Math.max(8, sidebarBounds.height / zoom - panel.offsetHeight - 8);
-                    panel.style.top = `${Math.min(
-                        Math.max(8 / zoom, (buttonBounds.top - sidebarBounds.top) / zoom),
-                        maxTop
-                    )}px`;
-                }
-            } else {
-                panel.style.transform = "none";
-                const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
-                panel.style.left = `${Math.min(Math.max(8, buttonBounds.left / zoom), maxLeft)}px`;
-
-                panel.style.top = `${Math.max(8 / zoom, buttonBounds.top / zoom - panel.offsetHeight - 16 / zoom)}px`;
-            }
+            panel.style.transform = "none";
+            // Genişlik palet sola yaslıyken ölçülür (sağ kenara yakın palet daralıp satır atlamasın).
+            panel.style.left = "8px";
+            const maxLeft = Math.max(8, window.innerWidth - panel.offsetWidth - 8);
+            panel.style.left = `${Math.min(Math.max(8, buttonBounds.left / zoom), maxLeft)}px`;
+            panel.style.top = `${Math.max(8 / zoom, buttonBounds.top / zoom - panel.offsetHeight - 16 / zoom)}px`;
         };
 
         const toggleFlyout = (
@@ -731,12 +833,19 @@ export class ToolbarPanel {
             panel: HTMLDivElement
         ): void => {
             const shouldOpen = panel.hidden;
+            const inMenu = menu.contains(button);
+
+            // Aynı anda tek pencere: çubuktaki palet menüyü kapatır; menüdeki düğme menüyü açar.
+            if (inMenu && menu.hidden) {
+                setMenuOpen(true);
+            } else if (!inMenu) {
+                setMenuOpen(false);
+            }
 
             closeFlyouts();
 
             if (shouldOpen) {
-                const entry = flyouts.find((flyout) => flyout.panel === panel);
-                placeFlyout(button, panel, entry?.bottomAlign ?? false, entry?.lastItemAlign ?? false);
+                placeFlyout(button, panel);
             }
         };
 
@@ -1090,7 +1199,7 @@ export class ToolbarPanel {
         applyLineWidth(defaultWidthForProfile());
 
         widthControl.append(widthButton, widthPalette);
-        toolbar.append(
+        const toolbarOrder: HTMLElement[] = [
             colorControl,
             prevColorButton,
             widthControl,
@@ -1107,77 +1216,108 @@ export class ToolbarPanel {
             textButton,
             ...(quickCapture.isAvailable() ? [captureControl] : []),
             guideControl
-        );
-        sidebar.appendChild(toolbar);
+        ];
+        toolbar.append(...toolbarOrder, menuButton);
+        sidebar.append(toolbar, menu);
         document.body.appendChild(sidebar);
 
         const updateToolbarVars = (): void => {
             for (const flyout of flyouts) {
                 if (!flyout.panel.hidden) {
-                    placeFlyout(flyout.button, flyout.panel, flyout.bottomAlign, flyout.lastItemAlign);
+                    placeFlyout(flyout.button, flyout.panel);
                 }
             }
         };
 
-        // Konum sabittir: doğal genişliğiyle ekrana sığıyorsa altta, sığmıyorsa solda.
-        // drAW düğmesi yerinde kalır; çubuk ona doğru katlanır ve yeniden açılır.
+        // Çubuk her zaman altta ve yataydır (tahtada da telefonda da). Sığmayan düğmeler
+        // ☰ menüsüne geçer. drAW düğmesi yerinde kalır; çubuk ona doğru katlanır ve yeniden açılır.
         let collapsed = false;
-        let layout = { dock: "bottom" as "bottom" | "left", expanded: 0, folded: 0, left: 0, width: 0 };
+        let layout = { expanded: 0, folded: 0, left: 0, width: 0 };
+
+        // Çubuğun içeriğiyle birlikte ekran pikseli olarak genişliği (kaydırma payı dahil).
+        const naturalWidth = (): number => {
+            const rect = toolbar.getBoundingClientRect();
+            const scale = toolbar.offsetWidth > 0 ? rect.width / toolbar.offsetWidth : 1;
+
+            return (toolbar.scrollWidth + toolbar.offsetWidth - toolbar.clientWidth) * scale;
+        };
+
+        // Bütün düğmeler çubuğa döner; sığmazsa ☰ görünür ve düğmeler sırayla menüye geçer.
+        // Sabit düğmeler bile sığmazsa (çok dar ekran) çubuk yana kaydırılır.
+        const fitToolbar = (availableWidth: number): void => {
+            setMenuOpen(false);
+            const overflowed = new Set<HTMLElement>();
+
+            for (const item of toolbarOrder) {
+                toolbar.insertBefore(item, menuButton);
+            }
+
+            menuButton.hidden = true;
+
+            if (naturalWidth() > availableWidth) {
+                menuButton.hidden = false;
+
+                for (const { item } of overflowOrder) {
+                    if (naturalWidth() <= availableWidth) {
+                        break;
+                    }
+
+                    // Gizli düğme yer kaplamaz; görünür olunca yeniden yerleşim yapılır.
+                    if (!item.hidden) {
+                        overflowed.add(item);
+                        item.remove();
+                    }
+                }
+            }
+
+            menu.replaceChildren();
+
+            for (const item of toolbarOrder) {
+                const entry = menuRows.get(item);
+
+                if (entry !== undefined && overflowed.has(item)) {
+                    entry.row.prepend(item);
+                    menu.append(entry.row);
+                }
+
+                item.inert = collapsed && !overflowed.has(item);
+            }
+
+            menuButton.inert = collapsed;
+        };
 
         const toolbarItems = (): HTMLElement[] => [...toolbar.children].filter(
             (item): item is HTMLElement => item instanceof HTMLElement && item !== handle && item !== zoomProbe
         );
 
         const applyToolbarSize = (): void => {
-            const size = `${collapsed ? layout.folded : layout.expanded}px`;
-            toolbar.style.maxWidth = layout.dock === "bottom" ? size : "";
-            toolbar.style.maxHeight = layout.dock === "left" ? size : "";
+            toolbar.style.maxWidth = `${collapsed ? layout.folded : layout.expanded}px`;
         };
 
         const updateToolbarLayout = (): void => {
             const body = document.body;
-            const wasLeft = body.classList.contains("dock-left");
             const wasCollapsed = collapsed;
             sidebar.classList.add("sidebar--measuring");
             sidebar.classList.remove("sidebar--collapsed");
-            toolbar.style.maxWidth = toolbar.style.maxHeight = "none";
+            toolbar.style.maxWidth = "none";
 
             // Ölçümler ekran pikselidir; stil değerleri çubuğun büyütmesine (tahta) bölünür.
+            // Dar ekranda (telefon) kenar payı küçülür; düğmeler CSS'te aynı eşikte küçülür.
             const zoom = toolbarZoom();
-            body.classList.remove("dock-left");
-            const row = toolbar.getBoundingClientRect();
-            body.classList.add("dock-left");
-            const columnHeight = toolbar.getBoundingClientRect().height;
-            body.classList.toggle("dock-left", wasLeft);
+            const margin = window.innerWidth < 480 ? 8 : 16;
+            const availableWidth = window.innerWidth - 2 * margin;
+            fitToolbar(availableWidth);
+            const rowWidth = naturalWidth();
+            const rowHeight = toolbar.getBoundingClientRect().height;
             const handleBounds = handle.getBoundingClientRect();
             const frame = (toolbar.offsetWidth - toolbar.clientWidth) + 2 * parseFloat(getComputedStyle(toolbar).paddingLeft);
-
-            const titlebarHeight = body.classList.contains("has-custom-titlebar") ? 36 : 0;
-            const availableWidth = window.innerWidth - 32;
-            const availableHeight = window.innerHeight - titlebarHeight - 32;
-            // Sığıyorsa altta; sığmıyorsa düğmelerin daha büyük kısmının göründüğü kenar
-            // (dikey telefon solda, yatay telefon altta; ikisinde de çubuk kaydırılır).
-            const dock = row.width <= availableWidth || availableWidth / row.width > availableHeight / columnHeight
-                ? "bottom" : "left";
-            body.classList.toggle("dock-left", dock === "left");
             sidebar.classList.toggle("sidebar--collapsed", wasCollapsed);
 
-            if (dock === "bottom") {
-                const width = Math.min(row.width, availableWidth);
-                const left = Math.max(16, (window.innerWidth - width) / 2);
-                sidebar.style.left = `${left / zoom}px`;
-                sidebar.style.top = "";
-                layout = { dock, expanded: width / zoom, folded: handleBounds.width / zoom + frame, left, width };
-                body.style.setProperty("--toolbar-height", `${row.height}px`);
-            } else {
-                const available = availableHeight;
-                const height = Math.min(columnHeight, available);
-                const top = titlebarHeight + 16 + Math.max(0, (available - height) / 2);
-                sidebar.style.left = `${16 / zoom}px`;
-                sidebar.style.top = `${top / zoom}px`;
-                layout = { dock, expanded: height / zoom, folded: handleBounds.height / zoom + frame, left: 16, width: row.height };
-                body.style.removeProperty("--toolbar-height");
-            }
+            const width = Math.min(rowWidth, availableWidth);
+            const left = Math.max(margin, (window.innerWidth - width) / 2);
+            sidebar.style.left = `${left / zoom}px`;
+            layout = { expanded: width / zoom, folded: handleBounds.width / zoom + frame, left, width };
+            body.style.setProperty("--toolbar-height", `${rowHeight}px`);
 
             updateZoomPlacement();
             applyToolbarSize();
@@ -1193,7 +1333,7 @@ export class ToolbarPanel {
             const zoomControls = document.querySelector<HTMLElement>(".zoom-controls");
             let above = false;
 
-            if (layout.dock === "bottom" && zoomControls !== null) {
+            if (zoomControls !== null) {
                 const panel = body.classList.contains("drawings-closed")
                     ? 0 : document.querySelector(".drawings-panel")?.getBoundingClientRect().width ?? 0;
                 const zoomLeft = window.innerWidth - panel - 16 - zoomControls.offsetWidth;
@@ -1213,6 +1353,7 @@ export class ToolbarPanel {
 
             collapsed = value;
             closeFlyouts();
+            setMenuOpen(false);
             toolbar.scrollTo({ left: 0, top: 0 });
             // Katlanmış düğmeler odak ve dokunma almaz.
             for (const item of toolbarItems()) {
@@ -1230,18 +1371,21 @@ export class ToolbarPanel {
         updateToolbarLayout();
 
         let layoutFrame = 0;
-        window.addEventListener("resize", () => {
+        const scheduleLayout = (): void => {
             cancelAnimationFrame(layoutFrame);
             layoutFrame = requestAnimationFrame(() => {
                 closeFlyouts();
                 updateToolbarLayout();
             });
-        });
+        };
+        window.addEventListener("resize", scheduleLayout);
+        // Klasör bağlantısı düğmesi sonradan görünüp gizlenebilir; çubuk yeniden sığdırılır.
+        new MutationObserver(scheduleLayout).observe(linkButton, { attributes: true, attributeFilter: ["hidden"] });
         // Kaydırılan çubukta açık palet düğmesinden ayrılmasın.
         toolbar.addEventListener("scroll", closeFlyouts, { passive: true });
         // Alttaki çubuğun kaydırma çubuğu gizli; fare tekerleği onu yana kaydırır.
         toolbar.addEventListener("wheel", (event) => {
-            if (layout.dock !== "bottom" || event.deltaX !== 0 || toolbar.scrollWidth <= toolbar.clientWidth) {
+            if (event.deltaX !== 0 || toolbar.scrollWidth <= toolbar.clientWidth) {
                 return;
             }
             toolbar.scrollLeft += event.deltaY;

@@ -192,7 +192,7 @@ gerekçeler `awCELL/docs/yol-haritasi.md`'de):
 Ortak kod paketi yok; her proje kendi kopyasını yazar, davranış aynı tutulur. Önce awCELL'de uygulanacak; bu proje
 sonra, kullanıcı onayıyla.
 
-**drAW'a uyarlama — kullanıcı kararı (2026-11-10; kodlanmadı, kullanıcı "başla" deyince):**
+**drAW'a uyarlama — kullanıcı kararı (2026-11-10); uygulandı (2026-11-10, aşağıdaki "Yapıldı" notu):**
 
 Kullanıcı: "drAW araç çubuğu senin önerdiğin gibi olsun." Görüşülenler: awPDF gibi üstte sabit çubuk düşünüldü; tahtada
 üst kenar yüksekte kaldığı ve çubuğa derste sık dokunulduğu için alt seçildi. Telefonu yalnız dikey ya da yalnız yatay
@@ -215,3 +215,16 @@ Kullanıcı: "drAW araç çubuğu senin önerdiğin gibi olsun." Görüşülenle
   tahtada büyük.
 - Tahtada ve telefonda (dikey ve yatay) denenir; Playwright'ta geniş (~1600 px) ve dar (~360 px) pencere.
 - Not: drAW2D ve drAW3D'de çubuk üstte; tahtada aynı erişim sorunu olabilir, ayrı karar (kullanıcıya önerildi).
+- **Yapıldı (2026-11-10):** Dikey çubuk kaldırıldı; çubuk her pencerede altta. Sığmayanlar şu sırayla ☰'ye geçer:
+  kılavuz, Ekran Alıntısı, klasör bağlantısı, sonraki çizim, önceki çizim, yeni çizim, metin, şekiller, seç ve taşı,
+  kalınlık, önceki renk. Menüde her düğme simge + etiketle; paletli düğmenin paleti satırın altında yerinde açılır.
+  Kapanma: ✕, dışarıya dokunma, Esc, Android geri tuşu, bir iş seçme; çubuktaki bir palet açılınca menü kapanır.
+  480 px'ten dar ekranda düğmeler 44 px'e iner, kenar payı 8 px olur: 360 px telefonda çubukta drAW, renk, geri al,
+  yinele, kalem, silgi ve ☰ kalır. Açık menü ve palet yakınlaştırma düğmelerinin üstünde durur. Palet dar ekranda
+  satırlara bölünür (dikey telefonda renk paleti iki satır). Ölçüm: PC 1366 px'te çubuk 835 px, tahtada 1920 px'te
+  1001 px (web; masaüstü uygulamasında alıntı ve klasör düğmesiyle biraz daha geniş) — ikisinde de ☰ yok. 760 px
+  pencerede 3, yatay telefonda (740 px) 4, dikey telefonda (360 px) 9 düğme menüde.
+  Denendi: tip denetimi, `npm test` (282), `guides-ui` / `storage-ui` / `text-ui` (geniş, dar, tahta), alıntı
+  (104) ve metin (59) tarayıcı testleri; telefonun Chrome'unda gerçek dokunuşla menü, palet, çizim, geri al, renk.
+  Telefon boyutundaki 4 sayfa testi (390×844 ve 844×390'da kılavuz görünürlüğü, bağlı fotoğraf) değişiklikten önce de
+  aynı hatayla kırılıyordu; çubukla ilgisiz. Tahtada fiziksel deneme bekliyor.

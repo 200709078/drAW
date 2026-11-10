@@ -517,36 +517,28 @@ body.has-custom-titlebar .modal-backdrop {
     }
 }
 
-/* Araç çubuğu konumu sabittir: ekrana yatay sığıyorsa altta, sığmıyorsa solda.
-   Sol/üst kenar ve azami boyut ToolbarPanel tarafından piksel olarak verilir;
+/* Araç çubuğu her zaman altta ve yataydır. Sol kenar ve azami genişlik ToolbarPanel
+   tarafından piksel olarak verilir; sığmayan düğmeler sağ uçtaki ☰ menüsüne geçer.
    drAW düğmesi çubuğu kendi içine katlar. */
 .sidebar {
+    --tool-size: 47px;
     position: fixed;
     bottom: 16px;
     z-index: 1;
     font-family: system-ui, sans-serif;
 }
 
-body.dock-left .sidebar {
-    bottom: auto;
-    /* Dönüşüm, sabit konumlu paletlerin çubuğa göre yerleşmesini sağlar. */
-    transform: translateY(0);
+/* Açık menü ya da palet yakınlaştırma düğmelerinin ve çizimler panelinin üstünde kalır
+   (panel düğmesi, başlık çubuğu ve pencereler yine üstte). */
+.sidebar:has(.sidebar__menu:not([hidden]), .sidebar__flyout:not([hidden])) {
+    z-index: 25;
 }
 
-body.dock-left .sidebar__toolbar {
-    flex-direction: column;
-    overflow-y: auto;
-    scrollbar-width: thin;
-}
-
-/* Altta sığmayan çubuk (ör. yatay telefon) yana kaydırılır. Kaydırma çubuğu gizlidir:
+/* Sabit düğmeler bile sığmazsa (çok dar ekran) çubuk yana kaydırılır. Kaydırma çubuğu gizlidir:
    katlanınca kaybolup çubuğu alçaltır ve drAW düğmesini kaydırırdı (tekerlek ToolbarPanel'de). */
-body:not(.dock-left) .sidebar__toolbar {
+.sidebar__toolbar {
     overflow-x: auto;
     scrollbar-width: none;
-}
-
-.sidebar__toolbar {
     display: flex;
     flex-direction: row;
     align-items: center;
@@ -557,20 +549,33 @@ body:not(.dock-left) .sidebar__toolbar {
     border-radius: 12px;
     background: rgb(255 255 255 / 92%);
     box-shadow: 0 8px 24px rgb(15 23 42 / 12%);
-    transition: max-width 0.28s ease, max-height 0.28s ease;
+    transition: max-width 0.28s ease;
 }
 
 .sidebar__toolbar > * {
     flex-shrink: 0;
 }
 
-/* Soldaki kaydırılabilir çubuğun kuralını da geçersiz kılar. */
+/* Katlı çubuk kaydırılmaz. */
 body .sidebar.sidebar--collapsed .sidebar__toolbar {
     overflow: hidden;
 }
 
 .sidebar--measuring .sidebar__toolbar {
     transition: none;
+}
+
+/* Telefon: düğmeler ve aralıklar küçülür (ToolbarPanel kenar payını aynı eşikte daraltır),
+   böylece sabit düğmeler (renk, geri al, yinele, kalem, silgi) ve ☰ 360 px'e sığar. */
+@media (max-width: 479px) {
+    .sidebar {
+        --tool-size: 44px;
+    }
+
+    .sidebar__toolbar {
+        gap: 3px;
+        padding: 6px;
+    }
 }
 
 body.zoom-above-toolbar .zoom-controls {
@@ -581,8 +586,8 @@ body.zoom-above-toolbar .zoom-controls {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 47px;
-    height: 47px;
+    width: var(--tool-size);
+    height: var(--tool-size);
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -610,8 +615,8 @@ body.zoom-above-toolbar .zoom-controls {
     display: flex;
     align-items: center;
     justify-content: center;
-    width: 47px;
-    height: 47px;
+    width: var(--tool-size);
+    height: var(--tool-size);
     padding: 0;
     border: 1px solid #d1d5db;
     border-radius: 8px;
@@ -632,8 +637,8 @@ body.zoom-above-toolbar .zoom-controls {
 }
 
 .sidebar__handle {
-    width: 47px;
-    height: 47px;
+    width: var(--tool-size);
+    height: var(--tool-size);
     padding: 0;
     border: 0;
     border-radius: 8px;
@@ -681,8 +686,8 @@ body.zoom-above-toolbar .zoom-controls {
 .sidebar__color-trigger,
 .sidebar__width-trigger {
     display: grid;
-    width: 47px;
-    height: 47px;
+    width: var(--tool-size);
+    height: var(--tool-size);
     place-items: center;
     padding: 0;
     border: 2px solid white;
@@ -695,8 +700,8 @@ body.zoom-above-toolbar .zoom-controls {
     align-items: center;
     justify-content: center;
 
-    width: 47px;
-    height: 47px;
+    width: var(--tool-size);
+    height: var(--tool-size);
     padding: 0;
 
     border: 1px solid #d1d5db;
@@ -706,8 +711,8 @@ body.zoom-above-toolbar .zoom-controls {
 }
 
 .sidebar__color-preview {
-    width: 38px;
-    height: 38px;
+    width: calc(var(--tool-size) - 9px);
+    height: calc(var(--tool-size) - 9px);
     border-radius: 6px;
     border: 1px solid rgb(0 0 0 / 12%);
     background: #111827;
@@ -736,9 +741,10 @@ body.zoom-above-toolbar .zoom-controls {
     justify-content: center;
     align-items: center;
     gap: 8px;
-    height: 60px;
-    min-height: 0;
-    max-width: min(480px, calc(100vw - 24px));
+    /* Dar ekranda palet satırlara bölünür, yüksekliği içeriğe göre büyür.
+       Azami genişliğe iç boşluk ve kenarlık (18 px) eklenir: palet iki yanda 8 px pay bırakır. */
+    min-height: 60px;
+    max-width: min(480px, calc(100vw - 34px));
     padding: 3px 8px;
     border: 1px solid #d1d5db;
     border-radius: 12px;
@@ -886,13 +892,94 @@ body.zoom-above-toolbar .zoom-controls {
 .sidebar__capture-option:hover { background: #eff6ff; border-color: #2563eb; }
 .sidebar__capture-option:focus-visible { outline: 2px solid #2563eb; outline-offset: 2px; }
 
-.sidebar__flyout--vertical {
+.sidebar__menu-button {
+    /* Kaydırılan çubukta ☰ hep görünür kalır. */
+    position: sticky;
+    right: 0;
+    z-index: 1;
+}
+
+.sidebar__menu-button svg {
+    width: 24px;
+    height: 24px;
+    pointer-events: none;
+}
+
+.sidebar__menu-button[hidden] {
+    display: none;
+}
+
+.sidebar__menu-button[aria-expanded="true"] {
+    border-color: #2563eb;
+    background: #eff6ff;
+    color: #1d4ed8;
+}
+
+/* ☰ menüsü çubuğun sağ ucundan yukarı açılır; azami boyutu ToolbarPanel verir. */
+.sidebar__menu {
+    position: absolute;
+    right: 0;
+    bottom: calc(100% + 8px);
+    display: flex;
     flex-direction: column;
-    width: 60px;
-    min-width: 0;
-    height: auto;
-    padding: 8px 3px;
+    gap: 6px;
+    box-sizing: border-box;
+    min-width: 220px;
+    padding: 8px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border: 1px solid #d1d5db;
+    border-radius: 12px;
+    background: rgb(255 255 255 / 97%);
+    box-shadow: 0 8px 24px rgb(15 23 42 / 16%);
+}
+
+.sidebar__menu[hidden] {
+    display: none;
+}
+
+.sidebar__menu-item {
+    display: flex;
+    flex-wrap: wrap;
     align-items: center;
+    gap: 6px 10px;
+}
+
+.sidebar__menu-item > * {
+    flex-shrink: 0;
+}
+
+/* Paletli düğmede kapsayıcı yok sayılır: düğme, etiket ve palet aynı satırda dizilir. */
+.sidebar__menu-item > .sidebar__control {
+    display: contents;
+}
+
+.sidebar__menu-label {
+    order: 1;
+    flex: 1 1 auto;
+    color: #1f2937;
+    font-size: 15px;
+    cursor: pointer;
+    user-select: none;
+}
+
+/* Menüde palet yerinde, satırın altında açılır. */
+.sidebar__menu .sidebar__flyout {
+    position: static;
+    order: 2;
+    flex: 1 0 100%;
+    box-sizing: border-box;
+    min-height: 0;
+    justify-content: flex-start;
+    height: auto;
+    max-width: none;
+    padding: 6px;
+    transform: none;
+    box-shadow: none;
+}
+
+.sidebar__menu .sidebar__flyout[hidden] {
+    display: none;
 }
 
 .modal-backdrop {

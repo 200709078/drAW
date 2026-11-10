@@ -99,11 +99,17 @@ if (available) {
         assert(palette.hidden, "second click did not close palette");
         assert(preparations === 1, "closing palette must not prepare again");
     });
-    // Konum ekran genişliğinden gelir; çalıştırıcı geniş (alt) ve dar (sol) pencere açar.
-    const dock = document.body.classList.contains("dock-left") ? "left" : "bottom";
-    await check(`toolbar is fixed at the ${dock} for this window width`, () => {
-        const expected = params.get("dock");
-        assert(!expected || expected === dock, `expected ${expected} toolbar, got ${dock}`);
+    // Araç çubuğu her zaman altta; dar pencerede sığmayan düğmeler ☰ menüsüne geçer.
+    // Çalıştırıcı geniş (menüsüz) ve dar (menülü) pencere açar.
+    const dock = "bottom";
+    await check("toolbar is fixed at the bottom and the ☰ menu matches the window width", () => {
+        const bar = document.querySelector(".sidebar").getBoundingClientRect();
+        assert(!document.body.classList.contains("dock-left") && bar.bottom <= innerHeight && bar.bottom >= innerHeight - 40,
+            `toolbar is not at the bottom ${JSON.stringify(bar)}`);
+        assert(bar.left >= 0 && bar.right <= innerWidth, `toolbar exceeds the window ${JSON.stringify(bar)}`);
+        const expected = params.get("menu");
+        const shown = !document.querySelector(".sidebar__menu-button").hidden;
+        assert(expected === null || shown === (expected === "1"), `expected menu=${expected}, ☰ shown=${shown}`);
     });
     await check("palette stays visible and touch targets fit at the toolbar position", async () => {
         {
@@ -160,7 +166,7 @@ if (available) {
             drawing.clearCurrentPage(); history.reset(); viewport.reset();
             const source = image(1080, 1920);
             begin("Tam Ekran"); await answer({ status: "ok", image: source });
-            assertFullScreenPlacement(drawing.getCurrentPage().getImages()[0], source, dock);
+            assertFullScreenPlacement(drawing.getCurrentPage().getImages()[0], source);
         });
     }
     await check("cancel preserves drawing and active tool", async () => {
@@ -211,7 +217,7 @@ if (available) {
 window.__quickCaptureResult.done = true;
 document.getElementById("result").textContent = JSON.stringify(window.__quickCaptureResult);
 
-function assertFullScreenPlacement(image, source, dock = document.body.classList.contains("dock-left") ? "left" : "bottom") {
+function assertFullScreenPlacement(image, source) {
     const canvas = m.getCanvasManager().getCanvas().getBoundingClientRect();
     const toolbar = document.querySelector(".sidebar").getBoundingClientRect();
     const margin = mode === "board" ? 32 : 24;
@@ -222,7 +228,6 @@ function assertFullScreenPlacement(image, source, dock = document.body.classList
     assert(Math.abs(image.getWidth() / image.getHeight() - source.width / source.height) < .00001, "aspect ratio changed");
     assert(left >= canvas.left + margin - .01 && top >= canvas.top + margin - .01, "top/left handles have no margin");
     assert(right <= canvas.right - margin + .01 && bottom <= canvas.bottom - margin + .01, "image exceeds canvas");
-    if (dock === "bottom") assert(bottom <= toolbar.top - margin + .01, "image hidden under bottom toolbar");
-    if (dock === "left") assert(left >= toolbar.right + margin - .01, "image hidden under left toolbar");
+    assert(bottom <= toolbar.top - margin + .01, "image hidden under bottom toolbar");
 }
 </script></body></html>
