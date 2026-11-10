@@ -231,3 +231,6 @@ Kullanıcı: "drAW araç çubuğu senin önerdiğin gibi olsun." Görüşülenle
   Yayın (2026-11-10, kullanıcı izniyle): madematik.com/drAW canlıda (önceden commit'lenmiş yeni simgeyle birlikte),
   GitHub sürümü v0.0.9 (apk, deb, AppImage, exe). Yükleme adımı bir kez GitHub'ın geçici 408 hatasıyla düştü,
   yeniden çalıştırınca geçti.
+- **Sonraki sürümde yapılacak (2026-11-10, kullanıcı kararı):** ☰ menüsü ya da bir palet açıkken onu kapatmak için
+  tuvale yapılan dokunuş çizmesin (bugün kalemle bir nokta çiziyor; paletler de öyle). Kullanıcı: "yeni sürüme
+  geçirecek olursak değiştirirsin." Yeni sürüm çıkarılmadan önce bu iş yapılır.
