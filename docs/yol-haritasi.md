@@ -246,7 +246,7 @@ Kullanıcı: "Hakkında yardım gibi ayrı pencerede açılsa nasıl olur?" → 
 - **Ayrı küçük pencere:** uygulamanın yardım/diyalog pencereleriyle aynı görünüş (başlık şeridi, ×). Kapanma: ×, dışarıya
   dokunma, Esc, Android geri tuşu.
 - **İçerik:** uygulamanın simgesi, adı ve sürümü (`package.json`'dan otomatik), bir satırlık açıklama; mADEMatik Solutions ve
-  madematik.com bağlantısı; indirme bağlantısı (GitHub sürümleri: Linux, Windows, Android); lisans MIT; "Öneri ve sorunlar:
+  madematik.com bağlantısı; indirme bağlantısı madematik.com'daki proje sayfasının indirme bölümüne (`https://madematik.com/projelerim/draw#indirmeler`; kullanıcı kararı 2026-11-10); lisans MIT; "Öneri ve sorunlar:
   ademvarol@madematik.com" (seçilebilir düz yazı; e-posta bağlantıları tahtada ve telefonda çoğu zaman bir şey açmaz).
 - **Bağlantılar** sistemin tarayıcısında açılır (Electron: `shell.openExternal`; Android: uygulamanın içinde değil, tarayıcıda).
 - **Yer:** Dosya menüsünün en altı (drAW2D kararı); Yardım da hem çubukta hem Dosya menüsünde kalır.
