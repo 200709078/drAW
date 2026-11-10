@@ -237,3 +237,20 @@ Kullanıcı: "drAW araç çubuğu senin önerdiğin gibi olsun." Görüşülenle
   Aynı kural çizimler paneli için de (2026-11-10, kullanıcı isteği): panel açıkken tuvale dokunmak paneli kapatıyor
   (`DrawingsPanel`, tuvalde `pointerdown`); kapatan bu dokunuş da çizmesin. Kullanıcı: "çizimler penceresi kapanırken
   çizim yapmayacak şekilde düzenleyelim" — sonraki sürümden önce, menü/palet işiyle birlikte.
+
+## Hakkında penceresi (2026-11-10, kullanıcı kararı; drAW2D'de uygulandı; bu projede kodlanmadı)
+
+Kullanıcı: "Hakkında yardım gibi ayrı pencerede açılsa nasıl olur?" → "tamam öyle yapalım. Diğer kardeşlere de bunu not et
+(özellikle hakkında kısmı hepsinde olmalı)." Aile kuralı: drAW, drAW2D, drAW3D, awPDF ve awCELL'in **hepsinde** Hakkında olur.
+
+- **Ayrı küçük pencere:** uygulamanın yardım/diyalog pencereleriyle aynı görünüş (başlık şeridi, ×). Kapanma: ×, dışarıya
+  dokunma, Esc, Android geri tuşu.
+- **İçerik:** uygulamanın simgesi, adı ve sürümü (`package.json`'dan otomatik), bir satırlık açıklama; mADEMatik Solutions ve
+  madematik.com bağlantısı; indirme bağlantısı (GitHub sürümleri: Linux, Windows, Android); lisans MIT; "Öneri ve sorunlar:
+  ademvarol@madematik.com" (seçilebilir düz yazı; e-posta bağlantıları tahtada ve telefonda çoğu zaman bir şey açmaz).
+- **Bağlantılar** sistemin tarayıcısında açılır (Electron: `shell.openExternal`; Android: uygulamanın içinde değil, tarayıcıda).
+- **Yer:** Dosya menüsünün en altı (drAW2D kararı); Yardım da hem çubukta hem Dosya menüsünde kalır.
+- **drAW'a uyarlama (öneri):** drAW'da Dosya menüsü ve yardım penceresi yok. Hakkında, sağ uçtaki ☰ menüsünün en altına
+  bir satır olarak girer (çubuk sığdığında ☰ görünmediği için drAW tutamacının yanında ya da çizimler panelinde de bir
+  bağlantı düşünülebilir; karar kullanıcıda).
+
