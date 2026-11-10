@@ -234,3 +234,6 @@ Kullanıcı: "drAW araç çubuğu senin önerdiğin gibi olsun." Görüşülenle
 - **Sonraki sürümde yapılacak (2026-11-10, kullanıcı kararı):** ☰ menüsü ya da bir palet açıkken onu kapatmak için
   tuvale yapılan dokunuş çizmesin (bugün kalemle bir nokta çiziyor; paletler de öyle). Kullanıcı: "yeni sürüme
   geçirecek olursak değiştirirsin." Yeni sürüm çıkarılmadan önce bu iş yapılır.
+  Aynı kural çizimler paneli için de (2026-11-10, kullanıcı isteği): panel açıkken tuvale dokunmak paneli kapatıyor
+  (`DrawingsPanel`, tuvalde `pointerdown`); kapatan bu dokunuş da çizmesin. Kullanıcı: "çizimler penceresi kapanırken
+  çizim yapmayacak şekilde düzenleyelim" — sonraki sürümden önce, menü/palet işiyle birlikte.
