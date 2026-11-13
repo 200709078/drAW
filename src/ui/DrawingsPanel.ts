@@ -1,4 +1,5 @@
 import type { DrawingRepository } from "../storage/DrawingRepository";
+import { ABOUT_ICON, openAboutDialog } from "./AboutDialog";
 import type { DrawingDocument } from "../storage/DrawingDocument";
 import type { AutoSaveManager } from "../autosave/AutoSaveManager";
 import type { ToolManager } from "../core/ToolManager";
@@ -337,7 +338,16 @@ export class DrawingsPanel {
             void this.stepDrawing(-1);
         });
 
-        header.append(title);
+        // Hakkında: PC'de ve tahtada buradan açılır (telefonda ☰ menüsünün sonunda da var).
+        const aboutButton = document.createElement("button");
+        aboutButton.type = "button";
+        aboutButton.className = "drawings-panel__about";
+        aboutButton.title = "Hakkında";
+        aboutButton.setAttribute("aria-label", "Hakkında");
+        aboutButton.innerHTML = ABOUT_ICON;
+        aboutButton.addEventListener("click", () => openAboutDialog());
+
+        header.append(title, aboutButton);
         panel.appendChild(header);
 
         const list = document.createElement("div");

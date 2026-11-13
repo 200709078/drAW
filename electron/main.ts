@@ -9,7 +9,20 @@ import { registerWindowShutdown } from "./window-shutdown.ts";
 import { ScreenKeyboardService } from "./screen-keyboard.ts";
 
 const electron = createRequire(import.meta.url)("electron") as typeof import("electron");
-const { app, BrowserWindow, ipcMain } = electron;
+const { app, BrowserWindow, ipcMain, shell } = electron;
+
+// Hakkında'daki bağlantılar (madematik.com, indirme sayfası) sistemin tarayıcısında açılır; yalnız http(s).
+function openExternal(url: string): void {
+    try {
+        const protocol = new URL(url).protocol;
+
+        if (protocol === "https:" || protocol === "http:") {
+            void shell.openExternal(url).catch(console.error);
+        }
+    } catch {
+        // Geçersiz adres: hiçbir şey açılmaz.
+    }
+}
 
 if (process.platform === "linux") {
     // Portal v4 öncesinde defaultPath desteklenmez; eski sürümlerde GTK/KDE seçicisine dön.
@@ -202,6 +215,18 @@ function createWindow(): void {
 
     window.on("leave-full-screen", () => {
         window.webContents.send("window:fullscreen-changed", false);
+    });
+
+    // Uygulama içinde yeni pencere ya da başka siteye gezinme yok; bağlantılar tarayıcıya gider.
+    window.webContents.setWindowOpenHandler(({ url }) => {
+        openExternal(url);
+        return { action: "deny" };
+    });
+    window.webContents.on("will-navigate", (event, url) => {
+        if (url !== window.webContents.getURL()) {
+            event.preventDefault();
+            openExternal(url);
+        }
     });
 
     // F11: gerçek tam ekran (görev çubuğu arka planda kalır)

@@ -15,6 +15,7 @@ import { ShapesTool } from "../tools/ShapesTool";
 import { AutoSaveManager } from "../autosave/AutoSaveManager";
 import type { DrawingRepository } from "../storage/DrawingRepository";
 import { DrawingsPanel } from "./DrawingsPanel";
+import { ABOUT_ICON, openAboutDialog } from "./AboutDialog";
 import { showStorageError } from "./StorageErrorDialog";
 import { closeTextEditor } from "./TextEditor";
 import type { ShapeType } from "../shapes/ShapeFactory";
@@ -93,7 +94,7 @@ export class ToolbarPanel {
         shapesTool: ShapesTool,
         autoSaveManager: AutoSaveManager,
         repository: DrawingRepository,
-        _canvas: HTMLCanvasElement,
+        canvas: HTMLCanvasElement,
         photoLinkManager: LinkedPhotoManager | null = null,
         textTool: TextTool,
         quickCapture: QuickCaptureController
@@ -149,7 +150,7 @@ export class ToolbarPanel {
             drawingDocument,
             documentRenderer,
             historyManager,
-            canvas: _canvas
+            canvas
         });
 
         const prevDrawingButton = this.drawingsPanel.getPrevButton();
@@ -702,7 +703,7 @@ export class ToolbarPanel {
         menuButton.setAttribute("aria-controls", menu.id);
 
         // Menüye geçebilen düğmeler, geçiş sırasıyla (önce az kullanılanlar). Geri al, yinele,
-        // kalem, silgi ve renk hiçbir zaman menüye geçmez.
+        // kalem, silgi, renk ve önceki renk hiçbir zaman menüye geçmez; önceki renk hep rengin yanındadır.
         const overflowOrder: Array<{ item: HTMLElement; label: () => string }> = [
             { item: guideControl, label: () => "Kılavuz Çizgileri" },
             ...(quickCapture.isAvailable() ? [{ item: captureControl, label: () => "Ekran Alıntısı" }] : []),
@@ -713,8 +714,7 @@ export class ToolbarPanel {
             { item: textButton, label: () => "Metin" },
             { item: shapesControl, label: () => "Şekiller" },
             { item: selectionButton, label: () => "Seç ve Taşı" },
-            { item: widthControl, label: () => "Kalınlık" },
-            { item: prevColorButton, label: () => "Önceki Renk" }
+            { item: widthControl, label: () => "Kalınlık" }
         ];
         const menuRows = new Map<HTMLElement, { row: HTMLDivElement; text: HTMLSpanElement; label: () => string }>();
 
@@ -732,6 +732,23 @@ export class ToolbarPanel {
             row.append(text);
             menuRows.set(item, { row, text, label });
         }
+
+        // Hakkında: ☰ menüsünün hep en sonunda (telefon; PC'de ve tahtada çizimler panelinin başlığında).
+        const aboutButton = document.createElement("button");
+        aboutButton.type = "button";
+        aboutButton.className = "sidebar__tool sidebar__about";
+        aboutButton.title = "Hakkında";
+        aboutButton.setAttribute("aria-label", "Hakkında");
+        aboutButton.innerHTML = ABOUT_ICON;
+        aboutButton.addEventListener("click", () => openAboutDialog());
+        const aboutRow = document.createElement("div");
+        aboutRow.className = "sidebar__menu-item sidebar__menu-item--about";
+        const aboutText = document.createElement("span");
+        aboutText.className = "sidebar__menu-label";
+        aboutText.setAttribute("aria-hidden", "true");
+        aboutText.textContent = "Hakkında";
+        aboutText.addEventListener("click", () => aboutButton.click());
+        aboutRow.append(aboutButton, aboutText);
 
         const placeMenu = (): void => {
             // Menü çubuğun içinde (tahtada aynı büyütmeyle); ölçüler büyütmeye bölünür.
@@ -790,6 +807,49 @@ export class ToolbarPanel {
                 setMenuOpen(false);
             }
         }, true);
+        // Açık bir ☰ menüsü, palet ya da çizimler paneli varken tuvale yapılan dokunuş yalnız onu kapatır,
+        // çizmez (2026-11-13). Pencerenin yakalama aşamasında, tuvalin ve araçların dinleyicilerinden önce
+        // durdurulur; aynı temasın hareketi ve bırakılışı da tuvale ulaşmaz. Bu temas sürerken gelen öteki
+        // parmaklar da yutulur (ör. kapatırken iki parmakla yakınlaştırma çizgi bırakmasın).
+        const swallowedPointers = new Set<number>();
+        const somethingOpen = (): boolean => !menu.hidden || this.drawingsPanel.isOpen() ||
+            flyouts.some((flyout) => !flyout.panel.hidden);
+        window.addEventListener("pointerdown", (event) => {
+            // Bırakılışı pencere dışında kalmış eski bir temas yeni basışı engellemesin.
+            swallowedPointers.delete(event.pointerId);
+
+            if (event.target !== canvas || (swallowedPointers.size === 0 && !somethingOpen())) {
+                return;
+            }
+
+            closeFlyouts();
+            setMenuOpen(false);
+
+            if (this.drawingsPanel.isOpen()) {
+                this.drawingsPanel.close();
+            }
+
+            swallowedPointers.add(event.pointerId);
+            event.stopImmediatePropagation();
+            event.preventDefault();
+        }, true);
+
+        for (const type of ["pointermove", "pointerup", "pointercancel"] as const) {
+            window.addEventListener(type, (event) => {
+                if (!swallowedPointers.has(event.pointerId)) {
+                    return;
+                }
+
+                if (type !== "pointermove") {
+                    swallowedPointers.delete(event.pointerId);
+                }
+
+                event.stopImmediatePropagation();
+            }, true);
+        }
+
+        window.addEventListener("blur", () => swallowedPointers.clear());
+
         document.addEventListener("keydown", (event) => {
             const target = event.target;
 
@@ -1282,6 +1342,8 @@ export class ToolbarPanel {
 
                 item.inert = collapsed && !overflowed.has(item);
             }
+
+            menu.append(aboutRow);
 
             menuButton.inert = collapsed;
         };

@@ -145,6 +145,27 @@ body.drawings-closed .drawings-panel {
     color: #111827;
 }
 
+/* Hakkında düğmesi: "ÇİZİMLER" başlığının sağında. */
+.drawings-panel__about {
+    display: grid;
+    place-items: center;
+    width: 32px;
+    height: 32px;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: #4b5563;
+    cursor: pointer;
+}
+
+.drawings-panel__about:hover,
+.drawings-panel__about:focus-visible {
+    border-color: #d1d5db;
+    background: #f3f4f6;
+    color: #1d4ed8;
+}
+
 .drawings-panel__list {
     flex: 1;
     overflow-y: auto;
@@ -566,7 +587,8 @@ body .sidebar.sidebar--collapsed .sidebar__toolbar {
 }
 
 /* Telefon: düğmeler ve aralıklar küçülür (ToolbarPanel kenar payını aynı eşikte daraltır),
-   böylece sabit düğmeler (renk, geri al, yinele, kalem, silgi) ve ☰ 360 px'e sığar. */
+   böylece sabit düğmeler (renk, önceki renk, geri al, yinele, kalem, silgi) ve ☰ 360 px'e sığar.
+   Önceki renk telefonda dar bir şerit olarak rengin hemen yanında durur (2026-11-13). */
 @media (max-width: 479px) {
     .sidebar {
         --tool-size: 44px;
@@ -575,6 +597,26 @@ body .sidebar.sidebar--collapsed .sidebar__toolbar {
     .sidebar__toolbar {
         gap: 3px;
         padding: 6px;
+    }
+
+    .sidebar__toolbar > .sidebar__prev-color {
+        width: 28px;
+    }
+
+    .sidebar__toolbar > .sidebar__prev-color .sidebar__prev-color-swatch {
+        width: 20px;
+        height: 20px;
+    }
+}
+
+/* 360–399 px telefonlar: 44 px düğmelerle sabit düğmeler sığmıyor. */
+@media (max-width: 399px) {
+    .sidebar {
+        --tool-size: 40px;
+    }
+
+    .sidebar__toolbar {
+        gap: 2px;
     }
 }
 
@@ -899,6 +941,7 @@ body.zoom-above-toolbar .zoom-controls {
     z-index: 1;
 }
 
+.sidebar__about svg,
 .sidebar__menu-button svg {
     width: 24px;
     height: 24px;
@@ -1038,6 +1081,87 @@ body.zoom-above-toolbar .zoom-controls {
     color: white;
 }
 
+/* Hakkında penceresi: ailenin ortak içeriği (simge, ad, sürüm, mADEMatik Solutions, indirme, lisans, iletişim). */
+.about__body {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 4px;
+    padding: 18px 18px 20px;
+    color: #374151;
+    font-size: 14px;
+    line-height: 1.45;
+    text-align: center;
+}
+
+.about__body p {
+    margin: 0;
+}
+
+.about__icon {
+    width: 72px;
+    height: 72px;
+    margin-bottom: 6px;
+}
+
+.about__name {
+    font-size: 16px;
+}
+
+.about__name strong {
+    color: #111827;
+    font-size: 20px;
+}
+
+.about__description {
+    color: #475569;
+}
+
+.about__body p.about__maker {
+    margin-top: 10px;
+}
+
+.about__maker a,
+.about__facts a {
+    color: #1d4ed8;
+    text-decoration: none;
+}
+
+.about__maker a:hover,
+.about__facts a:hover {
+    text-decoration: underline;
+}
+
+.about__brand {
+    color: #172033;
+    font-weight: 700;
+}
+
+.about__brand span {
+    color: #1d4ed8;
+}
+
+.about__facts {
+    display: grid;
+    grid-template-columns: auto auto;
+    gap: 4px 12px;
+    margin: 14px 0 0;
+    text-align: left;
+}
+
+.about__facts dt {
+    color: #64748b;
+}
+
+.about__facts dd {
+    margin: 0;
+}
+
+.about__mail {
+    user-select: all;
+    -webkit-user-select: all;
+}
+
 .modal__body {
     padding: 20px 24px 0;
 }
@@ -1116,6 +1240,29 @@ body.board-mode .drawings-card__name {
 
 body.board-mode .modal__title {
     font-size: 16px;
+}
+
+body.board-mode .drawings-panel__about {
+    width: 44px;
+    height: 44px;
+}
+
+body.board-mode .drawings-panel__about svg {
+    width: 26px;
+    height: 26px;
+}
+
+body.board-mode .about__body {
+    font-size: 17px;
+}
+
+body.board-mode .about__name strong {
+    font-size: 24px;
+}
+
+body.board-mode .about__icon {
+    width: 96px;
+    height: 96px;
 }
 
 body.board-mode .modal__message {

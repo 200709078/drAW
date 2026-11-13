@@ -98,12 +98,21 @@ kullanıcıya sormadan değiştirilmez; kullanıcının sistemine izinsiz paket 
 
 ## Yapıldı
 
-- **Simgede büyük kalem (9 Kasım 2026, kullanıcı isteği):** Eski logoda kalem 32 pikselde bir
-  çizgiye iniyordu ve yuvarlak Android maskesinde silgi ucu kesiliyordu. Kâğıt çerçevesi
-  kalktı (yalnız soluk satır çizgileri kaldı), A ve W biraz küçüldü; kalem yaklaşık 1,5 kat
-  uzun, gövdesi üç tonlu ve ucu W'nin sağ alt köşesinde. Kalem 30° yatık, böylece W'nin son
-  çizgisini örtmüyor. Kullanıcı dört deneme arasından seçti; bütün simgeler yeniden üretildi.
-  Henüz yayınlanmadı (sürüm, canlı site, Play).
+- **0.0.10 (13 Kasım 2026, kullanıcı isteği):**
+  - **Yeni simge:** sağ üstten sol alta büyük bir kalem, sol üstte mavi A, sağ altta kırmızı W; kalem ön planda,
+    satır çizgisi yok. Yuvarlak Android maskesinde hiçbir şey kesilmez. 9 Kasım'daki simgenin (kalemin ucu W'nin
+    köşesinde) yerine; kullanıcı beş deneme arasından seçti. Bütün simgeler yeniden üretildi.
+  - **Kapatan dokunuş çizmez:** ☰ menüsü, bir palet ya da çizimler paneli açıkken tuvale dokunmak yalnız onu
+    kapatır. `ToolbarPanel`, pencerenin yakalama aşamasında bu basışı ve aynı temasın hareket/bırakılışını tuvale
+    ulaştırmaz; temas sürerken gelen öteki parmaklar da yutulur. Sonraki dokunuş normal çizer.
+  - **Önceki renk hep rengin yanında:** ☰ menüsüne geçmez. Telefonda (<480 px) 28 px'lik dar bir şerit; 400 px'ten dar
+    ekranda düğmeler 40 px, aralık 2 px — böylece 360 px'te drAW, renk, önceki renk, geri al, yinele, kalem, silgi ve ☰
+    sığar (320 px'te çubuk önceden de kayıyordu).
+  - **Hakkında penceresi** (aşağıdaki bölüm): telefonda ☰ menüsünün en sonunda, PC'de ve tahtada çizimler panelinin
+    başlığında, "ÇİZİMLER"in sağında ⓘ simgesi. Masaüstü uygulamasında bağlantılar sistem tarayıcısında açılır
+    (`setWindowOpenHandler`, `will-navigate`).
+  - Denendi: tip denetimi, `npm test` (282), `storage-ui` / `text-ui` / `guides-ui` (1600 ve 760 px, tahta açık/kapalı),
+    alıntı (104) ve metin (59) tarayıcı testleri; 360/390/740/1366/1920 px'te dokunuş ve çubuk ölçümü.
 - **Yeni logo ve Android sürümü (25 Ekim 2026, kullanıcı isteği):** Logo kalemin yerine
   çizgili kağıda elle yazılmış mavi A ve kırmızı W ile sade bir kalem; drAW2D/drAW3D'nin
   simge ailesiyle aynı zemin, renk ve çizgi kalınlığı. Bütün simgeler
@@ -231,14 +240,18 @@ Kullanıcı: "drAW araç çubuğu senin önerdiğin gibi olsun." Görüşülenle
   Yayın (2026-11-10, kullanıcı izniyle): madematik.com/drAW canlıda (önceden commit'lenmiş yeni simgeyle birlikte),
   GitHub sürümü v0.0.9 (apk, deb, AppImage, exe). Yükleme adımı bir kez GitHub'ın geçici 408 hatasıyla düştü,
   yeniden çalıştırınca geçti.
-- **Sonraki sürümde yapılacak (2026-11-10, kullanıcı kararı):** ☰ menüsü ya da bir palet açıkken onu kapatmak için
+- **Yapıldı (0.0.10, 2026-11-13).** ~~Sonraki sürümde yapılacak (2026-11-10, kullanıcı kararı):~~ ☰ menüsü ya da bir palet açıkken onu kapatmak için
   tuvale yapılan dokunuş çizmesin (bugün kalemle bir nokta çiziyor; paletler de öyle). Kullanıcı: "yeni sürüme
   geçirecek olursak değiştirirsin." Yeni sürüm çıkarılmadan önce bu iş yapılır.
   Aynı kural çizimler paneli için de (2026-11-10, kullanıcı isteği): panel açıkken tuvale dokunmak paneli kapatıyor
   (`DrawingsPanel`, tuvalde `pointerdown`); kapatan bu dokunuş da çizmesin. Kullanıcı: "çizimler penceresi kapanırken
   çizim yapmayacak şekilde düzenleyelim" — sonraki sürümden önce, menü/palet işiyle birlikte.
 
-## Hakkında penceresi (2026-11-10, kullanıcı kararı; drAW2D'de uygulandı; bu projede kodlanmadı)
+## Hakkında penceresi (2026-11-10, kullanıcı kararı; drAW'da 0.0.10'da uygulandı)
+
+**Yer (2026-11-13, kullanıcı kararı):** "hakkında mobilde üç çizginin en sonunda pc ve tahtada çizimler panelinin üstünde
+ÇİZİMLER yazısının sağında bir yerlerde icon olarak bulunsun." ☰ her zaman görünür yapılmadı; menü olan her ekranda
+(telefon, dar pencere) Hakkında menünün son satırıdır, panel başlığındaki ⓘ her ekranda vardır. `src/ui/AboutDialog.ts`.
 
 Kullanıcı: "Hakkında yardım gibi ayrı pencerede açılsa nasıl olur?" → "tamam öyle yapalım. Diğer kardeşlere de bunu not et
 (özellikle hakkında kısmı hepsinde olmalı)." Aile kuralı: drAW, drAW2D, drAW3D, awPDF ve awCELL'in **hepsinde** Hakkında olur.
