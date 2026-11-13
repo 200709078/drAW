@@ -113,6 +113,9 @@ kullanıcıya sormadan değiştirilmez; kullanıcının sistemine izinsiz paket 
     (`setWindowOpenHandler`, `will-navigate`).
   - Denendi: tip denetimi, `npm test` (282), `storage-ui` / `text-ui` / `guides-ui` (1600 ve 760 px, tahta açık/kapalı),
     alıntı (104) ve metin (59) tarayıcı testleri; 360/390/740/1366/1920 px'te dokunuş ve çubuk ölçümü.
+  - Yayın (2026-11-13): GitHub v0.0.10, madematik.com/drAW canlıda, Projelerim indirme kayıtları SQL ile güncellendi,
+    USB bellekteki tahta paketi 0.0.10. **Tahtada denendi (kullanıcı, 2026-11-13):** kapatan dokunuş çizmiyor, ⓘ Hakkında'yı
+    açıyor, yeni simge görev çubuğunda ve menüde görünüyor.
 - **Yeni logo ve Android sürümü (25 Ekim 2026, kullanıcı isteği):** Logo kalemin yerine
   çizgili kağıda elle yazılmış mavi A ve kırmızı W ile sade bir kalem; drAW2D/drAW3D'nin
   simge ailesiyle aynı zemin, renk ve çizgi kalınlığı. Bütün simgeler
