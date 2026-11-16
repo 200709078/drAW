@@ -269,3 +269,23 @@ Kullanıcı: "Hakkında yardım gibi ayrı pencerede açılsa nasıl olur?" → 
   bir satır olarak girer (çubuk sığdığında ☰ görünmediği için drAW tutamacının yanında ya da çizimler panelinde de bir
   bağlantı düşünülebilir; karar kullanıcıda).
 
+## Google Play yayını (2026-11-16, kullanıcı kararı: drAW, drAW2D, drAW3D ve awCELL şimdiden)
+
+Kullanıcı, awPDF'in üretime geçmesini beklemeden dört uygulamayı da Play'e çıkarmaya karar verdi. Sürüm numarası sıfırlanmaz:
+Play yalnız `versionCode`'un (a·10000 + b·100 + c) her yüklemede büyümesini ister; GitHub APK'sını kuranlar aynı imzayla
+Play'den güncelleme alabilsin diye mevcut sürümden (0.0.10, kod 10) başlanır.
+
+**Hazırlandı (2026-11-16):** `public/gizlilik.html` (madematik.com/drAW/gizlilik.html), `docs/play/magaza.md` (ad, kısa
+ve tam açıklama, kategori, beyan önerileri, 0.0.10 sürüm notu; `node scripts/play/sinirlar.mjs` sınırları denetler),
+`docs/play/` simge, öne çıkan görsel, telefon / 7" / 10" tablet ekran görüntüleri (`npm run play:gorseller`). Görsellerdeki ders (Pisagor teoremi) betiğin kendi çizdiği örnektir; betik testlerdeki CDP
+yardımcısını kullanır, yeni bağımlılık yok.
+İmzalı AAB: v0.0.10 sürüm iş akışının `play-Android` artifact'ı. Dosyalar masaüstünde `~/Masaüstü/Play/drAW/`.
+
+**Play Console adımları** (awPDF'teki sırayla):
+1. Uygulama oluştur: ad "drAW: Akıllı Tahta ve Çizim", dil Türkçe, Uygulama, Ücretsiz.
+2. Uygulama bütünlüğü → Uygulama imzalama → "Anahtarı değiştir" → "Bu geliştirici hesabındaki başka bir uygulamayla aynı
+   anahtarı kullan" → awPDF (PEPK gerekmez). Doğrulama: SHA-256 `84:F7:8D:F0:…`.
+3. Mağaza kaydı ve uygulama içeriği beyanları (`docs/play/magaza.md`).
+4. Dahili test: AAB'yi yükle, telefonda Play'den kurup dene.
+5. Kapalı test: en az 12 testçi, kesintisiz 14 gün (awPDF'in "awPDF" testçi listesi kullanılır; her uygulamanın 14 günü ayrı).
+6. Üretim erişimi başvurusu ve yayın.
