@@ -279,7 +279,7 @@ Play'den güncelleme alabilsin diye mevcut sürümden (0.0.10, kod 10) başlanı
 ve tam açıklama, kategori, beyan önerileri, 0.0.10 sürüm notu; `node scripts/play/sinirlar.mjs` sınırları denetler),
 `docs/play/` simge, öne çıkan görsel, telefon / 7" / 10" tablet ekran görüntüleri (`npm run play:gorseller`). Görsellerdeki ders (Pisagor teoremi) betiğin kendi çizdiği örnektir; betik testlerdeki CDP
 yardımcısını kullanır, yeni bağımlılık yok.
-İmzalı AAB: v0.0.10 sürüm iş akışının `play-Android` artifact'ı. Dosyalar masaüstünde `~/Masaüstü/Play/drAW/`.
+İmzalı AAB: v0.0.10 sürüm iş akışının `play-Android` artifact'ı. Dosyalar `~/Belgeler/Play/drAW/` (geçici; kullanıcı silecek).
 
 **Play Console adımları** (awPDF'teki sırayla):
 1. Uygulama oluştur: ad "drAW: Akıllı Tahta ve Çizim", dil Türkçe, Uygulama, Ücretsiz.
